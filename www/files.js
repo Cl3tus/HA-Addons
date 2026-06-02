@@ -55,14 +55,16 @@ async function apiUpload(path, files) {
 
 async function loadSambaInfo() {
   try {
-    const d = await fetch('api/info').then(r => r.json());
+    const d    = await fetch('api/info').then(r => r.json());
     const host = d.samba_host || '';
+    const slug = d.samba_slug || '';
+    const wrap = $('#samba-wrap');
     const badge = $('#samba-badge');
-    if (badge) {
+    if (wrap && badge && slug) {
       badge.textContent = host
-        ? `\\\\${host}\\addon_configs\\d5a9c741_eink_studio`
-        : '\\\\<HA-IP>\\addon_configs\\d5a9c741_eink_studio';
-      badge.parentElement.style.display = '';
+        ? `\\\\${host}\\addon_configs\\${slug}`
+        : `\\\\<HA-IP>\\addon_configs\\${slug}`;
+      wrap.style.display = 'flex';
     }
   } catch { /* ignore */ }
 }

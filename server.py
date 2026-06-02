@@ -5,7 +5,10 @@ E-ink Studio add-on server.
 Responsibilities:
   * Serve the static frontend (www/) under the Ingress path (relative URLs).
   * Proxy read-only Home Assistant state data via the Supervisor API.
-  * Persist projects + uploaded fonts under /data (the add-on's persistent volume).
+  * Persist projects + uploaded fonts under STORAGE_DIR.
+    - STORAGE_DIR defaults to /data but is set to
+      /addon_configs/<slug> via run.sh so data is directly visible
+      in the SAMBA share (\\<HA-IP>\\addon_configs\\<slug>).
 
 Everything is read-only towards Home Assistant. Nothing is written to the
 ESPHome config; fonts/projects live only inside this add-on's volume.
@@ -18,20 +21,24 @@ import re
 import shutil
 import asyncio
 from pathlib import Path
+from urllib.parse import quote
 
 from aiohttp import web, ClientSession, ClientTimeout
 
-DATA_DIR          = Path(os.environ.get("DATA_DIR", "/data"))
-WWW_DIR           = Path(__file__).parent / "www"
-PROJECTS_DIR      = DATA_DIR / "projects"
-FONTS_DIR         = DATA_DIR / "fonts"
-ADDON_CONFIGS_DIR = Path("/addon_configs")
+DATA_DIR     = Path(os.environ.get("DATA_DIR", "/data"))
+# STORAGE_DIR is where projects/fonts are kept.  run.sh points this at
+# /addon_configs/<slug> so the data is reachable via SAMBA.
+STORAGE_DIR  = Path(os.environ.get("STORAGE_DIR", str(DATA_DIR)))
+WWW_DIR      = Path(__file__).parent / "www"
+PROJECTS_DIR = STORAGE_DIR / "projects"
+FONTS_DIR    = STORAGE_DIR / "fonts"
+FILES_ROOT   = STORAGE_DIR
 PORT = 8099
 
 SUPERVISOR_TOKEN      = os.environ.get("SUPERVISOR_TOKEN", "")
 SUPERVISOR_STATES_URL = "http://supervisor/core/api/states"
 
-# samba_host uit add-on options (/data/options.json) — optioneel
+# samba_host from add-on options (/data/options.json) – optional
 _options_file = DATA_DIR / "options.json"
 try:
     _opts = json.loads(_options_file.read_text("utf-8")) if _options_file.exists() else {}
@@ -39,28 +46,36 @@ except Exception:
     _opts = {}
 SAMBA_HOST = _opts.get("samba_host", "")
 
-SAFE_NAME  = re.compile(r"^[A-Za-z0-9._-]+$")
-FILES_ROOT = DATA_DIR
+SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 
-for d in (PROJECTS_DIR, FONTS_DIR):
-    d.mkdir(parents=True, exist_ok=True)
+# Create storage dirs
+for _d in (PROJECTS_DIR, FONTS_DIR):
+    _d.mkdir(parents=True, exist_ok=True)
+
+# Migrate existing data from /data to STORAGE_DIR (runs once)
+if STORAGE_DIR != DATA_DIR:
+    for _sub in ("projects", "fonts"):
+        _old = DATA_DIR / _sub
+        _new = STORAGE_DIR / _sub
+        if _old.exists() and not any(_new.iterdir()) if _new.exists() else _old.exists():
+            try:
+                if _new.exists():
+                    shutil.rmtree(_new)
+                shutil.copytree(str(_old), str(_new))
+            except Exception:
+                pass
 
 
 def _safe(name: str) -> bool:
     return bool(name) and bool(SAFE_NAME.match(name)) and ".." not in name
 
 
-def _get_root(key: str) -> Path:
-    return ADDON_CONFIGS_DIR if key == "addon_configs" else FILES_ROOT
-
-
-def _resolve_fs(path: str, root: Path = None) -> "Path | None":
-    """Resolve a user-supplied path under root, blocking traversal."""
-    root = root or FILES_ROOT
+def _resolve_fs(path: str) -> "Path | None":
+    """Resolve a user-supplied path under FILES_ROOT, blocking traversal."""
     try:
         rel = (path or "").lstrip("/\\")
-        resolved = (root / rel).resolve()
-        resolved.relative_to(root.resolve())
+        resolved = (FILES_ROOT / rel).resolve()
+        resolved.relative_to(FILES_ROOT.resolve())
         return resolved
     except Exception:
         return None
@@ -86,7 +101,6 @@ async def api_states(request: web.Request) -> web.Response:
     except Exception as e:  # noqa: BLE001
         return web.json_response({"error": "fetch_failed", "detail": str(e)}, status=502)
 
-    # Trim to what the editor needs: entity_id, state, unit, friendly_name.
     slim = []
     for st in data:
         attrs = st.get("attributes", {}) or {}
@@ -102,9 +116,7 @@ async def api_states(request: web.Request) -> web.Response:
 
 # ---------------------------------------------------------------- projects
 async def projects_list(request: web.Request) -> web.Response:
-    items = []
-    for p in sorted(PROJECTS_DIR.glob("*.json")):
-        items.append(p.stem)
+    items = [p.stem for p in sorted(PROJECTS_DIR.glob("*.json"))]
     return web.json_response({"projects": items})
 
 
@@ -140,15 +152,11 @@ async def project_delete(request: web.Request) -> web.Response:
 
 # ---------------------------------------------------------------- fonts
 async def fonts_list(request: web.Request) -> web.Response:
-    items = []
-    for p in sorted(FONTS_DIR.glob("*")):
-        if p.is_file():
-            items.append(p.name)
+    items = [p.name for p in sorted(FONTS_DIR.glob("*")) if p.is_file()]
     return web.json_response({"fonts": items})
 
 
 async def font_put(request: web.Request) -> web.Response:
-    """Store an uploaded font. Body: {name, dataUrl}."""
     body = await request.json()
     name = body.get("name", "")
     data_url = body.get("dataUrl", "")
@@ -179,13 +187,11 @@ async def font_get(request: web.Request) -> web.StreamResponse:
 
 # ---------------------------------------------------------------- file explorer
 async def fs_list(request: web.Request) -> web.Response:
-    root   = _get_root(request.rel_url.query.get("root", "data"))
-    target = _resolve_fs(request.rel_url.query.get("path", ""), root)
+    target = _resolve_fs(request.rel_url.query.get("path", ""))
     if target is None:
         return web.json_response({"error": "bad_path"}, status=400)
     if not target.exists():
-        # addon_configs may not exist when the share is not mounted
-        return web.json_response({"error": "not_found", "path": "", "entries": []}, status=200)
+        return web.json_response({"path": "", "entries": []})
     if not target.is_dir():
         return web.json_response({"error": "not_a_dir"}, status=400)
     entries = []
@@ -197,7 +203,7 @@ async def fs_list(request: web.Request) -> web.Response:
             "size": st.st_size if p.is_file() else None,
             "modified": st.st_mtime,
         })
-    rel = str(target.relative_to(root.resolve())).replace("\\", "/")
+    rel = str(target.relative_to(FILES_ROOT.resolve())).replace("\\", "/")
     if rel == ".":
         rel = ""
     return web.json_response({"path": rel, "entries": entries})
@@ -205,18 +211,16 @@ async def fs_list(request: web.Request) -> web.Response:
 
 async def fs_mkdir(request: web.Request) -> web.Response:
     body   = await request.json()
-    root   = _get_root(body.get("root", "data"))
-    target = _resolve_fs(body.get("path", ""), root)
-    if target is None or target == root.resolve():
+    target = _resolve_fs(body.get("path", ""))
+    if target is None or target == FILES_ROOT.resolve():
         return web.json_response({"error": "bad_path"}, status=400)
     target.mkdir(parents=True, exist_ok=True)
     return web.json_response({"ok": True})
 
 
 async def fs_delete(request: web.Request) -> web.Response:
-    root   = _get_root(request.rel_url.query.get("root", "data"))
-    target = _resolve_fs(request.rel_url.query.get("path", ""), root)
-    if target is None or target == root.resolve():
+    target = _resolve_fs(request.rel_url.query.get("path", ""))
+    if target is None or target == FILES_ROOT.resolve():
         return web.json_response({"error": "bad_path"}, status=400)
     if not target.exists():
         return web.json_response({"ok": True})
@@ -229,12 +233,11 @@ async def fs_delete(request: web.Request) -> web.Response:
 
 async def fs_move(request: web.Request) -> web.Response:
     body = await request.json()
-    root = _get_root(body.get("root", "data"))
-    src  = _resolve_fs(body.get("src", ""), root)
-    dst  = _resolve_fs(body.get("dst", ""), root)
+    src  = _resolve_fs(body.get("src", ""))
+    dst  = _resolve_fs(body.get("dst", ""))
     if src is None or dst is None:
         return web.json_response({"error": "bad_path"}, status=400)
-    if src == root.resolve():
+    if src == FILES_ROOT.resolve():
         return web.json_response({"error": "cannot_move_root"}, status=400)
     if not src.exists():
         return web.json_response({"error": "not_found"}, status=404)
@@ -251,20 +254,16 @@ async def fs_move(request: web.Request) -> web.Response:
 async def fs_upload(request: web.Request) -> web.Response:
     reader      = await request.multipart()
     target_path = ""
-    root_key    = "data"
     uploaded    = []
     async for part in reader:
         if part.name == "path":
             target_path = await part.text()
-        elif part.name == "root":
-            root_key = await part.text()
         elif part.name == "file":
-            root  = _get_root(root_key)
             fname = Path(part.filename or "upload").name
             data  = await part.read()
             if len(data) > 32 * 1024 * 1024:
                 return web.json_response({"error": "too_large"}, status=413)
-            dest = _resolve_fs((target_path.rstrip("/") + "/" + fname).lstrip("/"), root)
+            dest = _resolve_fs((target_path.rstrip("/") + "/" + fname).lstrip("/"))
             if dest is None:
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -274,9 +273,7 @@ async def fs_upload(request: web.Request) -> web.Response:
 
 
 async def fs_download(request: web.Request) -> web.StreamResponse:
-    from urllib.parse import quote
-    root   = _get_root(request.rel_url.query.get("root", "data"))
-    target = _resolve_fs(request.rel_url.query.get("path", ""), root)
+    target = _resolve_fs(request.rel_url.query.get("path", ""))
     if target is None or not target.exists() or not target.is_file():
         return web.json_response({"error": "not_found"}, status=404)
     return web.FileResponse(
@@ -287,12 +284,13 @@ async def fs_download(request: web.Request) -> web.StreamResponse:
 
 # ---------------------------------------------------------------- meta
 async def api_info(request: web.Request) -> web.Response:
+    slug = STORAGE_DIR.name if STORAGE_DIR != DATA_DIR else ""
     return web.json_response({
         "app": "E-ink Studio",
         "version": os.environ.get("ADDON_VERSION", "1.0.0"),
         "live_data": bool(SUPERVISOR_TOKEN),
         "samba_host": SAMBA_HOST,
-        "addon_configs_available": ADDON_CONFIGS_DIR.exists(),
+        "samba_slug": slug,
     })
 
 
