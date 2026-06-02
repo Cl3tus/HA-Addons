@@ -1,82 +1,59 @@
 'use strict';
 /* HA theme sync — shared by index.html and files.html.
-   DEBUG MODE: logs what it finds in the parent document to the browser
-   console (prefix [EinkTheme]) so we can see what HA actually sets. */
+   HA sets --primary-background-color on :root for every theme.
+   We read that CSS variable and check its luminance. That is the only
+   signal that reliably signals dark/light in HA 2026.x.              */
 (function () {
   var LS_MANUAL = 'eink_studio_theme_manual';
 
-  /* ---- debug: dump everything we can read from the parent ---- */
-  function debugDump(label) {
-    try {
-      var root = window.parent.document.documentElement;
-      var body = window.parent.document.body;
-      var ha   = window.parent.document.querySelector('home-assistant');
-      console.group('[EinkTheme] ' + label);
-      console.log('html.hasAttribute(dark)          :', root.hasAttribute('dark'));
-      console.log('html.getAttribute(dark)           :', root.getAttribute('dark'));
-      console.log('html.getAttribute(data-color-scheme):', root.getAttribute('data-color-scheme'));
-      console.log('html.className                    :', root.className);
-      console.log('html.style.colorScheme            :', root.style.colorScheme);
-      console.log('getComputed(html).colorScheme     :', getComputedStyle(root).colorScheme);
-      console.log('body.hasAttribute(dark)           :', body.hasAttribute('dark'));
-      console.log('body.className                    :', body.className);
-      console.log('body.style.colorScheme            :', body.style.colorScheme);
-      console.log('getComputed(body).colorScheme     :', getComputedStyle(body).colorScheme);
-      console.log('--primary-background-color        :', getComputedStyle(root).getPropertyValue('--primary-background-color').trim());
-      console.log('ha element dark attr              :', ha ? ha.hasAttribute('dark') : 'not found');
-      console.log('ha element class                  :', ha ? ha.className : 'not found');
-      console.groupEnd();
-    } catch (e) {
-      console.log('[EinkTheme] ERROR reading parent:', e);
+  /* ---- parse hex or rgb color → luminance ---- */
+  function luminance(bg) {
+    if (!bg) return null;
+    bg = bg.trim();
+    var r, g, b;
+    if (bg.charAt(0) === '#') {
+      var h = bg.slice(1);
+      if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+      r = parseInt(h.slice(0,2), 16);
+      g = parseInt(h.slice(2,4), 16);
+      b = parseInt(h.slice(4,6), 16);
+    } else {
+      var m = bg.match(/\d+/g);
+      if (m && m.length >= 3) { r = +m[0]; g = +m[1]; b = +m[2]; }
     }
+    if (isNaN(r)) return null;
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   }
 
   /* ---- detection ---- */
   function detect() {
+    // 1. Manual override (toggle button)
     var m = localStorage.getItem(LS_MANUAL);
     if (m === 'dark' || m === 'light') return m;
 
     try {
       var root = window.parent.document.documentElement;
-      var body = window.parent.document.body;
-      var ha   = window.parent.document.querySelector('home-assistant');
 
-      // Try every known mechanism
-      if (root.hasAttribute('dark')) return 'dark';
+      // 2. --primary-background-color  (confirmed working in HA 2026.x)
+      //    #fafafa = light, #111111 = dark
+      var bg  = getComputedStyle(root).getPropertyValue('--primary-background-color').trim();
+      var lum = luminance(bg);
+      if (lum !== null) return lum < 0.5 ? 'dark' : 'light';
 
+      // 3. data-color-scheme attribute (older HA)
       var attr = root.getAttribute('data-color-scheme');
       if (attr === 'dark' || attr === 'light') return attr;
 
-      for (var el of [root, body]) {
-        if (el.classList.contains('dark')) return 'dark';
-        if (el.classList.contains('light')) return 'light';
-      }
-
-      var csRoot = getComputedStyle(root).colorScheme;
-      if (csRoot === 'dark' || csRoot === 'light') return csRoot;
-
-      var csBody = getComputedStyle(body).colorScheme;
-      if (csBody === 'dark' || csBody === 'light') return csBody;
-
-      if (ha && ha.hasAttribute('dark')) return 'dark';
-
-      // --primary-background-color luminance
-      var bg = getComputedStyle(root).getPropertyValue('--primary-background-color').trim();
-      if (bg) {
-        var nums = bg.match(/\d+/g);
-        if (nums && nums.length >= 3) {
-          var lum = (0.299 * +nums[0] + 0.587 * +nums[1] + 0.114 * +nums[2]) / 255;
-          return lum < 0.5 ? 'dark' : 'light';
-        }
-      }
+      // 4. dark attribute (some HA versions)
+      if (root.hasAttribute('dark')) return 'dark';
     } catch (_) {}
 
+    // 5. OS fallback (HA "Auto" mode)
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
 
   /* ---- apply ---- */
   function apply(scheme) {
-    console.log('[EinkTheme] applying:', scheme);
     if (window.state) window.state.theme = scheme;
     if (window.applyTheme) {
       window.applyTheme();
@@ -87,15 +64,15 @@
     if (btn) btn.textContent = scheme === 'light' ? '◑ Licht' : '◐ Donker';
   }
 
+  /* ---- toggle (file-explorer button) ---- */
   function toggle() {
     var cur = document.body.classList.contains('light') ? 'light' : 'dark';
     localStorage.setItem(LS_MANUAL, cur === 'light' ? 'dark' : 'light');
     apply(detect());
   }
 
+  /* ---- HA changed: clear manual override ---- */
   function onHAChange() {
-    console.log('[EinkTheme] HA change detected');
-    debugDump('after HA change');
     localStorage.removeItem(LS_MANUAL);
     apply(detect());
   }
@@ -104,14 +81,19 @@
   function watch() {
     try {
       var root = window.parent.document.documentElement;
-      var body = window.parent.document.body;
-      var ha   = window.parent.document.querySelector('home-assistant');
-      var opts = { attributes: true, attributeFilter: ['dark', 'class', 'data-color-scheme', 'style'] };
-      new MutationObserver(onHAChange).observe(root, opts);
-      new MutationObserver(onHAChange).observe(body, opts);
-      if (ha) new MutationObserver(onHAChange).observe(ha, { attributes: true });
+      // HA changes --primary-background-color by adding/swapping a <style> in <head>
+      new MutationObserver(onHAChange).observe(
+        window.parent.document.head,
+        { childList: true, subtree: true, characterData: true }
+      );
+      // Also watch html element for any attribute HA might toggle
+      new MutationObserver(onHAChange).observe(root, {
+        attributes: true,
+        attributeFilter: ['dark', 'class', 'data-color-scheme']
+      });
     } catch (_) {}
 
+    // OS preference (HA "Auto" mode)
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
       if (!localStorage.getItem(LS_MANUAL)) apply(detect());
     });
@@ -119,7 +101,6 @@
 
   /* ---- init ---- */
   function init() {
-    debugDump('on load');
     apply(detect());
     watch();
   }
