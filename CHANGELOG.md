@@ -1,3 +1,7 @@
+## 1.4.5
+- Thema: exact ESPHome-mechanisme. Detectie via een onzichtbaar `Canvas`-system-color probe-element met `color-scheme: light dark`. De browser geeft HA's `color-scheme` door aan de iframe, dus `Canvas` lost op naar HA's échte thema — onafhankelijk van het OS (daar ging `prefers-color-scheme` de mist in). `--primary-background-color` en `prefers-color-scheme` blijven als fallbacks
+- FOUC-fix bestandsbeheer gebruikt nu ook de Canvas-probe
+
 ## 1.4.4
 - Thema definitief: leest `--primary-background-color` uit HA (de enige bron die klopt als HA-thema en OS-thema verschillen — debug bewees `#fafafa`=licht / `#111111`=donker). Probeert nu zowel `window.parent` als `window.top` (HA kan de ingress-iframe nesten). Polling 500ms voor live wissels, `prefers-color-scheme` alleen als allerlaatste fallback
 - Cache-busting: `?v=1.4.4` op alle JS-bestanden zodat de browser na een update gegarandeerd de nieuwe versie laadt (oude JS bleef soms in cache hangen)
