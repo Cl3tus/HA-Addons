@@ -1,3 +1,9 @@
+## 1.2.6
+- Dark/light thema: zowel de editor als de bestandsbeheerder volgen automatisch de HA-themakeuze (Donker/Licht/Auto)
+- Wisselen in HA wordt direct doorgevoerd zonder herladen, via MutationObserver op het HA parent-document
+- Terugval op OS-voorkeur als de HA-thema-instelling niet uitgelezen kan worden (bijv. buiten Ingress)
+- De handmatige `◐ Thema`-knop in de editor werkt nog steeds als tijdelijke override
+
 ## 1.2.5
 - Correcte HA map-sleutel: `addon_config:rw` (was `addon_configs:rw` — verkeerd gespeld, daardoor maakte HA nooit de SAMBA-map aan)
 - HA monteert de add-on config-map nu op `/config` in de container; dit is exact dezelfde map als `\\<HA-IP>\addon_configs\<slug>` via SAMBA
