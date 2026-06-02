@@ -44,6 +44,10 @@ body.light {
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
+/* Vertelt de browser dat deze pagina beide kleurschema's ondersteunt.
+   Hierdoor propageert HA's color-scheme naar de iframe en werkt
+   prefers-color-scheme correct (zelfde techniek als ESPHome webserver). */
+html { color-scheme: light dark; }
 body {
   font-family: var(--sans);
   background: var(--bg);

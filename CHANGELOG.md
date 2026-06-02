@@ -1,3 +1,6 @@
+## 1.3.6
+- `html { color-scheme: light dark }` toegevoegd aan styles.css — dit is de sleutel: de browser propageert HA's `color-scheme` van het parent-document naar de Ingress-iframe, waardoor `prefers-color-scheme` correct dark/light teruggeeft (exact dezelfde techniek als ESPHome webserver v3)
+
 ## 1.3.5
 - Thema-detectie volledig herschreven naar de ESPHome-aanpak: `prefers-color-scheme` media query van de browser/OS — exact dezelfde methode als ESPHome dashboard v2023.6.0+. Simpel, betrouwbaar, geen parent-document-hacks
 
