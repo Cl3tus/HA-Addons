@@ -104,7 +104,10 @@ function loadState(){
   }
   if(!state.current) state.current = state.profiles[0].id;
 }
-function persist(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function persist(){
+  try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); }catch(e){}
+  if(SERVER_STORAGE){ clearTimeout(_profileSyncTimer); _profileSyncTimer=setTimeout(syncProfilesToServer,2000); }
+}
 
 /* ---------------- undo / redo ---------------- */
 function snapshot(){ return JSON.stringify(profile().elements); }
@@ -1546,8 +1549,46 @@ function renderProfiles(){
    When the add-on API is present, Save/Open use server storage;
    standalone (file/localhost) keeps the file-based behaviour.
    ============================================================ */
-let SERVER_STORAGE=false;
+var SERVER_STORAGE=false;
 function pname(){ return (profile().name||'profiel').replace(/[^A-Za-z0-9._-]+/g,'_'); }
+function pslug(p){ return (p.name||'profiel').replace(/[^A-Za-z0-9._-]+/g,'_'); }
+
+/* ---- server-side profile sync ---- */
+var _profileSyncTimer=null;
+var _knownServerProfiles=new Set();
+
+async function loadProfilesFromServer(){
+  try{
+    const r=await fetch('api/profiles');
+    if(!r.ok) return;
+    const names=(await r.json()).profiles||[];
+    if(!names.length){ await syncProfilesToServer(); return; }
+    _knownServerProfiles=new Set(names);
+    const loaded=(await Promise.all(
+      names.map(n=>fetch('api/profiles/'+encodeURIComponent(n)).then(r=>r.ok?r.json():null))
+    )).filter(Boolean);
+    if(loaded.length){
+      state.profiles=loaded;
+      state.current=loaded.find(p=>p.id===state.current)?state.current:loaded[0].id;
+      try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); }catch(e){}
+    }
+  }catch(e){ console.warn('profile load failed',e); }
+}
+
+async function syncProfilesToServer(){
+  if(!SERVER_STORAGE) return;
+  const currentSlugs=new Set(state.profiles.map(pslug));
+  for(const p of state.profiles){
+    const n=pslug(p);
+    try{ await fetch('api/profiles/'+encodeURIComponent(n),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)}); }catch(e){}
+  }
+  for(const n of _knownServerProfiles){
+    if(!currentSlugs.has(n)){
+      try{ await fetch('api/profiles/'+encodeURIComponent(n),{method:'DELETE'}); }catch(e){}
+    }
+  }
+  _knownServerProfiles=currentSlugs;
+}
 
 async function serverSaveProject(){
   try{
@@ -1823,11 +1864,13 @@ async function boot(){
   fitZoom();
   renderCanvas(); renderLayers(); renderInspector();
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>renderCanvas());
-  // try live data once at startup (silent if unavailable)
-  fetch('api/info').then(r=>r.json()).then(info=>{
-    if(info && info.app){ SERVER_STORAGE=true; }   // running inside the add-on
+  // Check add-on API, load server profiles, fetch live data
+  try{
+    const info=await fetch('api/info').then(r=>r.json());
+    if(info && info.app){ SERVER_STORAGE=true; }
     if(info && info.live_data){ refreshLive(); }
-  }).catch(()=>{});
+    if(SERVER_STORAGE){ await loadProfilesFromServer(); renderProfiles(); }
+  }catch(e){}
 }
 
 try{ loadState(); wire(); boot(); }

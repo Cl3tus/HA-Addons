@@ -30,9 +30,10 @@ DATA_DIR     = Path(os.environ.get("DATA_DIR", "/data"))
 # /addon_configs/<slug> so the data is reachable via SAMBA.
 STORAGE_DIR  = Path(os.environ.get("STORAGE_DIR", str(DATA_DIR)))
 WWW_DIR      = Path(__file__).parent / "www"
-PROJECTS_DIR = STORAGE_DIR / "projects"
-FONTS_DIR    = STORAGE_DIR / "fonts"
-FILES_ROOT   = STORAGE_DIR
+PROJECTS_DIR  = STORAGE_DIR / "projects"
+FONTS_DIR     = STORAGE_DIR / "fonts"
+PROFILES_DIR  = STORAGE_DIR / "profiles"
+FILES_ROOT    = STORAGE_DIR
 PORT = 8099
 
 SUPERVISOR_TOKEN      = os.environ.get("SUPERVISOR_TOKEN", "")
@@ -50,7 +51,7 @@ SAMBA_SLUG = os.environ.get("SAMBA_SLUG", "")
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 
 # Create storage dirs
-for _d in (PROJECTS_DIR, FONTS_DIR):
+for _d in (PROJECTS_DIR, FONTS_DIR, PROFILES_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 # Migrate existing data from /data to STORAGE_DIR (runs once)
@@ -186,6 +187,42 @@ async def font_get(request: web.Request) -> web.StreamResponse:
     return web.FileResponse(f)
 
 
+# ---------------------------------------------------------------- profiles
+async def profiles_list(request: web.Request) -> web.Response:
+    items = [p.stem for p in sorted(PROFILES_DIR.glob("*.json"))]
+    return web.json_response({"profiles": items})
+
+
+async def profile_get(request: web.Request) -> web.Response:
+    name = request.match_info["name"]
+    if not _safe(name):
+        return web.json_response({"error": "bad_name"}, status=400)
+    f = PROFILES_DIR / f"{name}.json"
+    if not f.exists():
+        return web.json_response({"error": "not_found"}, status=404)
+    return web.json_response(json.loads(f.read_text("utf-8")))
+
+
+async def profile_put(request: web.Request) -> web.Response:
+    name = request.match_info["name"]
+    if not _safe(name):
+        return web.json_response({"error": "bad_name"}, status=400)
+    body = await request.json()
+    (PROFILES_DIR / f"{name}.json").write_text(
+        json.dumps(body, ensure_ascii=False, indent=2), "utf-8")
+    return web.json_response({"ok": True})
+
+
+async def profile_delete(request: web.Request) -> web.Response:
+    name = request.match_info["name"]
+    if not _safe(name):
+        return web.json_response({"error": "bad_name"}, status=400)
+    f = PROFILES_DIR / f"{name}.json"
+    if f.exists():
+        f.unlink()
+    return web.json_response({"ok": True})
+
+
 # ---------------------------------------------------------------- file explorer
 async def fs_list(request: web.Request) -> web.Response:
     target = _resolve_fs(request.rel_url.query.get("path", ""))
@@ -310,6 +347,10 @@ def build_app() -> web.Application:
     app.router.add_get("/api/fonts", fonts_list)
     app.router.add_put("/api/fonts/{name}", font_put)
     app.router.add_get("/api/fonts/{name}", font_get)
+    app.router.add_get("/api/profiles", profiles_list)
+    app.router.add_get("/api/profiles/{name}", profile_get)
+    app.router.add_put("/api/profiles/{name}", profile_put)
+    app.router.add_delete("/api/profiles/{name}", profile_delete)
     app.router.add_get("/api/fs/list", fs_list)
     app.router.add_post("/api/fs/mkdir", fs_mkdir)
     app.router.add_delete("/api/fs/entry", fs_delete)

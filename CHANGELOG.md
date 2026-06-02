@@ -1,3 +1,9 @@
+## 1.3.8
+- Bestandsbeheer: flash (FOUC) opgelost — inline script direct na `<body>` zet de klasse synchroon vóór de eerste render, net als de editor
+- Profielen worden nu opgeslagen in `STORAGE_DIR/profiles/` (SAMBA-toegankelijk via `\\<HA-IP>\addon_configs\3d980088_eink_studio\profiles\`)
+- Elk profiel = één `{naam}.json` bestand; nieuw API: `GET/PUT/DELETE /api/profiles/{name}`
+- Editor laadt profielen bij opstarten van de server; slaat ze automatisch op (2 sec debounce) na elke wijziging; verwijdert orphan-bestanden bij hernoeming
+
 ## 1.3.7
 - Editor-thema werkt nu ook: `let state` gewijzigd naar `var state` in app.js zodat `window.state` toegankelijk is vanuit theme.js. Zonder dit las `applyTheme()` altijd de opgeslagen (verkeerde) `state.theme` in plaats van het gedetecteerde thema
 - `apply()` in theme.js zet nu altijd direct de body-class, onafhankelijk van app.js
