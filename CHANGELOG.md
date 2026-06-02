@@ -1,3 +1,6 @@
+## 1.2.8
+- Zijbalk-icoon gewijzigd naar `mdi:note-edit`
+
 ## 1.2.7
 - Bestandsbeheer: `◐ Thema`-knop toegevoegd voor handmatige light/dark wissel
 - Thema-detectie verbeterd: controleert nu ook `style.colorScheme` op het HA parent-document en de `selectedTheme` localStorage-sleutel (HA slaat het thema daar op, niet als HTML-attribuut)
