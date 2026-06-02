@@ -1555,39 +1555,15 @@ function pslug(p){ return (p.name||'profiel').replace(/[^A-Za-z0-9._-]+/g,'_'); 
 
 /* ---- server-side profile sync ---- */
 var _profileSyncTimer=null;
-var _knownServerProfiles=new Set();
-
-async function loadProfilesFromServer(){
-  try{
-    const r=await fetch('api/profiles');
-    if(!r.ok) return;
-    const names=(await r.json()).profiles||[];
-    if(!names.length){ await syncProfilesToServer(); return; }
-    _knownServerProfiles=new Set(names);
-    const loaded=(await Promise.all(
-      names.map(n=>fetch('api/profiles/'+encodeURIComponent(n)).then(r=>r.ok?r.json():null))
-    )).filter(Boolean);
-    if(loaded.length){
-      state.profiles=loaded;
-      state.current=loaded.find(p=>p.id===state.current)?state.current:loaded[0].id;
-      try{ localStorage.setItem(LS_KEY,JSON.stringify(state)); }catch(e){}
-    }
-  }catch(e){ console.warn('profile load failed',e); }
-}
 
 async function syncProfilesToServer(){
   if(!SERVER_STORAGE) return;
-  const currentSlugs=new Set(state.profiles.map(pslug));
   for(const p of state.profiles){
     const n=pslug(p);
-    try{ await fetch('api/profiles/'+encodeURIComponent(n),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)}); }catch(e){}
+    try{ await fetch('api/profiles/'+encodeURIComponent(n),{
+      method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)
+    }); }catch(e){}
   }
-  for(const n of _knownServerProfiles){
-    if(!currentSlugs.has(n)){
-      try{ await fetch('api/profiles/'+encodeURIComponent(n),{method:'DELETE'}); }catch(e){}
-    }
-  }
-  _knownServerProfiles=currentSlugs;
 }
 
 async function serverSaveProject(){
@@ -1864,13 +1840,11 @@ async function boot(){
   fitZoom();
   renderCanvas(); renderLayers(); renderInspector();
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>renderCanvas());
-  // Check add-on API, load server profiles, fetch live data
-  try{
-    const info=await fetch('api/info').then(r=>r.json());
-    if(info && info.app){ SERVER_STORAGE=true; }
+  // Check add-on API + live data (fire-and-forget to keep boot fast)
+  fetch('api/info').then(r=>r.json()).then(info=>{
+    if(info && info.app){ SERVER_STORAGE=true; syncProfilesToServer(); }
     if(info && info.live_data){ refreshLive(); }
-    if(SERVER_STORAGE){ await loadProfilesFromServer(); renderProfiles(); }
-  }catch(e){}
+  }).catch(()=>{});
 }
 
 try{ loadState(); wire(); boot(); }

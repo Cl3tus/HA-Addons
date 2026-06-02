@@ -46,7 +46,7 @@ async function apiUpload(path, files) {
     fd.append('file', file, file.name);
     const r = await fetch('api/fs/upload', {method: 'POST', body: fd});
     if (r.ok) names.push(file.name);
-    else toast(`Upload mislukt: ${file.name}`, true);
+    else toast(_t(`Upload mislukt: ${file.name}`, `Upload failed: ${file.name}`), true);
   }
   return names;
 }
@@ -69,6 +69,8 @@ async function loadSambaInfo() {
   } catch { /* ignore */ }
 }
 
+function _t(nl, en) { return (window.t ? window.t(nl, en) : nl); }
+
 // ---------------------------------------------------------------- Navigation
 
 async function navigate(path) {
@@ -81,7 +83,7 @@ async function navigate(path) {
     renderBreadcrumb(data.path ?? '');
     renderTable(entries);
   } catch (e) {
-    toast('Fout bij laden: ' + e.message, true);
+    toast(_t('Fout bij laden: ', 'Loading error: ') + e.message, true);
   }
 }
 
@@ -100,7 +102,7 @@ function renderBreadcrumb(path) {
     nav.appendChild(el);
   };
 
-  addCrumb('Add-on data', '', parts.length === 0);
+  addCrumb(_t('Add-on data', 'Add-on data'), '', parts.length === 0);
   parts.forEach((part, i) => {
     const sep = document.createElement('span');
     sep.className = 'crumb-sep';
@@ -211,12 +213,16 @@ function updateStatus() {
   const dirs  = entries.filter(e => e.type === 'dir').length;
   const files = entries.filter(e => e.type === 'file').length;
   const parts = [];
-  if (dirs)  parts.push(`${dirs} map${dirs  !== 1 ? 'pen' : ''}`);
-  if (files) parts.push(`${files} bestand${files !== 1 ? 'en' : ''}`);
-  $('#fe-status').textContent = parts.join(', ') || 'Leeg';
+  if (dirs)  parts.push(dirs === 1
+    ? _t('1 map', '1 folder')
+    : _t(`${dirs} mappen`, `${dirs} folders`));
+  if (files) parts.push(files === 1
+    ? _t('1 bestand', '1 file')
+    : _t(`${files} bestanden`, `${files} files`));
+  $('#fe-status').textContent = parts.join(', ') || _t('Leeg', 'Empty');
 
   const n = selected.size;
-  $('#fe-sel-status').textContent = n ? `· ${n} geselecteerd` : '';
+  $('#fe-sel-status').textContent = n ? `· ${n} ${_t('geselecteerd', 'selected')}` : '';
 }
 
 // ---------------------------------------------------------------- File icons
@@ -250,13 +256,16 @@ function entryPath(name) {
 async function doDelete() {
   const names = [...selected];
   const label = names.length === 1 ? `"${names[0]}"` : `${names.length} items`;
-  if (!confirm(`Verwijder ${label}? Dit kan niet ongedaan worden gemaakt.`)) return;
+  if (!confirm(_t(`Verwijder ${label}? Dit kan niet ongedaan worden gemaakt.`,
+                   `Delete ${label}? This cannot be undone.`))) return;
   try {
     for (const name of names) await apiDelete(entryPath(name));
-    toast(`${names.length} item${names.length !== 1 ? 's' : ''} verwijderd`);
+    toast(names.length === 1
+      ? _t(`"${names[0]}" verwijderd`, `"${names[0]}" deleted`)
+      : _t(`${names.length} items verwijderd`, `${names.length} items deleted`));
     await navigate(currentPath);
   } catch (e) {
-    toast('Verwijderen mislukt: ' + e.message, true);
+    toast(_t('Verwijderen mislukt: ', 'Delete failed: ') + e.message, true);
   }
 }
 
@@ -273,18 +282,20 @@ async function doRename() {
   const [name] = [...selected];
   const entry  = entries.find(e => e.name === name);
   const newName = await showDialog(
-    `Hernoemen: "${name}"`,
+    _t(`Hernoemen: "${name}"`, `Rename: "${name}"`),
     name,
-    entry?.type === 'file' ? 'Voer de nieuwe bestandsnaam in.' : 'Voer de nieuwe mapnaam in.'
+    entry?.type === 'file'
+      ? _t('Voer de nieuwe bestandsnaam in.', 'Enter the new file name.')
+      : _t('Voer de nieuwe mapnaam in.', 'Enter the new folder name.')
   );
   if (!newName || newName === name) return;
   const dst = currentPath ? currentPath + '/' + newName : newName;
   try {
     await apiMove(entryPath(name), dst);
-    toast(`Hernoemd naar "${newName}"`);
+    toast(_t(`Hernoemd naar "${newName}"`, `Renamed to "${newName}"`));
     await navigate(currentPath);
   } catch (e) {
-    toast('Hernoemen mislukt: ' + e.message, true);
+    toast(_t('Hernoemen mislukt: ', 'Rename failed: ') + e.message, true);
   }
 }
 
@@ -292,9 +303,10 @@ async function doMove() {
   const names = [...selected];
   const label = names.length === 1 ? `"${names[0]}"` : `${names.length} items`;
   const dest  = await showDialog(
-    `Verplaatsen: ${label}`,
+    _t(`Verplaatsen: ${label}`, `Move: ${label}`),
     currentPath,
-    'Voer het doelpad in (relatief aan /data). Leeg = root.'
+    _t('Voer het doelpad in (relatief aan /data). Leeg = root.',
+       'Enter the destination path (relative to /data). Empty = root.')
   );
   if (dest === null) return;
   try {
@@ -302,31 +314,39 @@ async function doMove() {
       const dst = dest ? dest.replace(/\/$/, '') + '/' + name : name;
       await apiMove(entryPath(name), dst);
     }
-    toast(`${names.length} item${names.length !== 1 ? 's' : ''} verplaatst`);
+    toast(names.length === 1
+      ? _t(`"${names[0]}" verplaatst`, `"${names[0]}" moved`)
+      : _t(`${names.length} items verplaatst`, `${names.length} items moved`));
     await navigate(currentPath);
   } catch (e) {
-    toast('Verplaatsen mislukt: ' + e.message, true);
+    toast(_t('Verplaatsen mislukt: ', 'Move failed: ') + e.message, true);
   }
 }
 
 async function doMkdir() {
-  const name = await showDialog('Nieuwe map aanmaken', '', 'Geef de naam van de nieuwe map.');
+  const name = await showDialog(
+    _t('Nieuwe map aanmaken', 'Create new folder'),
+    '',
+    _t('Geef de naam van de nieuwe map.', 'Enter the folder name.')
+  );
   if (!name) return;
   const path = currentPath ? currentPath + '/' + name : name;
   try {
     await apiMkdir(path);
-    toast(`Map "${name}" aangemaakt`);
+    toast(_t(`Map "${name}" aangemaakt`, `Folder "${name}" created`));
     await navigate(currentPath);
   } catch (e) {
-    toast('Map aanmaken mislukt: ' + e.message, true);
+    toast(_t('Map aanmaken mislukt: ', 'Folder creation failed: ') + e.message, true);
   }
 }
 
 async function doUpload(files) {
   if (!files.length) return;
-  toast('Bezig met uploaden…');
+  toast(_t('Bezig met uploaden…', 'Uploading…'));
   const uploaded = await apiUpload(currentPath, files);
-  if (uploaded.length) toast(`${uploaded.length} bestand${uploaded.length !== 1 ? 'en' : ''} geüpload`);
+  if (uploaded.length) toast(uploaded.length === 1
+    ? _t(`"${uploaded[0]}" geüpload`, `"${uploaded[0]}" uploaded`)
+    : _t(`${uploaded.length} bestanden geüpload`, `${uploaded.length} files uploaded`));
   await navigate(currentPath);
 }
 
@@ -387,17 +407,17 @@ function showCtxMenu(x, y, entry) {
   };
 
   if (entry.type === 'dir') {
-    item('Openen', 'mdi-folder-open-outline',
+    item(_t('Openen', 'Open'), 'mdi-folder-open-outline',
       () => navigate(entryPath(entry.name)));
   } else {
-    item('Downloaden', 'mdi-download-outline',
+    item(_t('Downloaden', 'Download'), 'mdi-download-outline',
       () => doDownload(entry.name));
   }
   sep();
-  item('Hernoemen', 'mdi-pencil-outline', doRename);
-  item('Verplaatsen', 'mdi-folder-move-outline', doMove);
+  item(_t('Hernoemen', 'Rename'), 'mdi-pencil-outline', doRename);
+  item(_t('Verplaatsen', 'Move'), 'mdi-folder-move-outline', doMove);
   sep();
-  item('Verwijderen', 'mdi-delete-outline', doDelete, true);
+  item(_t('Verwijderen', 'Delete'), 'mdi-delete-outline', doDelete, true);
 
   menu.classList.add('open');
   menu.style.left = x + 'px';

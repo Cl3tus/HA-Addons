@@ -195,7 +195,7 @@
       <b>E-ink Studio</b>
     </div>
     <div class="topbar-sep"></div>
-    <span style="color:var(--txt-dim);font-size:12px;white-space:nowrap">Bestandsbeheer</span>
+    <span style="color:var(--txt-dim);font-size:12px;white-space:nowrap" data-i18n="Bestandsbeheer">Bestandsbeheer</span>
     <div class="topbar-sep"></div>
     <nav id="fe-breadcrumb"></nav>
     <div class="topbar-spacer"></div>
@@ -203,20 +203,21 @@
       <span class="mdi mdi-microsoft-windows"></span>
       <span id="samba-badge"></span>
     </div>
-    <a href="index.html" class="btn ghost sm">← Terug naar editor</a>
+    <button class="btn ghost sm" data-lang-toggle onclick="toggleLang()" title="Switch language">EN</button>
+    <a href="index.html" class="btn ghost sm">← <span data-i18n="Terug naar editor">Terug naar editor</span></a>
   </header>
 
   <!-- ===== TOOLBAR ===== -->
   <div id="fe-toolbar">
-    <button class="btn sm" id="btn-upload">⇧ Uploaden</button>
-    <button class="btn ghost sm" id="btn-mkdir">+ Nieuwe map</button>
+    <button class="btn sm" id="btn-upload">⇧ <span data-i18n="Uploaden">Uploaden</span></button>
+    <button class="btn ghost sm" id="btn-mkdir">+ <span data-i18n="Nieuwe map">Nieuwe map</span></button>
     <div class="topbar-sep"></div>
-    <button class="btn ghost sm" id="btn-rename" disabled>✎ Hernoemen</button>
-    <button class="btn ghost sm" id="btn-move" disabled>→ Verplaatsen</button>
-    <button class="btn ghost sm" id="btn-download" disabled>⇩ Downloaden</button>
-    <button class="btn ghost sm danger" id="btn-delete" disabled>🗑 Verwijderen</button>
+    <button class="btn ghost sm" id="btn-rename" disabled>✎ <span data-i18n="Hernoemen">Hernoemen</span></button>
+    <button class="btn ghost sm" id="btn-move" disabled>→ <span data-i18n="Verplaatsen">Verplaatsen</span></button>
+    <button class="btn ghost sm" id="btn-download" disabled>⇩ <span data-i18n="Downloaden">Downloaden</span></button>
+    <button class="btn ghost sm danger" id="btn-delete" disabled>🗑 <span data-i18n="Verwijderen">Verwijderen</span></button>
     <div class="topbar-spacer"></div>
-    <button class="btn ghost sm" id="btn-theme-fe" title="Wissel licht/donker thema">◐ Thema</button>
+    <button class="btn ghost sm" id="btn-theme-fe" title="Thema">◐ <span data-i18n="Thema">Thema</span></button>
     <button class="btn ghost sm" id="btn-refresh" title="Vernieuwen (F5)">↺</button>
   </div>
 
@@ -226,9 +227,9 @@
       <thead>
         <tr>
           <th></th>
-          <th>Naam</th>
-          <th class="fe-size">Grootte</th>
-          <th class="fe-date">Gewijzigd</th>
+          <th data-i18n="Naam">Naam</th>
+          <th class="fe-size" data-i18n="Grootte">Grootte</th>
+          <th class="fe-date" data-i18n="Gewijzigd">Gewijzigd</th>
         </tr>
       </thead>
       <tbody id="fe-tbody"></tbody>
@@ -271,6 +272,7 @@
 <div class="toast" id="fe-toast"></div>
 
 <script src="files.js"></script>
+<script src="lang.js"></script>
 <script src="theme.js"></script>
 </body>
 </html>

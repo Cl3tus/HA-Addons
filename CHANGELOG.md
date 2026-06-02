@@ -1,3 +1,8 @@
+## 1.3.9
+- Dark/light thema werkt weer: `boot()` teruggezet naar fire-and-forget voor api/info (het awaiten veroorzaakte een timing-conflict met theme.js)
+- Profielen: vereenvoudigd — profielen worden opgeslagen via debounced `persist()` (2s na wijziging), geen server-state-override meer bij opstarten
+- Meertaligheid (NL/EN): auto-detectie op basis van browsertaal; handmatige toggle via `EN`/`NL` knop in beide apps. Taalvoorkeur wordt onthouden in localStorage. Alle zichtbare UI-tekst in de editor en bestandsbeheerder is vertaald
+
 ## 1.3.8
 - Bestandsbeheer: flash (FOUC) opgelost — inline script direct na `<body>` zet de klasse synchroon vóór de eerste render, net als de editor
 - Profielen worden nu opgeslagen in `STORAGE_DIR/profiles/` (SAMBA-toegankelijk via `\\<HA-IP>\addon_configs\3d980088_eink_studio\profiles\`)
