@@ -78,14 +78,15 @@
     if (stored === 'en' || stored === 'nl') return stored;
 
     // Primary: HA sets lang attribute on <html> based on user language preference
-    // e.g. "en", "en-GB", "nl", "nl-NL"
+    // e.g. "en", "en-GB", "en-US", "nl", "nl-NL"
     try {
       var haLang = (window.parent.document.documentElement.getAttribute('lang') || '').toLowerCase();
-      if (haLang) return haLang.startsWith('nl') ? 'nl' : 'en';
+      if (haLang) return haLang.startsWith('nl') ? 'nl' : 'en'; // en-GB, en-US, etc. → 'en'
     } catch (_) {}
 
-    // Fallback: browser language
-    return navigator.language && navigator.language.toLowerCase().startsWith('nl') ? 'nl' : 'en';
+    // Fallback: browser/OS language
+    var nav = (navigator.language || navigator.userLanguage || '').toLowerCase();
+    return nav.startsWith('nl') ? 'nl' : 'en';
   }
 
   var _lang = detectLang();

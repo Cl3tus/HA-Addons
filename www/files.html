@@ -185,15 +185,7 @@
   }
 </style>
 </head>
-<body><script>
-(function(){
-  try{
-    var bg=getComputedStyle(window.parent.document.documentElement).getPropertyValue('--primary-background-color').trim();
-    if(bg&&bg.charAt(0)==='#'){var h=bg.slice(1);if(h.length===6){var lum=(0.299*parseInt(h.slice(0,2),16)+0.587*parseInt(h.slice(2,4),16)+0.114*parseInt(h.slice(4,6),16))/255;if(lum>=0.5){document.body.classList.add('light');}return;}}
-  }catch(_){}
-  if(!matchMedia('(prefers-color-scheme:dark)').matches)document.body.classList.add('light');
-})();
-</script>
+<body><script>!matchMedia('(prefers-color-scheme:dark)').matches&&document.body.classList.add('light')</script>
 <div id="fe-app">
 
   <!-- ===== HEADER ===== -->

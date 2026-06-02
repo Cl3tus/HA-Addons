@@ -1,3 +1,8 @@
+## 1.4.1
+- Thema: terug naar de werkende aanpak van 1.3.6 — `prefers-color-scheme` + `html { color-scheme: light dark }` in CSS. De polling en `--primary-background-color`-check zijn verwijderd
+- Taaldetectie: `en-GB`, `en-US` en alle andere `en-*` varianten worden correct als Engels herkend
+- FOUC-fix file explorer: terug naar eenvoudige `prefers-color-scheme`-check (consistent met thema-aanpak)
+
 ## 1.4.0
 - Taaldetectie: gebruikt nu het `lang`-attribuut op HA's `<html>` element (bijv. `en-GB`, `nl-NL`) — detecteert zo de taal die je in HA hebt ingesteld, niet de OS-taal
 - Thema: terug naar `--primary-background-color` luminantie-check met polling (500ms). Dit is de enige methode die werkt bij expliciet ingesteld Light of Dark in HA. `prefers-color-scheme` blijft als fallback voor HA Auto-modus
