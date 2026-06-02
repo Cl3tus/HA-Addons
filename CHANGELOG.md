@@ -1,3 +1,9 @@
+## 1.2.5
+- Correcte HA map-sleutel: `addon_config:rw` (was `addon_configs:rw` — verkeerd gespeld, daardoor maakte HA nooit de SAMBA-map aan)
+- HA monteert de add-on config-map nu op `/config` in de container; dit is exact dezelfde map als `\\<HA-IP>\addon_configs\<slug>` via SAMBA
+- Geen handmatige `mkdir` meer nodig — HA regelt de map automatisch bij (her)installatie
+- run.sh vereenvoudigd: `STORAGE_DIR=/config` met fallback naar `/data`
+
 ## 1.2.4
 - SAMBA-map (`3d980088_eink_studio`) wordt nu automatisch aangemaakt bij opstarten — geen handmatige stappen meer nodig bij eerste installatie
 - Zijbalk-icoon teruggezet naar `mdi:image-edit`
