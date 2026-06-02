@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESPHome E-ink Lambda Editor</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
+
+
+<!-- Fonts: IBM Plex (UI) + preview display fonts — bundled locally -->
+<link rel="stylesheet" href="vendor/fonts.css">
+
+<!-- Material Design Icons 7.4.47 — bundled locally -->
+<link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
+
+<!-- Libraries — bundled locally (no internet needed) -->
+<script src="vendor/konva.min.js"></script>
+<script src="vendor/js-yaml.min.js"></script>
+
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <header id="topbar">
+    <div class="brand">
+      <div class="logo"></div>
+      <b>E-ink Studio</b>
+      <span>v1 · lambda generator</span>
+    </div>
+    <div class="topbar-sep"></div>
+    <div class="profile-pick">
+      <label>Profiel</label>
+      <select id="profile-select" style="width:auto;min-width:150px"></select>
+      <button class="btn ghost sm" id="profile-new" title="Nieuw profiel">+</button>
+      <button class="btn ghost sm" id="profile-settings" title="Profiel-instellingen">⚙</button>
+    </div>
+
+    <div class="topbar-spacer"></div>
+
+    <button class="btn ghost" id="btn-import">⇩ YAML importeren</button>
+    <button class="btn ghost" id="btn-sources">Waardebronnen</button>
+    <button class="btn ghost" id="btn-fonts">Fonts &amp; kleuren</button>
+    <button class="btn ghost" id="btn-scenarios">Scenario's</button>
+    <div class="topbar-sep"></div>
+    <button class="btn ghost" id="btn-live" title="Haal live data uit Home Assistant">○ Live</button>
+    <button class="btn ghost" id="btn-theme" title="Wissel licht/donker thema">◐ Thema</button>
+    <button class="btn ghost" id="btn-save">Opslaan</button>
+    <button class="btn ghost" id="btn-load">Openen</button>
+    <button class="btn primary" id="btn-code">&lt;/&gt; Genereer YAML</button>
+  </header>
+
+  <!-- ============ LEFT: palette + layers ============ -->
+  <aside id="left">
+    <div class="section">
+      <h3>Elementen toevoegen</h3>
+    </div>
+    <div class="palette" id="palette">
+      <div class="tool" data-add="text"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M5 6h14M12 6v12M9 18h6"/></svg><span>Tekst / waarde</span></div>
+      <div class="tool" data-add="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><path d="M9 10h.01M15 10h.01M9 15c1.5 1 4.5 1 6 0"/></svg><span>MDI-icoon</span></div>
+      <div class="tool" data-add="line"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M4 20 20 4"/></svg><span>Lijn</span></div>
+      <div class="tool" data-add="rect"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><rect x="4" y="6" width="16" height="12" rx="1"/></svg><span>Rechthoek</span></div>
+      <div class="tool" data-add="circle"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><circle cx="12" cy="12" r="8"/></svg><span>Cirkel</span></div>
+      <div class="tool" data-add="widget"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><rect x="4" y="4" width="7" height="16" rx="1"/><path d="M14 7h6M14 12h6M14 17h4"/></svg><span>Widget (icoon+waarde)</span></div>
+      <div class="tool" data-add="wifi"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M2 8c6-5 14-5 20 0M5 12c4-3.5 10-3.5 14 0M8.5 15.5c2-1.8 5-1.8 7 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg><span>WiFi-icoon</span></div>
+      <div class="tool" data-add="clock"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg><span>Refresh-klok</span></div>
+      <div class="tool" data-add="graph"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M4 4v16h16"/><path d="M7 15l3-4 3 2 4-6"/></svg><span>Grafiek</span></div>
+    </div>
+
+    <div class="section" style="flex:1; display:flex; flex-direction:column;">
+      <h3>Lagen <span id="layer-count" class="tag">0</span></h3>
+      <div class="layers" id="layers"></div>
+    </div>
+  </aside>
+
+  <!-- ============ CENTER: canvas ============ -->
+  <section id="center">
+    <div id="canvas-toolbar">
+      <div class="grp">
+        <button class="btn ghost sm" id="zoom-out">−</button>
+        <span class="zoomval" id="zoom-val">100%</span>
+        <button class="btn ghost sm" id="zoom-in">+</button>
+        <button class="btn ghost sm" id="zoom-fit">Passend</button>
+      </div>
+      <div class="topbar-sep"></div>
+      <label class="toggle"><input type="checkbox" id="tg-grid" checked> Raster</label>
+      <select id="grid-size" title="Rastergrootte" style="width:auto;padding:3px 6px">
+        <option value="8">8 px</option>
+        <option value="10">10 px</option>
+        <option value="16" selected>16 px</option>
+        <option value="20">20 px</option>
+        <option value="25">25 px</option>
+        <option value="40">40 px</option>
+      </select>
+      <label class="toggle"><input type="checkbox" id="tg-snap" checked> Snap</label>
+      <label class="toggle"><input type="checkbox" id="tg-eink"> E-ink 1-bit preview</label>
+      <div class="topbar-sep"></div>
+      <div class="grp" id="align-grp" title="Uitlijnen t.o.v. canvas">
+        <button class="btn ghost sm" id="al-left"   title="Links uitlijnen">⊢</button>
+        <button class="btn ghost sm" id="al-hcenter" title="Horizontaal centreren">⊣⊢</button>
+        <button class="btn ghost sm" id="al-right"  title="Rechts uitlijnen">⊣</button>
+        <button class="btn ghost sm" id="al-top"    title="Boven uitlijnen">⊤</button>
+        <button class="btn ghost sm" id="al-vcenter" title="Verticaal centreren">⊥⊤</button>
+        <button class="btn ghost sm" id="al-bottom" title="Onder uitlijnen">⊥</button>
+      </div>
+      <div class="topbar-spacer" style="flex:1"></div>
+      <div class="grp">
+        <button class="btn ghost sm" id="btn-undo" title="Ongedaan maken (Ctrl+Z)">↶</button>
+        <button class="btn ghost sm" id="btn-redo" title="Opnieuw (Ctrl+Y)">↷</button>
+        <button class="btn ghost sm" id="btn-dup" title="Dupliceren (Ctrl+D)">⧉</button>
+        <button class="btn ghost sm danger" id="btn-del" title="Verwijderen (Del)">🗑</button>
+      </div>
+      <div class="topbar-sep"></div>
+      <label class="toggle"><input type="checkbox" id="tg-chrome"> Afleidingsvrij</label>
+    </div>
+
+    <div id="stage-wrap">
+      <div id="stage-frame">
+        <div id="konva-host"></div>
+        <canvas id="eink-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- slide-in code drawer -->
+    <div id="code-drawer">
+      <header>
+        <b>Gegenereerde YAML</b>
+        <button class="btn sm" id="code-copy">Kopieer</button>
+        <button class="btn sm" id="code-download">Download .yaml</button>
+        <button class="btn ghost sm" id="code-close">✕</button>
+      </header>
+      <pre id="code-out"></pre>
+    </div>
+  </section>
+
+  <!-- ============ RIGHT: inspector ============ -->
+  <aside id="right">
+    <div id="inspector">
+      <div class="inspector-empty">Selecteer een element op het canvas<br>of voeg er een toe.</div>
+    </div>
+  </aside>
+</div>
+
+<!-- ============ MODALS ============ -->
+<div class="modal-back" id="modal-back">
+  <div class="modal" id="modal">
+    <header><b id="modal-title">Titel</b><button class="btn ghost sm" id="modal-x">✕</button></header>
+    <div class="mbody" id="modal-body"></div>
+    <footer id="modal-footer"></footer>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="ctxmenu" class="ctxmenu"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
