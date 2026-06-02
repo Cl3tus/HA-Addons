@@ -76,6 +76,15 @@
   function detectLang() {
     var stored = localStorage.getItem(LS_LANG);
     if (stored === 'en' || stored === 'nl') return stored;
+
+    // Primary: HA sets lang attribute on <html> based on user language preference
+    // e.g. "en", "en-GB", "nl", "nl-NL"
+    try {
+      var haLang = (window.parent.document.documentElement.getAttribute('lang') || '').toLowerCase();
+      if (haLang) return haLang.startsWith('nl') ? 'nl' : 'en';
+    } catch (_) {}
+
+    // Fallback: browser language
     return navigator.language && navigator.language.toLowerCase().startsWith('nl') ? 'nl' : 'en';
   }
 

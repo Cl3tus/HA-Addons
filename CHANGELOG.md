@@ -1,3 +1,8 @@
+## 1.4.0
+- Taaldetectie: gebruikt nu het `lang`-attribuut op HA's `<html>` element (bijv. `en-GB`, `nl-NL`) — detecteert zo de taal die je in HA hebt ingesteld, niet de OS-taal
+- Thema: terug naar `--primary-background-color` luminantie-check met polling (500ms). Dit is de enige methode die werkt bij expliciet ingesteld Light of Dark in HA. `prefers-color-scheme` blijft als fallback voor HA Auto-modus
+- FOUC-fix in bestandsbeheer bijgewerkt: gebruikt ook `--primary-background-color` voor de initiële render (consistent met thema-detectie)
+
 ## 1.3.9
 - Dark/light thema werkt weer: `boot()` teruggezet naar fire-and-forget voor api/info (het awaiten veroorzaakte een timing-conflict met theme.js)
 - Profielen: vereenvoudigd — profielen worden opgeslagen via debounced `persist()` (2s na wijziging), geen server-state-override meer bij opstarten
