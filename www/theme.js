@@ -1,12 +1,14 @@
 'use strict';
 /* HA theme sync — shared by index.html and files.html.
-   HA sets --primary-background-color on :root for every theme.
-   We read that CSS variable and check its luminance. That is the only
-   signal that reliably signals dark/light in HA 2026.x.              */
+   Polls --primary-background-color every 500 ms.
+   That CSS variable is reliably set on :root for every HA theme:
+     #fafafa (and similar light colors) → light mode
+     #111111 (and similar dark  colors) → dark  mode               */
 (function () {
   var LS_MANUAL = 'eink_studio_theme_manual';
+  var _current  = null;   // last applied scheme so we only act on changes
 
-  /* ---- parse hex or rgb color → luminance ---- */
+  /* ---- hex / rgb → 0‥1 luminance, or null if unparseable ---- */
   function luminance(bg) {
     if (!bg) return null;
     bg = bg.trim();
@@ -21,42 +23,41 @@
       var m = bg.match(/\d+/g);
       if (m && m.length >= 3) { r = +m[0]; g = +m[1]; b = +m[2]; }
     }
-    if (isNaN(r)) return null;
+    if (r === undefined || isNaN(r)) return null;
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   }
 
-  /* ---- detection ---- */
+  /* ---- read the current HA theme from the parent document ---- */
   function detect() {
-    // 1. Manual override (toggle button)
-    var m = localStorage.getItem(LS_MANUAL);
-    if (m === 'dark' || m === 'light') return m;
+    var manual = localStorage.getItem(LS_MANUAL);
+    if (manual === 'dark' || manual === 'light') return manual;
 
     try {
       var root = window.parent.document.documentElement;
 
-      // 2. --primary-background-color  (confirmed working in HA 2026.x)
-      //    #fafafa = light, #111111 = dark
+      // Primary: --primary-background-color (confirmed in HA 2026.x)
       var bg  = getComputedStyle(root).getPropertyValue('--primary-background-color').trim();
       var lum = luminance(bg);
       if (lum !== null) return lum < 0.5 ? 'dark' : 'light';
 
-      // 3. data-color-scheme attribute (older HA)
+      // Fallback A: data-color-scheme attribute
       var attr = root.getAttribute('data-color-scheme');
       if (attr === 'dark' || attr === 'light') return attr;
 
-      // 4. dark attribute (some HA versions)
+      // Fallback B: dark attribute
       if (root.hasAttribute('dark')) return 'dark';
     } catch (_) {}
 
-    // 5. OS fallback (HA "Auto" mode)
+    // Fallback C: OS preference (HA "Auto" mode)
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
 
-  /* ---- apply ---- */
+  /* ---- apply scheme to both pages ---- */
   function apply(scheme) {
+    _current = scheme;
     if (window.state) window.state.theme = scheme;
     if (window.applyTheme) {
-      window.applyTheme();
+      window.applyTheme();                            // editor: handles class + btn label
     } else {
       document.body.classList.toggle('light', scheme === 'light');
     }
@@ -64,45 +65,37 @@
     if (btn) btn.textContent = scheme === 'light' ? '◑ Licht' : '◐ Donker';
   }
 
-  /* ---- toggle (file-explorer button) ---- */
+  /* ---- manual toggle (file-explorer button) ---- */
   function toggle() {
     var cur = document.body.classList.contains('light') ? 'light' : 'dark';
     localStorage.setItem(LS_MANUAL, cur === 'light' ? 'dark' : 'light');
     apply(detect());
   }
 
-  /* ---- HA changed: clear manual override ---- */
-  function onHAChange() {
-    localStorage.removeItem(LS_MANUAL);
-    apply(detect());
+  /* ---- poll every 500 ms — catches HA stylesheet swaps ---- */
+  function startPolling() {
+    setInterval(function () {
+      if (localStorage.getItem(LS_MANUAL)) return;  // manual override active
+      var s = detect();
+      if (s !== _current) apply(s);
+    }, 500);
   }
 
-  /* ---- watchers ---- */
-  function watch() {
-    try {
-      var root = window.parent.document.documentElement;
-      // HA changes --primary-background-color by adding/swapping a <style> in <head>
-      new MutationObserver(onHAChange).observe(
-        window.parent.document.head,
-        { childList: true, subtree: true, characterData: true }
-      );
-      // Also watch html element for any attribute HA might toggle
-      new MutationObserver(onHAChange).observe(root, {
-        attributes: true,
-        attributeFilter: ['dark', 'class', 'data-color-scheme']
-      });
-    } catch (_) {}
-
-    // OS preference (HA "Auto" mode)
+  /* ---- OS preference watcher (HA "Auto" mode) ---- */
+  function watchOS() {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
-      if (!localStorage.getItem(LS_MANUAL)) apply(detect());
+      if (!localStorage.getItem(LS_MANUAL)) {
+        var s = detect();
+        if (s !== _current) apply(s);
+      }
     });
   }
 
   /* ---- init ---- */
   function init() {
     apply(detect());
-    watch();
+    startPolling();
+    watchOS();
   }
 
   window.haTheme = { toggle: toggle, detect: detect, apply: apply };

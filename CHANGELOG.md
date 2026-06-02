@@ -1,3 +1,6 @@
+## 1.3.4
+- Thema-detectie: MutationObserver vervangen door polling elke 500ms op `--primary-background-color` — vangt ook HA-stylesheet-wissels op die de observer mistte. Hex-parser fix uit 1.3.3 behouden
+
 ## 1.3.3
 - Thema-detectie eindelijk correct: `--primary-background-color` was al beschikbaar (`#fafafa` licht / `#111111` donker) maar de regex `/\d+/g` pakte hex-kleuren niet goed (levert één getal op i.p.v. drie). Eigen hex-parser toegevoegd die `#rrggbb` correct naar RGB omzet en daarna luminantie berekent
 - Debug-logging verwijderd
