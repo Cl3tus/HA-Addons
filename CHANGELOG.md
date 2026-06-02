@@ -1,3 +1,6 @@
+## 1.3.1
+- Zijbalk-icoon teruggezet naar `mdi:image-edit`
+
 ## 1.3.0
 - Thema-detectie opnieuw: HA zet een `dark` HTML-attribuut op `<html>` via `applyThemesOnElement()` — dit is het canonieke signaal. MutationObserver bewaakt nu specifiek dit attribuut. Vorige pogingen (style, colorScheme) waren onjuist
 - Zijbalk-icoon gewijzigd naar `mdi:pencil-box-outline` (zit zeker in HA's icon-bundel; `mdi:image-edit` ontbrak daarin)
