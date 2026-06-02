@@ -439,6 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSambaInfo();
   navigate('');
 
+  $('#btn-theme-fe').onclick = () => window.haTheme?.toggle();
   $('#btn-upload').onclick   = () => $('#upload-input').click();
   $('#btn-mkdir').onclick    = doMkdir;
   $('#btn-rename').onclick   = doRename;

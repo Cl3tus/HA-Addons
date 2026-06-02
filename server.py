@@ -45,6 +45,7 @@ try:
 except Exception:
     _opts = {}
 SAMBA_HOST = _opts.get("samba_host", "")
+SAMBA_SLUG = os.environ.get("SAMBA_SLUG", "")
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 
@@ -284,13 +285,12 @@ async def fs_download(request: web.Request) -> web.StreamResponse:
 
 # ---------------------------------------------------------------- meta
 async def api_info(request: web.Request) -> web.Response:
-    slug = STORAGE_DIR.name if STORAGE_DIR != DATA_DIR else ""
     return web.json_response({
         "app": "E-ink Studio",
         "version": os.environ.get("ADDON_VERSION", "1.0.0"),
         "live_data": bool(SUPERVISOR_TOKEN),
         "samba_host": SAMBA_HOST,
-        "samba_slug": slug,
+        "samba_slug": SAMBA_SLUG,
     })
 
 

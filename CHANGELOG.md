@@ -1,3 +1,9 @@
+## 1.2.7
+- Bestandsbeheer: `◐ Thema`-knop toegevoegd voor handmatige light/dark wissel
+- Thema-detectie verbeterd: controleert nu ook `style.colorScheme` op het HA parent-document en de `selectedTheme` localStorage-sleutel (HA slaat het thema daar op, niet als HTML-attribuut)
+- Bij wisselen in HA wordt de handmatige override opgeheven en volgt de app het HA-thema weer
+- SAMBA-badge gecorrigeerd: toonde `\config` (mountpunt), toont nu de juiste slug `3d980088_eink_studio`
+
 ## 1.2.6
 - Dark/light thema: zowel de editor als de bestandsbeheerder volgen automatisch de HA-themakeuze (Donker/Licht/Auto)
 - Wisselen in HA wordt direct doorgevoerd zonder herladen, via MutationObserver op het HA parent-document
