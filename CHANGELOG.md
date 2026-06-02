@@ -1,3 +1,8 @@
+## 1.4.4
+- Thema definitief: leest `--primary-background-color` uit HA (de enige bron die klopt als HA-thema en OS-thema verschillen — debug bewees `#fafafa`=licht / `#111111`=donker). Probeert nu zowel `window.parent` als `window.top` (HA kan de ingress-iframe nesten). Polling 500ms voor live wissels, `prefers-color-scheme` alleen als allerlaatste fallback
+- Cache-busting: `?v=1.4.4` op alle JS-bestanden zodat de browser na een update gegarandeerd de nieuwe versie laadt (oude JS bleef soms in cache hangen)
+- FOUC-fix in bestandsbeheer gebruikt dezelfde frame-walking detectie
+
 ## 1.4.3
 - Thema: theme.js exact teruggezet naar versie 1.3.7 (`prefers-color-scheme` + `html { color-scheme: light dark }`). Polling en `--primary-background-color`-detectie verwijderd
 - Taaldetectie via HA's `lang`-attribuut behouden (werkt correct)

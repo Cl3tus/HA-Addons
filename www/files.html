@@ -185,7 +185,14 @@
   }
 </style>
 </head>
-<body><script>!matchMedia('(prefers-color-scheme:dark)').matches&&document.body.classList.add('light')</script>
+<body><script>
+(function(){
+  function lum(c){if(!c)return null;c=c.trim();var r,g,b,h;if(c.charAt(0)==='#'){h=c.slice(1);if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];if(h.length<6)return null;r=parseInt(h.slice(0,2),16);g=parseInt(h.slice(2,4),16);b=parseInt(h.slice(4,6),16);}else{var m=c.match(/[\d.]+/g);if(!m||m.length<3)return null;r=+m[0];g=+m[1];b=+m[2];}return(0.299*r+0.587*g+0.114*b)/255;}
+  var frames=[];try{if(parent&&parent!==window)frames.push(parent);}catch(e){}try{if(top&&top!==window&&frames.indexOf(top)===-1)frames.push(top);}catch(e){}
+  for(var i=0;i<frames.length;i++){try{var el=frames[i].document.documentElement;var l=lum(getComputedStyle(el).getPropertyValue('--primary-background-color'));if(l!==null){document.body.classList.toggle('light',l>=0.5);return;}}catch(e){}}
+  if(!matchMedia('(prefers-color-scheme:dark)').matches)document.body.classList.add('light');
+})();
+</script>
 <div id="fe-app">
 
   <!-- ===== HEADER ===== -->
@@ -271,8 +278,8 @@
 <!-- Toast -->
 <div class="toast" id="fe-toast"></div>
 
-<script src="files.js"></script>
-<script src="lang.js"></script>
-<script src="theme.js"></script>
+<script src="files.js?v=1.4.4"></script>
+<script src="lang.js?v=1.4.4"></script>
+<script src="theme.js?v=1.4.4"></script>
 </body>
 </html>
