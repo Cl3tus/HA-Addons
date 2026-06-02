@@ -1,5 +1,5 @@
 name: E-ink Studio
-version: "1.3.6"
+version: "1.3.7"
 slug: eink_studio
 description: WYSIWYG-editor voor ESPHome e-ink displays — ontwerp je layout en genereer de lambda + YAML.
 url: https://github.com/Cl3tus/HA-Eink-Studio-App

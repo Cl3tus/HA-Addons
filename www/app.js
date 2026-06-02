@@ -76,7 +76,7 @@ function seedProfile(name='Aquarium display'){
 }
 
 /* ---------------- state ---------------- */
-let state = { profiles:[], current:null };
+var state = { profiles:[], current:null }; // var zodat window.state toegankelijk is voor theme.js
 let undoStack = [], redoStack = [];
 let selectedId = null;
 let zoom = 1;

@@ -15,14 +15,15 @@
 
   /* ---- toepassen op editor én bestandsbeheer ---- */
   function apply(scheme) {
+    // Altijd de body-class direct zetten (werkt voor beide pagina's)
+    document.body.classList.toggle('light', scheme === 'light');
+    // Sync app.js state zodat de handmatige toggle-knop in de editor correct blijft
     if (window.state) window.state.theme = scheme;
-    if (window.applyTheme) {
-      window.applyTheme();
-    } else {
-      document.body.classList.toggle('light', scheme === 'light');
-    }
-    var btn = document.getElementById('btn-theme-fe');
+    // Update knoplabels
+    var btn = document.getElementById('btn-theme');
     if (btn) btn.textContent = scheme === 'light' ? '◑ Licht' : '◐ Donker';
+    var btnFe = document.getElementById('btn-theme-fe');
+    if (btnFe) btnFe.textContent = scheme === 'light' ? '◑ Licht' : '◐ Donker';
   }
 
   /* ---- handmatige toggle (bestandsbeheer-knop) ---- */
