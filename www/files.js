@@ -4,106 +4,77 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
 let currentPath = '';
-let currentRoot = 'data';      // 'data' | 'addon_configs'
 let entries     = [];
 let selected    = new Set();
-let sambaHost   = '';
 
-// ---------------------------------------------------------------- API
+// ---------------------------------------------------------------- API  (relative URLs – required for HA Ingress)
 
-async function apiList(path, root) {
-  const r = await fetch(`/api/fs/list?path=${enc(path)}&root=${enc(root)}`);
+async function apiList(path) {
+  const r = await fetch(`api/fs/list?path=${enc(path)}`);
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
   return r.json();
 }
 
-async function apiMkdir(path, root) {
-  const r = await fetch('/api/fs/mkdir', {
+async function apiMkdir(path) {
+  const r = await fetch('api/fs/mkdir', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({path, root}),
+    body: JSON.stringify({path}),
   });
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
 }
 
-async function apiDelete(path, root) {
-  const r = await fetch(`/api/fs/entry?path=${enc(path)}&root=${enc(root)}`, {method: 'DELETE'});
+async function apiDelete(path) {
+  const r = await fetch(`api/fs/entry?path=${enc(path)}`, {method: 'DELETE'});
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
 }
 
-async function apiMove(src, dst, root) {
-  const r = await fetch('/api/fs/move', {
+async function apiMove(src, dst) {
+  const r = await fetch('api/fs/move', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({src, dst, root}),
+    body: JSON.stringify({src, dst}),
   });
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
 }
 
-async function apiUpload(path, root, files) {
+async function apiUpload(path, files) {
   const names = [];
   for (const file of files) {
     const fd = new FormData();
     fd.append('path', path);
-    fd.append('root', root);
     fd.append('file', file, file.name);
-    const r = await fetch('/api/fs/upload', {method: 'POST', body: fd});
+    const r = await fetch('api/fs/upload', {method: 'POST', body: fd});
     if (r.ok) names.push(file.name);
     else toast(`Upload mislukt: ${file.name}`, true);
   }
   return names;
 }
 
-// ---------------------------------------------------------------- Info (samba_host)
+// ---------------------------------------------------------------- SAMBA info
 
-async function loadInfo() {
+async function loadSambaInfo() {
   try {
-    const d = await fetch('/api/info').then(r => r.json());
-    sambaHost = d.samba_host || '';
-    updateSambaInfo();
+    const d = await fetch('api/info').then(r => r.json());
+    const host = d.samba_host || '';
+    const badge = $('#samba-badge');
+    if (badge) {
+      badge.textContent = host
+        ? `\\\\${host}\\addon_configs\\d5a9c741_eink_studio`
+        : '\\\\<HA-IP>\\addon_configs\\d5a9c741_eink_studio';
+      badge.parentElement.style.display = '';
+    }
   } catch { /* ignore */ }
-}
-
-function updateSambaInfo() {
-  const info = $('#samba-info');
-  const sep  = $('#samba-sep');
-  if (currentRoot === 'addon_configs' && sambaHost) {
-    $('#samba-path').textContent = `\\\\${sambaHost}\\addon_configs`;
-    info.classList.add('visible');
-    sep.style.display = '';
-  } else if (currentRoot === 'addon_configs') {
-    $('#samba-path').textContent = '\\\\<HA-IP>\\addon_configs';
-    info.classList.add('visible');
-    sep.style.display = '';
-  } else {
-    info.classList.remove('visible');
-    sep.style.display = 'none';
-  }
-}
-
-// ---------------------------------------------------------------- Root switcher
-
-function switchRoot(root) {
-  currentRoot = root;
-  currentPath = '';
-  selected.clear();
-
-  $('#tab-data').classList.toggle('active', root === 'data');
-  $('#tab-addon-configs').classList.toggle('active', root === 'addon_configs');
-  updateSambaInfo();
-  navigate('', root);
 }
 
 // ---------------------------------------------------------------- Navigation
 
-async function navigate(path, root) {
-  root = root ?? currentRoot;
+async function navigate(path) {
   currentPath = path;
-  currentRoot = root;
   selected.clear();
   updateToolbar();
   try {
-    const data = await apiList(path, root);
+    const data = await apiList(path);
     entries = data.entries ?? [];
     renderBreadcrumb(data.path ?? '');
     renderTable(entries);
@@ -113,10 +84,6 @@ async function navigate(path, root) {
 }
 
 // ---------------------------------------------------------------- Render
-
-function rootLabel() {
-  return currentRoot === 'addon_configs' ? 'HA configuraties' : 'Add-on data';
-}
 
 function renderBreadcrumb(path) {
   const nav = $('#fe-breadcrumb');
@@ -131,7 +98,7 @@ function renderBreadcrumb(path) {
     nav.appendChild(el);
   };
 
-  addCrumb(rootLabel(), '', parts.length === 0);
+  addCrumb('Add-on data', '', parts.length === 0);
   parts.forEach((part, i) => {
     const sep = document.createElement('span');
     sep.className = 'crumb-sep';
@@ -283,7 +250,7 @@ async function doDelete() {
   const label = names.length === 1 ? `"${names[0]}"` : `${names.length} items`;
   if (!confirm(`Verwijder ${label}? Dit kan niet ongedaan worden gemaakt.`)) return;
   try {
-    for (const name of names) await apiDelete(entryPath(name), currentRoot);
+    for (const name of names) await apiDelete(entryPath(name));
     toast(`${names.length} item${names.length !== 1 ? 's' : ''} verwijderd`);
     await navigate(currentPath);
   } catch (e) {
@@ -293,7 +260,7 @@ async function doDelete() {
 
 function doDownload(name) {
   const a = document.createElement('a');
-  a.href = `/api/fs/download?path=${enc(entryPath(name))}&root=${enc(currentRoot)}`;
+  a.href = `api/fs/download?path=${enc(entryPath(name))}`;
   a.download = name;
   document.body.appendChild(a);
   a.click();
@@ -311,7 +278,7 @@ async function doRename() {
   if (!newName || newName === name) return;
   const dst = currentPath ? currentPath + '/' + newName : newName;
   try {
-    await apiMove(entryPath(name), dst, currentRoot);
+    await apiMove(entryPath(name), dst);
     toast(`Hernoemd naar "${newName}"`);
     await navigate(currentPath);
   } catch (e) {
@@ -325,13 +292,13 @@ async function doMove() {
   const dest  = await showDialog(
     `Verplaatsen: ${label}`,
     currentPath,
-    'Voer het doelpad in (relatief aan de huidige root). Leeg = root.'
+    'Voer het doelpad in (relatief aan /data). Leeg = root.'
   );
   if (dest === null) return;
   try {
     for (const name of names) {
       const dst = dest ? dest.replace(/\/$/, '') + '/' + name : name;
-      await apiMove(entryPath(name), dst, currentRoot);
+      await apiMove(entryPath(name), dst);
     }
     toast(`${names.length} item${names.length !== 1 ? 's' : ''} verplaatst`);
     await navigate(currentPath);
@@ -345,7 +312,7 @@ async function doMkdir() {
   if (!name) return;
   const path = currentPath ? currentPath + '/' + name : name;
   try {
-    await apiMkdir(path, currentRoot);
+    await apiMkdir(path);
     toast(`Map "${name}" aangemaakt`);
     await navigate(currentPath);
   } catch (e) {
@@ -356,7 +323,7 @@ async function doMkdir() {
 async function doUpload(files) {
   if (!files.length) return;
   toast('Bezig met uploaden…');
-  const uploaded = await apiUpload(currentPath, currentRoot, files);
+  const uploaded = await apiUpload(currentPath, files);
   if (uploaded.length) toast(`${uploaded.length} bestand${uploaded.length !== 1 ? 'en' : ''} geüpload`);
   await navigate(currentPath);
 }
@@ -467,11 +434,8 @@ const fmtSize = b => b < 1024 ? b + ' B'
 // ---------------------------------------------------------------- Init
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadInfo();
-  navigate('', 'data');
-
-  $('#tab-data').onclick         = () => switchRoot('data');
-  $('#tab-addon-configs').onclick = () => switchRoot('addon_configs');
+  loadSambaInfo();
+  navigate('');
 
   $('#btn-upload').onclick   = () => $('#upload-input').click();
   $('#btn-mkdir').onclick    = doMkdir;

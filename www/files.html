@@ -20,7 +20,6 @@
 
   /* Header */
   #fe-header {
-    grid-area: unset;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -38,9 +37,9 @@
     gap: 2px;
     font-family: var(--mono);
     font-size: 12px;
-    flex-wrap: nowrap;
     overflow: hidden;
     max-width: 500px;
+    flex-shrink: 1;
   }
   .crumb {
     padding: 2px 6px;
@@ -54,6 +53,23 @@
   .crumb.last { color: var(--txt); cursor: default; }
   .crumb.last:hover { background: transparent; }
   .crumb-sep { color: var(--txt-faint); padding: 0 1px; flex-shrink: 0; }
+
+  /* SAMBA info badge */
+  #samba-wrap {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--txt-dim);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  #samba-wrap .mdi { color: var(--accent); font-size: 14px; }
 
   /* Toolbar */
   #fe-toolbar {
@@ -96,12 +112,9 @@
     font-weight: 500;
     border-bottom: 1px solid var(--line);
     white-space: nowrap;
-    cursor: default;
     user-select: none;
   }
-  .fe-table tbody tr {
-    cursor: pointer;
-  }
+  .fe-table tbody tr { cursor: pointer; }
   .fe-table tbody tr:hover td { background: var(--panel-2); }
   .fe-table tbody tr.sel td { background: #2a3346; }
   .fe-table tbody tr.sel:hover td { background: #2f3a52; }
@@ -113,7 +126,7 @@
   .fe-table td:first-child { width: 36px; text-align: center; font-size: 17px; padding-right: 4px; }
   .fe-name { font-size: 13px; }
   .fe-name.is-dir { color: var(--accent); font-weight: 500; }
-  .fe-name.is-up { color: var(--txt-faint); }
+  .fe-name.is-up  { color: var(--txt-faint); }
   .fe-size, .fe-date {
     font-family: var(--mono);
     font-size: 11px;
@@ -157,44 +170,6 @@
   #fe-dialog .hint { font-size: 11px; color: var(--txt-faint); margin: -8px 0 12px; }
   .dlg-btns { display: flex; gap: 8px; justify-content: flex-end; }
 
-  /* Root tabs */
-  .root-tab {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    border-radius: var(--radius);
-    border: 1px solid var(--line);
-    background: transparent;
-    color: var(--txt-dim);
-    cursor: pointer;
-    font-size: 12px;
-    transition: .12s;
-  }
-  .root-tab:hover { border-color: var(--line-2); color: var(--txt); }
-  .root-tab.active {
-    background: var(--panel-2);
-    border-color: var(--accent);
-    color: var(--txt);
-  }
-  .root-tab .mdi { font-size: 15px; }
-
-  /* SAMBA info badge */
-  #samba-info {
-    display: none;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--txt-dim);
-    background: var(--panel-2);
-    border: 1px solid var(--line);
-    border-radius: 5px;
-    padding: 3px 9px;
-  }
-  #samba-info.visible { display: inline-flex; }
-  #samba-info .mdi { color: var(--accent); }
-
   /* Status bar */
   #fe-statusbar {
     display: flex;
@@ -224,25 +199,15 @@
     <div class="topbar-sep"></div>
     <nav id="fe-breadcrumb"></nav>
     <div class="topbar-spacer"></div>
+    <div id="samba-wrap">
+      <span class="mdi mdi-microsoft-windows"></span>
+      <span id="samba-badge"></span>
+    </div>
     <a href="index.html" class="btn ghost sm">← Terug naar editor</a>
   </header>
 
   <!-- ===== TOOLBAR ===== -->
   <div id="fe-toolbar">
-    <!-- Root selector -->
-    <button class="root-tab active" id="tab-data">
-      <span class="mdi mdi-harddisk"></span>Add-on data
-    </button>
-    <button class="root-tab" id="tab-addon-configs">
-      <span class="mdi mdi-folder-network-outline"></span>HA configuraties
-    </button>
-    <div class="topbar-sep"></div>
-    <span id="samba-info">
-      <span class="mdi mdi-microsoft-windows"></span>
-      <span id="samba-path"></span>
-    </span>
-    <div class="topbar-sep" id="samba-sep" style="display:none"></div>
-    <!-- Actions -->
     <button class="btn sm" id="btn-upload">⇧ Uploaden</button>
     <button class="btn ghost sm" id="btn-mkdir">+ Nieuwe map</button>
     <div class="topbar-sep"></div>
