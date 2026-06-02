@@ -1,3 +1,8 @@
+## 1.4.3
+- Thema: theme.js exact teruggezet naar versie 1.3.7 (`prefers-color-scheme` + `html { color-scheme: light dark }`). Polling en `--primary-background-color`-detectie verwijderd
+- Taaldetectie via HA's `lang`-attribuut behouden (werkt correct)
+- FOUC-fix bestandsbeheer terug naar de eenvoudige variant van 1.3.7
+
 ## 1.4.2
 - Thema: definitieve aanpak — `--primary-background-color` luminantie als primaire detectie (debug bewees: `#fafafa`=licht, `#111111`=donker, altijd correct ongeacht OS vs HA instelling), met polling elke 500ms. `prefers-color-scheme` blijft fallback voor Auto-modus. `color-scheme: light dark` in CSS blijft staan voor Auto-modus ondersteuning
 - Taaldetectie: HA's `lang` HTML-attribuut heeft nu altijd prioriteit boven localStorage en navigator.language. `en-GB` en `en-US` → Engels, `nl-NL` → Nederlands
