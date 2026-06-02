@@ -74,17 +74,18 @@
 
   /* ---- detect / store ---- */
   function detectLang() {
-    var stored = localStorage.getItem(LS_LANG);
-    if (stored === 'en' || stored === 'nl') return stored;
-
-    // Primary: HA sets lang attribute on <html> based on user language preference
+    // Always try HA first — HA sets lang on <html> based on the user's HA language setting
     // e.g. "en", "en-GB", "en-US", "nl", "nl-NL"
     try {
       var haLang = (window.parent.document.documentElement.getAttribute('lang') || '').toLowerCase();
-      if (haLang) return haLang.startsWith('nl') ? 'nl' : 'en'; // en-GB, en-US, etc. → 'en'
+      if (haLang) return haLang.startsWith('nl') ? 'nl' : 'en';
     } catch (_) {}
 
-    // Fallback: browser/OS language
+    // If HA lang is unavailable (e.g. not in Ingress), use manual override
+    var stored = localStorage.getItem(LS_LANG);
+    if (stored === 'en' || stored === 'nl') return stored;
+
+    // Last fallback: browser language
     var nav = (navigator.language || navigator.userLanguage || '').toLowerCase();
     return nav.startsWith('nl') ? 'nl' : 'en';
   }

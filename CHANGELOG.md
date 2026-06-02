@@ -1,3 +1,8 @@
+## 1.4.2
+- Thema: definitieve aanpak — `--primary-background-color` luminantie als primaire detectie (debug bewees: `#fafafa`=licht, `#111111`=donker, altijd correct ongeacht OS vs HA instelling), met polling elke 500ms. `prefers-color-scheme` blijft fallback voor Auto-modus. `color-scheme: light dark` in CSS blijft staan voor Auto-modus ondersteuning
+- Taaldetectie: HA's `lang` HTML-attribuut heeft nu altijd prioriteit boven localStorage en navigator.language. `en-GB` en `en-US` → Engels, `nl-NL` → Nederlands
+- FOUC-fix in bestandsbeheer: ook via `--primary-background-color` (consistent met thema-detectie)
+
 ## 1.4.1
 - Thema: terug naar de werkende aanpak van 1.3.6 — `prefers-color-scheme` + `html { color-scheme: light dark }` in CSS. De polling en `--primary-background-color`-check zijn verwijderd
 - Taaldetectie: `en-GB`, `en-US` en alle andere `en-*` varianten worden correct als Engels herkend
