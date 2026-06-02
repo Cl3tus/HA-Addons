@@ -1,3 +1,8 @@
+## 1.2.9
+- Zijbalk-icoon teruggezet naar `mdi:image-edit`
+- Thema-detectie opnieuw gebouwd: gebruikt nu `getComputedStyle().colorScheme` (HA zet het thema via een stylesheet op `:root`, niet als inline style) + luminantie van `--primary-background-color` als extra fallback
+- MutationObserver bewaakt nu ook `<head>` voor stylesheet-wijzigingen die HA injecteert bij het wisselen van thema
+
 ## 1.2.8
 - Zijbalk-icoon gewijzigd naar `mdi:note-edit`
 

@@ -1,5 +1,5 @@
 name: E-ink Studio
-version: "1.2.8"
+version: "1.2.9"
 slug: eink_studio
 description: WYSIWYG-editor voor ESPHome e-ink displays — ontwerp je layout en genereer de lambda + YAML.
 url: https://github.com/Cl3tus/HA-Eink-Studio-App
@@ -14,7 +14,7 @@ init: false
 # --- Ingress: verschijnt in de HA-zijbalk, HA regelt de auth ---
 ingress: true
 ingress_port: 8099
-panel_icon: mdi:note-edit
+panel_icon: mdi:image-edit
 panel_title: E-ink Studio
 panel_admin: true
 
