@@ -1,3 +1,6 @@
+## 1.3.2
+- Thema-detectie: debug-logging toegevoegd in browser console (`[EinkTheme]`) om te achterhalen welk signaal HA daadwerkelijk zet
+
 ## 1.3.1
 - Zijbalk-icoon teruggezet naar `mdi:image-edit`
 
