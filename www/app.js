@@ -2175,23 +2175,65 @@ function _elFromCall(method, A, colors, qrMap, grMap, sources){
   }
   return null; // triangle/image/etc. — too ambiguous to invert, skipped on purpose
 }
+// it.* calls we know how to invert; used to explain *why* a call was skipped
+var _SUPPORTED_CALLS=['line','rectangle','filled_rectangle','circle','filled_circle',
+  'regular_polygon','filled_regular_polygon','filled_ring','filled_gauge','qr_code',
+  'graph','strftime','print','printf'];
+function _skipReason(method){
+  if(/triangle$/.test(method)) return T('driehoek wordt niet teruggelezen (te dubbelzinnig)','triangle is not read back (too ambiguous)');
+  if(method==='image') return T('afbeelding niet ondersteund','image not supported');
+  if(_SUPPORTED_CALLS.indexOf(method)>=0) return T('variabele / berekende of niet-letterlijke waarde','variable / computed or non-literal value');
+  return T('commando niet ondersteund','command not supported');
+}
 function _parseLambda(text, p){
-  const block=_extractTopBlock(text,'display'); if(!block) return [];
-  const li=block.search(/lambda:\s*\|/); if(li<0) return [];
+  const empty={els:[], skipped:[]};
+  const block=_extractTopBlock(text,'display'); if(!block) return empty;
+  const li=block.search(/lambda:\s*\|/); if(li<0) return empty;
   const lambda=block.slice(block.indexOf('\n', li)+1);
   const colors=p.colors||[], sources=p.sources||[];
   const qrMap=_componentMap(text,'qr_code'), grMap=_componentMap(text,'graph');
-  const out=[], seen=new Set(); const re=/it\.([a-z_]+)\s*\(/g; let m;
+  const out=[], skipped=[], seen=new Set(); const re=/it\.([a-z_]+)\s*\(/g; let m;
   while((m=re.exec(lambda))){
     let i=m.index+m[0].length, d=1, q=null;
     for(; i<lambda.length && d>0; i++){ const c=lambda[i];
       if(q){ if(c===q && lambda[i-1]!=='\\') q=null; }
       else if(c==='"'||c==="'") q=c; else if(c==='(') d++; else if(c===')') d--; }
+    const callTxt=lambda.slice(m.index, i);
     const el=_elFromCall(m[1], _splitArgs(lambda.slice(m.index+m[0].length, i-1)), colors, qrMap, grMap, sources);
     if(el){ const key=el.type+'|'+el.x+'|'+el.y+'|'+(el.iconHex||el.text||el.fontId||el.r||el.w||'');
       if(!seen.has(key)){ seen.add(key); out.push(el); } }
+    else { skipped.push({ method:m[1], reason:_skipReason(m[1]),
+      snippet:callTxt.replace(/\s+/g,' ').trim().slice(0,90) }); }
   }
-  return out;
+  return {els:out, skipped};
+}
+var _ELTYPE_LABEL={ text:()=>T('tekst','text'), icon:()=>T('icoon','icon'), line:()=>T('lijn','line'),
+  rect:()=>T('rechthoek','rectangle'), circle:()=>T('cirkel','circle'), polygon:()=>T('veelhoek','polygon'),
+  ring:()=>'ring', gauge:()=>T('meter','gauge'), qr:()=>'qr', clock:()=>T('klok','clock'), graph:()=>T('grafiek','graph') };
+function _importReport({resources, drawn, skipped}){
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // count drawn elements per type
+  const counts={}; drawn.forEach(e=>{ counts[e.type]=(counts[e.type]||0)+1; });
+  const drewLines=Object.keys(counts).map(t=>`${counts[t]}× ${(_ELTYPE_LABEL[t]?_ELTYPE_LABEL[t]():t)}`);
+  let h=`<div class="hint" style="margin-bottom:10px">${T('Overzicht van de import. Wat de studio niet eenduidig kon teruglezen is overgeslagen — dat staat nog in je eigen YAML, alleen niet op het canvas.','Summary of the import. Anything the studio could not read back unambiguously was skipped — it is still in your own YAML, just not on the canvas.')}</div>`;
+  h+=`<div style="display:flex;gap:14px;flex-wrap:wrap">`;
+  // imported column
+  h+=`<div style="flex:1;min-width:220px">`;
+  h+=`<h4 style="margin:0 0 6px">✓ ${T('Wel meegenomen','Imported')}</h4><ul style="margin:0;padding-left:18px;line-height:1.7">`;
+  if(resources) h+=`<li>${esc(resources)}</li>`;
+  if(drewLines.length) h+=`<li>${T('tekenobjecten','drawing objects')}: ${esc(drewLines.join(', '))}</li>`;
+  if(!resources && !drewLines.length) h+=`<li style="opacity:.6">—</li>`;
+  h+=`</ul></div>`;
+  // skipped column
+  h+=`<div style="flex:1;min-width:220px">`;
+  h+=`<h4 style="margin:0 0 6px">⊘ ${T('Niet meegenomen','Skipped')} (${skipped.length})</h4>`;
+  if(skipped.length){
+    h+=`<div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px 8px">`;
+    skipped.forEach(s=>{ h+=`<div style="margin-bottom:7px"><code style="font-size:11px;opacity:.85">${esc(s.snippet)}</code><br><span style="font-size:11px;opacity:.6">↳ ${esc(s.reason)}</span></div>`; });
+    h+=`</div>`;
+  } else h+=`<div style="opacity:.6">${T('niets — alles is teruggelezen','nothing — everything was read back')}</div>`;
+  h+=`</div></div>`;
+  openModal(T('Import-overzicht','Import summary'), h, [{label:T('Sluiten','Close'),cls:'primary',onClick:closeModal}]);
 }
 
 function doImport(){
@@ -2204,7 +2246,7 @@ function doImport(){
     if(parsed && Array.isArray(parsed[k])) doc[k]=parsed[k];
   });
   const snap=_readSnapshot(text);   // full layout, only present in studio-generated YAML
-  const p=profile(); let n=0;
+  const p=profile(); let n=0, nSrc=0;
   if(Array.isArray(doc.font)){ p.fonts=doc.font.map(parseFont); n+=p.fonts.length; }
   if(Array.isArray(doc.color)){ p.colors=doc.color.map(parseColor); n+=p.colors.length; }
   ['sensor','text_sensor'].forEach(key=>{
@@ -2212,13 +2254,14 @@ function doImport(){
       const kind = key==='text_sensor' ? guessKind(it.entity_id) : 'number';
       const ex=p.sources.find(s=>s.id===it.id);
       if(ex){ ex.entityId=it.entity_id; ex.kind=kind; } else p.sources.push({id:it.id,entityId:it.entity_id,kind,sample:sampleFor(kind)});
-      n++;
+      n++; nSrc++;
     }});
   });
   // best-effort: rebuild canvas elements from the display lambda (fonts/colours/
   // sources are imported above first, so colour-ids and sensor-bindings resolve)
-  const drawn = snap ? [] : _parseLambda(text, p);
-  if(!snap && !drawn.length && n===0){
+  const lam = snap ? {els:[],skipped:[]} : _parseLambda(text, p);
+  const drawn = lam.els;
+  if(!snap && !drawn.length && n===0 && !lam.skipped.length){
     toast(T('Geen font/color/sensor-blok gevonden','No font/color/sensor block found')); return;
   }
   if(snap){
@@ -2234,11 +2277,13 @@ function doImport(){
     selectedIds=new Set(); selectedId=null; applyZoom();   // device may have changed → resize the stage
   }
   persist(); afterChange(); closeModal();
-  toast(snap
-    ? T('Ontwerp hersteld uit herstelcode','Design restored from recovery code')
-    : drawn.length
-      ? T(`Geïmporteerd: ${n} bronnen + ${drawn.length} tekenobjecten`,`Imported: ${n} resources + ${drawn.length} drawing objects`)
-      : T(`Geïmporteerd: ${n} items`,`Imported: ${n} items`));
+  if(snap){ toast(T('Ontwerp hersteld uit herstelcode','Design restored from recovery code')); return; }
+  // show a what-was-and-wasn't-imported report
+  const resBits=[];
+  if(Array.isArray(doc.font)) resBits.push(`${p.fonts.length} fonts`);
+  if(Array.isArray(doc.color)) resBits.push(`${p.colors.length} ${T('kleuren','colours')}`);
+  if(nSrc) resBits.push(`${nSrc} ${T('waardebronnen','value sources')}`);
+  _importReport({ resources: resBits.join(' · '), drawn, skipped: lam.skipped });
   function parseFont(o){
     const file = typeof o.file==='string'?o.file:null;
     const g = (o.file&&o.file.type==='gfonts')?o.file:null;

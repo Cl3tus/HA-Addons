@@ -1,3 +1,6 @@
+## 2.4.5
+- **Import-overzicht (popup)**: na het importeren van een YAML toont de studio nu een overzicht met twee kolommen — *Wel meegenomen* (fonts, kleuren, waardebronnen en de tekenobjecten per type) en *Niet meegenomen* (elke overgeslagen `it.*`-regel met de reden, bv. "variabele/berekende waarde" of "driehoek wordt niet teruggelezen"). Zo zie je precies wat wél en niet op het canvas is gezet.
+
 ## 2.4.4
 - **YAML importeren leest nu ook de display-lambda terug naar het canvas** (best-effort). De standaard tekencommando's met letterlijke coördinaten worden teruggezet als bewerkbare elementen: `it.print`/`printf` (tekst + iconen + sensor-binding), `line`, `rectangle`/`filled_rectangle`, `circle`/`filled_circle`, `regular_polygon`, `filled_ring`, `filled_gauge`, `qr_code` (waarde uit het `qr_code:`-blok), `graph` (afmetingen/traces uit het `graph:`-blok) en `strftime` (→ klok). Kleuren en sensor-bindingen worden gekoppeld aan de zojuist geïmporteerde `color:`/`sensor:`-blokken.
 - Regels die de studio niet eenduidig kan terugvertalen worden **overgeslagen** i.p.v. fout te geven: alles met variabelen, lussen, `if/else` of berekende coördinaten, plus `it.triangle`/`filled_triangle` en `it.image` (te dubbelzinnig). Een melding toont hoeveel bronnen + tekenobjecten zijn ingelezen.
