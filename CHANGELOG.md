@@ -1,3 +1,13 @@
+## 2.2.0
+- **Shift = 45°-rotatievergrendeling** voor rechthoek, driehoek, veelhoek én meter (zoals de lijn al had)
+- **Lijn**: vierkante eindpunt-handvatten + een **rotatie-handvat** (draait de lijn om zijn midden; Shift snapt op 45°)
+- **Vaste verhouding bij radiale vormen**: cirkel (met "rond houden" aan), ring, meter en veelhoek tonen nu alleen de hoek-handvatten, zodat de zijkant-handvatten de verhouding niet meer kunnen vervormen
+- **Driehoek**: nieuwe optie "verhouding vergrendelen" (zoals de cirkel)
+- **Meter/gauge**: rotatie-handvat + starthoek-schuif (Shift snapt op 45°)
+- **QR-code**: ECC-niveau instelbaar (LOW/MEDIUM/QUARTILE/HIGH) → komt in het `qr_code:`-blok
+- **Wi-Fi**: per niveau nu een MDI-icoonkiezer (klik om te wijzigen) i.p.v. een hex-veld
+- **Refresh-klok**: standaard-icoon is nu het refresh-icoon (met echte preview i.p.v. een vierkantje); standaard 24-uurs met een checkbox voor 12-uurs (AM/PM)
+
 ## 2.1.0
 - **Ring** toegevoegd (buiten-/binnenstraal) → `it.filled_ring`
 - **Meter/gauge** toegevoegd (buiten-/binnenstraal + vulling 0–100%) → `it.filled_gauge`, met live cirkelvormige voortgang in de preview

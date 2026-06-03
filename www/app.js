@@ -436,7 +436,7 @@ function buildNode(el){
   else if(E.type==='gauge'){
     const pct=Math.max(0,Math.min(100,E.percent==null?75:E.percent));
     node = new Konva.Arc({x:E.x,y:E.y,innerRadius:Math.min(E.inner||30,(E.r||50)-1),outerRadius:E.r||50,
-      angle:pct*3.6, rotation:-90, fill:color.css});
+      angle:pct*3.6, rotation:(E.rotation||0)-90, fill:color.css});
   }
   else if(E.type==='qr'){
     node = qrPreviewNode(E, color.css);
@@ -618,12 +618,21 @@ function attachSelection(el, node){
   if(selectionVisual){ try{selectionVisual.destroy();}catch(e){} selectionVisual=null; }
   if(!node) return;
   if(el.type==='rect' || el.type==='circle' || el.type==='triangle' || el.type==='polygon' || el.type==='ring' || el.type==='gauge' || el.type==='graph'){
-    const keepRatio = (el.type==='circle') ? (el.lockAspect!==false) : (el.type==='polygon'||el.type==='ring'||el.type==='gauge');
-    // rect/triangle/polygon can rotate; circle/ring/gauge and graph cannot
-    const rotateEnabled = (el.type==='rect' || el.type==='triangle' || el.type==='polygon');
-    transformer=new Konva.Transformer({rotateEnabled, keepRatio,
+    // aspect-locked (radial / opt-in) shapes keep their ratio AND only expose
+    // the corner anchors, so the side anchors can't distort them.
+    const locked = (el.type==='circle') ? (el.lockAspect!==false)
+                 : (el.type==='triangle') ? !!el.lockAspect
+                 : (el.type==='polygon'||el.type==='ring'||el.type==='gauge');
+    const rotateEnabled = (el.type==='rect' || el.type==='triangle' || el.type==='polygon' || el.type==='gauge');
+    const allAnchors=['top-left','top-center','top-right','middle-right','middle-left','bottom-left','bottom-center','bottom-right'];
+    const corners=['top-left','top-right','bottom-left','bottom-right'];
+    transformer=new Konva.Transformer({rotateEnabled, keepRatio:locked,
+      enabledAnchors: locked ? corners : allAnchors,
       borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:8,rotateAnchorOffset:24});
     contentLayer.add(transformer); transformer.nodes([node]);
+    // hold Shift while rotating to snap to 45°
+    if(rotateEnabled){ node.off('transform.snaprot'); node.on('transform.snaprot',()=>{
+      if(shiftDown) node.rotation(Math.round(node.rotation()/45)*45); }); }
     node.off('transformend.sel'); node.on('transformend.sel',()=>{ pushUndo();
       const sx=node.scaleX(), sy=node.scaleY();
       if(el.type==='rect'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()-el.w/2); el.y=Math.round(node.y()-el.h/2); }
@@ -631,24 +640,26 @@ function attachSelection(el, node){
       else if(el.type==='circle'){ el.rx=Math.max(2,Math.round(node.radiusX()*sx)); el.ry=Math.max(2,Math.round(node.radiusY()*sy)); delete el.r; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='triangle'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='polygon'){ el.r=Math.max(4,Math.round(node.radius()*((sx+sy)/2))); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
-      else if(el.type==='ring' || el.type==='gauge'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round(node.outerRadius()*f)); el.inner=Math.max(2,Math.round(node.innerRadius()*f)); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      else if(el.type==='ring'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round(node.outerRadius()*f)); el.inner=Math.max(2,Math.round(node.innerRadius()*f)); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      else if(el.type==='gauge'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round(node.outerRadius()*f)); el.inner=Math.max(2,Math.round(node.innerRadius()*f)); el.rotation=((Math.round(node.rotation())+90)%360+360)%360; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       node.scaleX(1); node.scaleY(1); afterChange(); });
   } else if(el.type==='line'){
-    // one draggable handle per endpoint -> move endpoints, make vertical, resize
+    // square endpoint handles + a rotation handle that spins the line around its midpoint
     const g=new Konva.Group();
-    const handle=(px,py,which)=>{
-      const h=new Konva.Circle({x:px,y:py,radius:6,fill:'#fff',stroke:'#e8a13a',strokeWidth:2,draggable:true});
+    const HS=11; // handle size
+    const endpoint=(px,py,which)=>{
+      const h=new Konva.Rect({x:px-HS/2,y:py-HS/2,width:HS,height:HS,fill:'#fff',stroke:'#e8a13a',strokeWidth:2,draggable:true});
       h.on('mousedown touchstart', e=>{ e.cancelBubble=true; });
       h.on('dragstart', e=>{ e.cancelBubble=true; pushUndo(); });
       h.on('dragmove', e=>{ e.cancelBubble=true;
-        let mx=h.x(), my=h.y();
+        let mx=h.x()+HS/2, my=h.y()+HS/2;
         if(shiftDown){ // lock to nearest 45° relative to the fixed endpoint
           const fx = which==='a'? el.x2 : el.x;
           const fy = which==='a'? el.y2 : el.y;
           const dx=mx-fx, dy=my-fy, dist=Math.hypot(dx,dy), step=Math.PI/4;
           const ang=Math.round(Math.atan2(dy,dx)/step)*step;
           mx=fx+Math.cos(ang)*dist; my=fy+Math.sin(ang)*dist;
-          h.x(mx); h.y(my); // keep handle on the constrained line
+          h.x(mx-HS/2); h.y(my-HS/2);
         }
         if(which==='a'){ el.x=Math.round(mx); el.y=Math.round(my); }
         else { el.x2=Math.round(mx); el.y2=Math.round(my); }
@@ -662,7 +673,26 @@ function attachSelection(el, node){
       });
       return h;
     };
-    g.add(handle(el.x,el.y,'a')); g.add(handle(el.x2,el.y2,'b'));
+    g.add(endpoint(el.x,el.y,'a')); g.add(endpoint(el.x2,el.y2,'b'));
+    // rotation handle: perpendicular offset from the midpoint
+    const mx=(el.x+el.x2)/2, my=(el.y+el.y2)/2;
+    const dx=el.x2-el.x, dy=el.y2-el.y, len=Math.hypot(dx,dy)||1;
+    const nx=-dy/len, ny=dx/len, off=26;
+    const rh=new Konva.Circle({x:mx+nx*off,y:my+ny*off,radius:6,fill:'#e8a13a',stroke:'#fff',strokeWidth:2,draggable:true});
+    g.add(new Konva.Line({points:[mx,my,mx+nx*off,my+ny*off],stroke:'#e8a13a',strokeWidth:1,dash:[3,3],listening:false}));
+    rh.on('mousedown touchstart', e=>{ e.cancelBubble=true; });
+    rh.on('dragstart', e=>{ e.cancelBubble=true; pushUndo(); });
+    rh.on('dragmove', e=>{ e.cancelBubble=true;
+      const cx=(el.x+el.x2)/2, cy=(el.y+el.y2)/2, half=Math.hypot(el.x2-el.x,el.y2-el.y)/2;
+      let ang=Math.atan2(rh.y()-cy, rh.x()-cx) - Math.PI/2;   // handle sits perpendicular
+      if(shiftDown) ang=Math.round(ang/(Math.PI/4))*(Math.PI/4);
+      const ca=Math.cos(ang), sa=Math.sin(ang);
+      el.x=Math.round(cx-ca*half); el.y=Math.round(cy-sa*half);
+      el.x2=Math.round(cx+ca*half); el.y2=Math.round(cy+sa*half);
+      node.points([el.x,el.y,el.x2,el.y2]); contentLayer.batchDraw();
+    });
+    rh.on('dragend', e=>{ e.cancelBubble=true; afterChange(); });
+    g.add(rh);
     contentLayer.add(g); selectionVisual=g;
   } else {
     const b=node.getClientRect({relativeTo:contentLayer});
@@ -842,7 +872,7 @@ function addElement(type, pos){
   } else if(type==='gauge'){
     Object.assign(base,{ x:cx,y:cy, r:50, inner:30, percent:75, colorId:'color_text', anchor:undefined });
   } else if(type==='qr'){
-    Object.assign(base,{ x:cx-50,y:cy-50, text:'https://home-assistant.io', scale:4, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx-50,y:cy-50, text:'https://home-assistant.io', scale:4, ecc:'LOW', colorId:'color_text', anchor:undefined });
   } else if(type==='wifi'){
     Object.assign(base,{ fontId:'font_mdi_small', anchor:'TOP_CENTER', colorId:'color_text',
       // signal thresholds (dBm) -> MDI hex, strongest first; matches your test code
@@ -851,7 +881,7 @@ function addElement(type, pos){
         {min:-70, hex:'F091F'}, {min:-999, hex:'F092B'} ] } });
   } else if(type==='clock'){
     Object.assign(base,{ fontId:'font_small_book', anchor:'TOP_CENTER', colorId:'color_text',
-      clock:{ strftime:'%H:%M', icon:true, iconHex:'F044C', iconFontId:'font_mdi_small', iconGap:40 } });
+      clock:{ strftime:'%H:%M', icon:true, iconName:'refresh', iconHex:'F0450', iconFontId:'font_mdi_small', iconGap:40 } });
   } else if(type==='graph'){
     Object.assign(base,{ x:cx-150,y:cy, w:300,h:140, colorId:'color_text', anchor:undefined,
       graph:{ duration:'1h', x_grid:'10min', y_grid:5, border:true,
@@ -935,7 +965,8 @@ function renderInspector(){
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
       <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
       <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
-      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
+      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>
+      <div class="hint">${T('Houd Shift ingedrukt tijdens roteren om op 45° te vergrendelen.','Hold Shift while rotating to snap to 45°.')}</div>`);
   } else if(el.type==='circle'){
     const rx=(el.rx!=null?el.rx:(el.r!=null?el.r:40)), ry=(el.ry!=null?el.ry:(el.r!=null?el.r:40));
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
@@ -948,7 +979,9 @@ function renderInspector(){
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
       <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
       <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
-      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
+      <label class="toggle"><input type="checkbox" data-k="lockAspect" ${el.lockAspect?'checked':''}> ${T('Verhouding vergrendelen','Lock aspect ratio')}</label>
+      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>
+      <div class="hint">${T('Houd Shift ingedrukt tijdens roteren om op 45° te vergrendelen.','Hold Shift while rotating to snap to 45°.')}</div>`);
   } else if(el.type==='polygon'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">${T('Straal','Radius')}</label><input data-k="r" type="number" value="${el.r||60}"></div><div><label class="fld">${T('Aantal zijden','Sides')}</label><input data-k="sides" type="number" min="3" max="12" value="${el.sides||6}"></div></div>
@@ -964,12 +997,17 @@ function renderInspector(){
       <div class="row"><div><label class="fld">${T('Buitenstraal','Outer radius')}</label><input data-k="r" type="number" value="${el.r||50}"></div><div><label class="fld">${T('Binnenstraal','Inner radius')}</label><input data-k="inner" type="number" value="${el.inner||30}"></div></div>
       <label class="fld">${T('Vulling','Fill')} (<span class="rot-deg">${el.percent==null?75:el.percent}</span>%)</label>
       <input data-k="percent" type="range" min="0" max="100" step="1" value="${el.percent==null?75:el.percent}">
-      <div class="hint"><span class="mono">it.filled_gauge</span> — ${T('cirkelvormige voortgang','circular progress')}.</div>`);
+      <label class="fld">${T('Starthoek','Start angle')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
+      <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
+      <div class="hint"><span class="mono">it.filled_gauge</span> — ${T('cirkelvormige voortgang. Houd Shift ingedrukt tijdens roteren om op 45° te vergrendelen.','circular progress. Hold Shift while rotating to snap to 45°.')}</div>`);
   } else if(el.type==='qr'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
-      <div class="row"><div><label class="fld">${T('Schaal (px per module)','Scale (px per module)')}</label><input data-k="scale" type="number" min="1" max="12" value="${el.scale||4}"></div></div>
+      <div class="row"><div><label class="fld">${T('Schaal (px per module)','Scale (px per module)')}</label><input data-k="scale" type="number" min="1" max="12" value="${el.scale||4}"></div>
+        <div><label class="fld">${T('Foutcorrectie (ECC)','Error correction (ECC)')}</label><select data-k="ecc">
+          ${['LOW','MEDIUM','QUARTILE','HIGH'].map(o=>`<option ${(el.ecc||'LOW')===o?'selected':''}>${o}</option>`).join('')}
+        </select></div></div>
       <div class="row"><div><label class="fld">${T('Inhoud (tekst/URL)','Content (text/URL)')}</label><input data-k="text" type="text" value="${attr(el.text)}"></div></div>
-      <div class="hint">${T('De preview is een plaatshouder; ESPHome rendert de echte QR-code op het device.','The preview is a placeholder; ESPHome renders the real QR code on the device.')}</div>`);
+      <div class="hint">${T('ECC: LOW ~7%, MEDIUM ~15%, QUARTILE ~25%, HIGH ~30% fouttolerantie. De preview is een plaatshouder; ESPHome rendert de echte QR op het device.','ECC: LOW ~7%, MEDIUM ~15%, QUARTILE ~25%, HIGH ~30% error tolerance. The preview is a placeholder; ESPHome renders the real QR on the device.')}</div>`);
   } else if(el.type==='graph'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
@@ -1009,25 +1047,27 @@ function renderInspector(){
     h+=g(T('WiFi-signaal','Wi-Fi signal'),`
       <div class="row"><div><label class="fld">${T('Signaalbron (optioneel, voor preview)','Signal source (optional, for preview)')}</label><select data-wifi="sourceId">${srcOpts(w.sourceId,true)}</select></div></div>
       <div class="hint">${T('Bij export wordt','On export')} <span class="mono">id(wifisignal)</span> ${T('gebruikt (de diagnostische sensor die de editor genereert). De bron hierboven bepaalt alleen welke staaf je nu in de preview ziet.','is used (the diagnostic sensor the editor generates). The source above only controls which bar you see in the preview now.')}</div>
-      <label class="fld" style="margin-top:8px">${T('Drempels (dBm → icoon)','Thresholds (dBm → icon)')}</label>
+      <label class="fld" style="margin-top:8px">${T('Niveaus: vanaf dBm → icoon','Levels: from dBm → icon')}</label>
       ${(w.levels||[]).map((lv,i)=>`<div class="row tight" style="align-items:center">
-        <div><input data-wifilv="${i}.min" type="number" value="${lv.min}" title="≥ dBm"></div>
-        <div style="flex:none"><span class="mdi" style="font-size:22px">${mdiChar(lv.hex)}</span></div>
-        <div><input data-wifilv="${i}.hex" type="text" class="mono" value="${attr(lv.hex)}"></div>
+        <div style="flex:0 0 80px"><input data-wifilv="${i}.min" type="number" value="${lv.min}" title="≥ dBm"></div>
+        <div style="flex:none"><span class="mdi mdi-${lv.icon||''}" style="font-size:24px">${lv.icon?'':mdiChar(lv.hex)}</span></div>
+        <button class="btn ghost sm" data-pickwifi="${i}" style="flex:1">${T('Icoon kiezen…','Choose icon…')}</button>
       </div>`).join('')}
-      <div class="hint">${T('Sterkste drempel bovenaan. De laatste regel (laagste dBm) is de "geen signaal"-staaf.','Strongest threshold on top. The last row (lowest dBm) is the "no signal" bar.')}</div>`);
+      <div class="hint">${T('Sterkste niveau bovenaan; de onderste regel is "geen signaal". De getallen zijn dBm-drempels — klik een icoon om het te wijzigen.','Strongest level on top; the bottom row is "no signal". The numbers are dBm thresholds — click an icon to change it.')}</div>`);
   }
 
   // clock smart element
   if(el.type==='clock'){
     const c=el.clock||{};
+    const is12=/%I/.test(c.strftime||'');
     h+=g(T('Refresh-klok','Refresh clock'),`
-      <div class="row"><div><label class="fld">${T('Tijdformaat (strftime)','Time format (strftime)')}</label><input data-clock="strftime" class="mono" type="text" value="${attr(c.strftime||'%H:%M')}"></div></div>
-      <div class="hint">${T('Toont het tijdstip van de laatste schermverversing via','Shows the time of the last screen refresh via')} <span class="mono">id(homeassistant_time)</span>. ${T('Bv.','E.g.')} <span class="mono">%H:%M</span> ${T('of','or')} <span class="mono">%d-%m %H:%M</span>.</div>
-      <label class="toggle" style="margin-top:8px"><input type="checkbox" data-clock="icon" ${c.icon?'checked':''}> ${T('Klok-icoon ervoor','Clock icon before it')}</label>
+      <label class="toggle"><input type="checkbox" id="clock-12h" ${is12?'checked':''}> ${T('12-uurs klok (AM/PM)','12-hour clock (AM/PM)')}</label>
+      <div class="row" style="margin-top:6px"><div><label class="fld">${T('Tijdformaat (strftime)','Time format (strftime)')}</label><input data-clock="strftime" class="mono" type="text" value="${attr(c.strftime||'%H:%M')}"></div></div>
+      <div class="hint">${T('Toont het tijdstip van de laatste schermverversing via','Shows the time of the last screen refresh via')} <span class="mono">id(homeassistant_time)</span>. ${T('Standaard 24-uurs','Default 24-hour')} (<span class="mono">%H:%M</span>).</div>
+      <label class="toggle" style="margin-top:8px"><input type="checkbox" data-clock="icon" ${c.icon?'checked':''}> ${T('Icoon ervoor','Icon before it')}</label>
       ${c.icon?`<div class="row" style="align-items:center;margin-top:6px">
-        <div style="flex:none"><span class="mdi" style="font-size:22px">${mdiChar(c.iconHex)}</span></div>
-        <div><button class="btn sm" id="pick-clock-icon">${T('Icoon…','Icon…')}</button></div>
+        <div style="flex:none"><span class="mdi mdi-${c.iconName||'refresh'}" style="font-size:24px"></span></div>
+        <div><button class="btn sm" id="pick-clock-icon">${T('Icoon kiezen…','Choose icon…')}</button></div>
         <div><label class="fld">${T('Tekst-offset (px)','Text offset (px)')}</label><input data-clock="iconGap" type="number" value="${c.iconGap??40}"></div>
       </div>
       <div class="row"><div><label class="fld">${T('Icoon-font','Icon font')}</label><select data-clock="iconFontId">${fontOpts(c.iconFontId)}</select></div></div>`:''}`);
@@ -1196,7 +1236,9 @@ function bindInspector(host, el){
     // live preview while dragging a slider (no undo spam, no full inspector rebuild)
     if(inp.type==='range'){
       inp.addEventListener('input',()=>{ el[inp.dataset.k]=+inp.value;
-        const lbl=inp.parentElement.querySelector('.rot-deg'); if(lbl) lbl.textContent=inp.value;
+        const prev=inp.previousElementSibling;            // the matching <label> just above
+        const lbl=prev && prev.querySelector ? prev.querySelector('.rot-deg') : null;
+        if(lbl) lbl.textContent=inp.value;
         persist(); renderCanvas(); });
     }
   });
@@ -1245,10 +1287,13 @@ function bindInspector(host, el){
   // wifi
   host.querySelectorAll('[data-wifi]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.wifi=el.wifi||{}; el.wifi[inp.dataset.wifi]=inp.value; afterChange(); }));
   host.querySelectorAll('[data-wifilv]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); const [i,prop]=inp.dataset.wifilv.split('.'); el.wifi.levels[+i][prop]= prop==='min'?(+inp.value):inp.value.toUpperCase(); afterChange(); }));
+  // wifi per-level MDI icon picker
+  host.querySelectorAll('[data-pickwifi]').forEach(b=>b.addEventListener('click',()=>openIconPicker(sel=>{ pushUndo(); const i=+b.dataset.pickwifi; el.wifi.levels[i].hex=sel.hex; el.wifi.levels[i].icon=sel.name; afterChange(); })));
 
   // clock
   host.querySelectorAll('[data-clock]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.clock=el.clock||{}; const k=inp.dataset.clock; el.clock[k]= inp.type==='checkbox'?inp.checked:(inp.type==='number'?(+inp.value):inp.value); afterChange(); }));
-  const pci=host.querySelector('#pick-clock-icon'); if(pci) pci.addEventListener('click',()=>openIconPicker(sel=>{ pushUndo(); el.clock.iconHex=sel.hex; afterChange(); }));
+  const pci=host.querySelector('#pick-clock-icon'); if(pci) pci.addEventListener('click',()=>openIconPicker(sel=>{ pushUndo(); el.clock.iconName=sel.name; el.clock.iconHex=sel.hex; afterChange(); }));
+  const c12=host.querySelector('#clock-12h'); if(c12) c12.addEventListener('change',()=>{ pushUndo(); el.clock=el.clock||{}; el.clock.strftime = c12.checked ? '%I:%M %p' : '%H:%M'; afterChange(); });
 
   // graph
   host.querySelectorAll('[data-graph]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.graph=el.graph||{}; const k=inp.dataset.graph; el.graph[k]= inp.type==='checkbox'?inp.checked:(inp.type==='number'?(+inp.value):inp.value); afterChange(); }));
@@ -1606,7 +1651,7 @@ function genYAML(){
   const qrs=els().filter(e=>e.type==='qr');
   if(qrs.length){
     out+=`qr_code:\n`;
-    qrs.forEach(el=>{ out+=`  - id: ${qrId(el)}\n    value: "${esc(el.text||'')}"\n`; });
+    qrs.forEach(el=>{ out+=`  - id: ${qrId(el)}\n    value: "${esc(el.text||'')}"\n    ecc: ${el.ecc||'LOW'}\n`; });
     out+='\n';
   }
 
