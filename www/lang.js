@@ -35,6 +35,8 @@
     'Cirkel': 'Circle',
     'Driehoek': 'Triangle',
     'Veelhoek': 'Polygon',
+    'Meter': 'Gauge',
+    'QR-code': 'QR code',
     'kleuren': 'colours',
     'Widget (icoon+waarde)': 'Widget (icon+value)',
     'WiFi-icoon': 'Wi-Fi icon',

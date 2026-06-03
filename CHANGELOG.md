@@ -1,3 +1,8 @@
+## 2.1.0
+- **Ring** toegevoegd (buiten-/binnenstraal) → `it.filled_ring`
+- **Meter/gauge** toegevoegd (buiten-/binnenstraal + vulling 0–100%) → `it.filled_gauge`, met live cirkelvormige voortgang in de preview
+- **QR-code** toegevoegd (inhoud + schaal) → genereert een `qr_code:`-component + `it.qr_code(...)`. In de editor een plaatshouder (ESPHome rendert de echte QR op het device)
+
 ## 2.0.0
 - **Topbalk- en toolbar-knoppen** hebben nu de HA-knopkleur (#242424 dark / #F0F2F6 light)
 - **Model-dropdown** in profiel-instellingen met de volledige ESPHome `waveshare_epaper`-modellijst + beschrijving per model. Het **kleurenpalet past zich aan** het displaytype aan: mono = wit/zwart, BWR = wit/zwart/rood, 7-kleuren = volledige set. Element-kleuren tonen dus alleen wat het display kan

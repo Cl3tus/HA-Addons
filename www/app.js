@@ -429,6 +429,18 @@ function buildNode(el){
       stroke:E.filled?undefined:color.css, strokeWidth:1,
       fill:E.filled?color.css:'rgba(0,0,0,0.001)'});
   }
+  else if(E.type==='ring'){
+    node = new Konva.Ring({x:E.x,y:E.y,innerRadius:Math.min(E.inner||30,(E.r||50)-1),outerRadius:E.r||50,
+      fill:color.css});
+  }
+  else if(E.type==='gauge'){
+    const pct=Math.max(0,Math.min(100,E.percent==null?75:E.percent));
+    node = new Konva.Arc({x:E.x,y:E.y,innerRadius:Math.min(E.inner||30,(E.r||50)-1),outerRadius:E.r||50,
+      angle:pct*3.6, rotation:-90, fill:color.css});
+  }
+  else if(E.type==='qr'){
+    node = qrPreviewNode(E, color.css);
+  }
   else if(E.type==='circle'){
     const rx=(E.rx!=null?E.rx:(E.r!=null?E.r:40)), ry=(E.ry!=null?E.ry:(E.r!=null?E.r:40));
     node = new Konva.Ellipse({x:E.x,y:E.y,radiusX:rx,radiusY:ry,
@@ -512,8 +524,8 @@ function buildNode(el){
     } else if(el.type==='rect' || el.type==='graph'){
       // centre-origin nodes: node.x()/y() is the centre
       el.x=Math.round(node.x()-el.w/2); el.y=Math.round(node.y()-el.h/2);
-    } else if(el.type==='triangle' || el.type==='circle' || el.type==='polygon'){
-      // triangle/ellipse/polygon use node.x()/y() as their centre directly
+    } else if(el.type==='triangle' || el.type==='circle' || el.type==='polygon' || el.type==='ring' || el.type==='gauge' || el.type==='qr'){
+      // these use node.x()/y() as their origin (centre for shapes, top-left for QR group)
       el.x=Math.round(node.x()); el.y=Math.round(node.y());
     } else if(el.type==='clock'){
       // group whose children use absolute coords: node.x()/y() is the drag delta
@@ -578,15 +590,36 @@ function rectCorners(E){
 }
 const flatPts = pts => pts.reduce((a,p)=>{a.push(p[0],p[1]);return a;},[]);
 
+/* QR placeholder preview — a sized box with three finder squares + a hatch
+   pattern. The real QR is rendered on the device by ESPHome (qr_code:). */
+const QR_MODULES = 25;
+function qrPreviewNode(E, css){
+  const scale = Math.max(1, E.scale||4);
+  const size = QR_MODULES * scale;
+  const g = new Konva.Group({x:E.x, y:E.y});
+  g.add(new Konva.Rect({x:0,y:0,width:size,height:size,fill:'#fff',stroke:css,strokeWidth:1}));
+  const m = scale;                       // one module
+  const finder = (fx,fy)=>{
+    g.add(new Konva.Rect({x:fx*m,y:fy*m,width:7*m,height:7*m,fill:css}));
+    g.add(new Konva.Rect({x:(fx+1)*m,y:(fy+1)*m,width:5*m,height:5*m,fill:'#fff'}));
+    g.add(new Konva.Rect({x:(fx+2)*m,y:(fy+2)*m,width:3*m,height:3*m,fill:css}));
+  };
+  finder(0,0); finder(QR_MODULES-7,0); finder(0,QR_MODULES-7);
+  // sparse module hatch in the data area so it reads as a QR
+  for(let i=9;i<QR_MODULES-2;i+=2){ for(let j=9;j<QR_MODULES-2;j+=2){
+    if((i*j)%3===0) g.add(new Konva.Rect({x:i*m,y:j*m,width:m,height:m,fill:css})); } }
+  return g;
+}
+
 /* attach selection visuals (resize handles for rect/circle, dashed outline otherwise)
    to an existing node WITHOUT rebuilding the layer — keeps an in-progress drag alive */
 function attachSelection(el, node){
   if(transformer){ try{transformer.destroy();}catch(e){} transformer=null; }
   if(selectionVisual){ try{selectionVisual.destroy();}catch(e){} selectionVisual=null; }
   if(!node) return;
-  if(el.type==='rect' || el.type==='circle' || el.type==='triangle' || el.type==='polygon' || el.type==='graph'){
-    const keepRatio = el.type==='circle' ? (el.lockAspect!==false) : (el.type==='polygon');
-    // rect/triangle/polygon can rotate; circle (ellipse) and graph cannot
+  if(el.type==='rect' || el.type==='circle' || el.type==='triangle' || el.type==='polygon' || el.type==='ring' || el.type==='gauge' || el.type==='graph'){
+    const keepRatio = (el.type==='circle') ? (el.lockAspect!==false) : (el.type==='polygon'||el.type==='ring'||el.type==='gauge');
+    // rect/triangle/polygon can rotate; circle/ring/gauge and graph cannot
     const rotateEnabled = (el.type==='rect' || el.type==='triangle' || el.type==='polygon');
     transformer=new Konva.Transformer({rotateEnabled, keepRatio,
       borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:8,rotateAnchorOffset:24});
@@ -598,6 +631,7 @@ function attachSelection(el, node){
       else if(el.type==='circle'){ el.rx=Math.max(2,Math.round(node.radiusX()*sx)); el.ry=Math.max(2,Math.round(node.radiusY()*sy)); delete el.r; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='triangle'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='polygon'){ el.r=Math.max(4,Math.round(node.radius()*((sx+sy)/2))); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      else if(el.type==='ring' || el.type==='gauge'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round(node.outerRadius()*f)); el.inner=Math.max(2,Math.round(node.innerRadius()*f)); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       node.scaleX(1); node.scaleY(1); afterChange(); });
   } else if(el.type==='line'){
     // one draggable handle per endpoint -> move endpoints, make vertical, resize
@@ -772,7 +806,7 @@ function startRename(span, el){
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ inp.blur(); } else if(e.key==='Escape'){ inp.value=el.name||el.type; inp.blur(); } });
   inp.addEventListener('blur', commit, {once:true});
 }
-function typeGlyph(t){ return {text:'T',icon:'◈',line:'╱',rect:'▢',circle:'◯',triangle:'△',polygon:'⬡',wifi:'⌁',clock:'◔',graph:'⊿'}[t]||'•'; }
+function typeGlyph(t){ return {text:'T',icon:'◈',line:'╱',rect:'▢',circle:'◯',triangle:'△',polygon:'⬡',ring:'◎',gauge:'◴',qr:'▦',wifi:'⌁',clock:'◔',graph:'⊿'}[t]||'•'; }
 
 /* ============================================================
    ADD ELEMENTS
@@ -803,6 +837,12 @@ function addElement(type, pos){
     Object.assign(base,{ x:cx,y:cy, w:120,h:100, rotation:0, filled:false, colorId:'color_text', anchor:undefined });
   } else if(type==='polygon'){
     Object.assign(base,{ x:cx,y:cy, r:60, sides:6, rotation:0, filled:false, colorId:'color_text', anchor:undefined });
+  } else if(type==='ring'){
+    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, colorId:'color_text', anchor:undefined });
+  } else if(type==='gauge'){
+    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, percent:75, colorId:'color_text', anchor:undefined });
+  } else if(type==='qr'){
+    Object.assign(base,{ x:cx-50,y:cy-50, text:'https://home-assistant.io', scale:4, colorId:'color_text', anchor:undefined });
   } else if(type==='wifi'){
     Object.assign(base,{ fontId:'font_mdi_small', anchor:'TOP_CENTER', colorId:'color_text',
       // signal thresholds (dBm) -> MDI hex, strongest first; matches your test code
@@ -823,7 +863,8 @@ function addElement(type, pos){
 }
 function elName(t){ const n=els().filter(e=>e.type===t).length+1;
   const m={text:T('Tekst','Text'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
-           circle:T('Cirkel','Circle'),triangle:T('Driehoek','Triangle'),polygon:T('Veelhoek','Polygon'),wifi:'WiFi',clock:T('Klok','Clock'),graph:T('Grafiek','Graph')};
+           circle:T('Cirkel','Circle'),triangle:T('Driehoek','Triangle'),polygon:T('Veelhoek','Polygon'),
+           ring:'Ring',gauge:T('Meter','Gauge'),qr:'QR',wifi:'WiFi',clock:T('Klok','Clock'),graph:T('Grafiek','Graph')};
   return (m[t]||'Element')+' '+n; }
 
 function deleteSel(){
@@ -914,6 +955,21 @@ function renderInspector(){
       <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
       <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
       <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
+  } else if(el.type==='ring'){
+    h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
+      <div class="row"><div><label class="fld">${T('Buitenstraal','Outer radius')}</label><input data-k="r" type="number" value="${el.r||50}"></div><div><label class="fld">${T('Binnenstraal','Inner radius')}</label><input data-k="inner" type="number" value="${el.inner||30}"></div></div>
+      <div class="hint">${T('Een ring is altijd gevuld','A ring is always filled')} — <span class="mono">it.filled_ring</span>.</div>`);
+  } else if(el.type==='gauge'){
+    h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
+      <div class="row"><div><label class="fld">${T('Buitenstraal','Outer radius')}</label><input data-k="r" type="number" value="${el.r||50}"></div><div><label class="fld">${T('Binnenstraal','Inner radius')}</label><input data-k="inner" type="number" value="${el.inner||30}"></div></div>
+      <label class="fld">${T('Vulling','Fill')} (<span class="rot-deg">${el.percent==null?75:el.percent}</span>%)</label>
+      <input data-k="percent" type="range" min="0" max="100" step="1" value="${el.percent==null?75:el.percent}">
+      <div class="hint"><span class="mono">it.filled_gauge</span> — ${T('cirkelvormige voortgang','circular progress')}.</div>`);
+  } else if(el.type==='qr'){
+    h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
+      <div class="row"><div><label class="fld">${T('Schaal (px per module)','Scale (px per module)')}</label><input data-k="scale" type="number" min="1" max="12" value="${el.scale||4}"></div></div>
+      <div class="row"><div><label class="fld">${T('Inhoud (tekst/URL)','Content (text/URL)')}</label><input data-k="text" type="text" value="${attr(el.text)}"></div></div>
+      <div class="hint">${T('De preview is een plaatshouder; ESPHome rendert de echte QR-code op het device.','The preview is a placeholder; ESPHome renders the real QR code on the device.')}</div>`);
   } else if(el.type==='graph'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
@@ -1273,6 +1329,16 @@ function drawStmt(el, indent){
     const fn=el.filled?'filled_regular_polygon':'regular_polygon';
     return `${I}it.${fn}(${el.x}, ${el.y}, ${el.r||60}, ${Math.max(3,el.sides||6)}, ${el.rotation||0}, ${color});`;
   }
+  if(el.type==='ring'){
+    return `${I}it.filled_ring(${el.x}, ${el.y}, ${el.r||50}, ${el.inner||30}, ${color});`;
+  }
+  if(el.type==='gauge'){
+    const pct=Math.max(0,Math.min(100,el.percent==null?75:el.percent));
+    return `${I}it.filled_gauge(${el.x}, ${el.y}, ${el.r||50}, ${el.inner||30}, ${pct}, ${color});`;
+  }
+  if(el.type==='qr'){
+    return `${I}it.qr_code(${el.x}, ${el.y}, id(${qrId(el)}), ${color}, ${el.scale||4});`;
+  }
   if(el.type==='circle'){
     const rx=(el.rx!=null?el.rx:(el.r!=null?el.r:40)), ry=(el.ry!=null?el.ry:(el.r!=null?el.r:40));
     if(rx===ry){ const fn=el.filled?'filled_circle':'circle'; return `${I}it.${fn}(${el.x}, ${el.y}, ${rx}, ${color});`; }
@@ -1298,6 +1364,7 @@ function drawStmt(el, indent){
 }
 function numFilled(v){ return v!==''&&v!=null&&!isNaN(+v); }
 function graphId(el){ return 'graph_'+el.id.replace(/[^a-z0-9_]/gi,''); }
+function qrId(el){ return 'qr_'+el.id.replace(/[^a-z0-9_]/gi,''); }
 function graphDrawCode(el, I){
   let out=`${I}it.graph(${el.x}, ${el.y}, id(${graphId(el)}));`;
   const gr=el.graph||{}, ax=gr.axes||{};
@@ -1532,6 +1599,14 @@ function genYAML(){
         });
       }
     });
+    out+='\n';
+  }
+
+  // qr_code: components (one per QR element)
+  const qrs=els().filter(e=>e.type==='qr');
+  if(qrs.length){
+    out+=`qr_code:\n`;
+    qrs.forEach(el=>{ out+=`  - id: ${qrId(el)}\n    value: "${esc(el.text||'')}"\n`; });
     out+='\n';
   }
 
