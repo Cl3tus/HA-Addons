@@ -19,9 +19,11 @@ const $$ = sel => Array.from(document.querySelectorAll(sel));
 const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
 const esc = s => String(s).replace(/\\/g,'\\\\').replace(/"/g,'\\"');
 const escFmt = s => esc(s).replace(/%/g,'%%');
+/* i18n helper — delegates to lang.js if present, else returns the Dutch text */
+const T = (nl,en) => (window.t ? window.t(nl,en) : nl);
 
 /* ---------------- seed profile (Paul's aquarium config) ---------------- */
-function seedProfile(name='Aquarium display'){
+function seedProfile(name='My display'){
   return {
     id: uid('p'),
     name,
@@ -601,7 +603,7 @@ function addElement(type, pos){
                 source:{kind:'sensor',sourceId:'aquatemp',text:'',expr:''},
                 format:{mode:'builder',decimals:1,prefix:'',suffix:'°C',raw:'%s'}, transform:'none', transformArg:{},
                 condition:JSON.parse(JSON.stringify(base.condition))};
-    els().push(icon, val); selectedId=val.id; afterChange(); toast('Widget toegevoegd (icoon + waarde)'); return;
+    els().push(icon, val); selectedId=val.id; afterChange(); toast(T('Widget toegevoegd (icoon + waarde)','Widget added (icon + value)')); return;
   } else if(type==='wifi'){
     Object.assign(base,{ fontId:'font_mdi_small', anchor:'TOP_CENTER', colorId:'color_text',
       // signal thresholds (dBm) -> MDI hex, strongest first; matches your test code
@@ -629,7 +631,7 @@ function dupSel(){ const e=selected(); if(!e) return; pushUndo(); const cp=JSON.
 /* point 7: align the selected element to the canvas edges/centre.
    Works on the element's rendered bounding box, then shifts the element by a delta. */
 function alignSel(how){
-  const el=selected(); if(!el){ toast('Selecteer eerst een element'); return; }
+  const el=selected(); if(!el){ toast(T('Selecteer eerst een element','Select an element first')); return; }
   const p=profile();
   const node=contentLayer.getChildren(n=>n._elId===el.id)[0];
   if(!node) return;
@@ -652,7 +654,7 @@ function alignSel(how){
    ============================================================ */
 function renderInspector(){
   const host=$('#inspector'); const el=selected();
-  if(!el){ host.innerHTML='<div class="inspector-empty">Selecteer een element op het canvas<br>of voeg er een toe.</div>'; return; }
+  if(!el){ host.innerHTML='<div class="inspector-empty">'+T('Selecteer een element op het canvas','Select an element on the canvas')+'<br>'+T('of voeg er een toe.','or add a new one.')+'</div>'; return; }
   let h='';
   h+=g('Element',`
     <div class="row"><div><label class="fld">Naam</label><input data-k="name" type="text" value="${attr(el.name)}"></div></div>`);
@@ -1305,7 +1307,7 @@ async function loadMdiMeta(){
   try{
     const r=await fetch('vendor/mdi-meta.json');
     MDI_META=await r.json();
-  }catch(e){ MDI_META=[]; toast('Kon MDI-lijst niet laden'); }
+  }catch(e){ MDI_META=[]; toast(T('Kon MDI-lijst niet laden','Could not load MDI list')); }
   return MDI_META;
 }
 async function openIconPicker(cb){
@@ -1405,14 +1407,14 @@ function openFonts(){
   // existing uploads
   $$('#modal-body input[type=file][data-font]').forEach(inp=>inp.addEventListener('change',e=>{
     const f=profile().fonts[+inp.dataset.font], file=e.target.files[0]; if(!file) return;
-    const rd=new FileReader(); rd.onload=async()=>{ f.dataUrl=rd.result; await registerUploadedFonts(); await maybeUploadFont(f, file.name); persist(); afterChange(); openFonts(); toast('Font geladen'); }; rd.readAsDataURL(file);
+    const rd=new FileReader(); rd.onload=async()=>{ f.dataUrl=rd.result; await registerUploadedFonts(); await maybeUploadFont(f, file.name); persist(); afterChange(); openFonts(); toast(T('Font geladen','Font loaded')); }; rd.readAsDataURL(file);
   }));
   $$('#modal-body input[type=color]').forEach(inp=>inp.addEventListener('change',()=>{ profile().colors[+inp.dataset.colorI].css=inp.value; persist(); afterChange(); }));
   $$('#modal-body [data-delfont]').forEach(b=>b.onclick=()=>{
     const i=+b.dataset.delfont, f=profile().fonts[i];
     const inUse=els().some(e=>e.fontId===f.id);
     if(inUse && !confirm(`Font "${f.id}" wordt gebruikt door elementen. Toch verwijderen?`)) return;
-    profile().fonts.splice(i,1); persist(); afterChange(); openFonts(); toast('Font verwijderd');
+    profile().fonts.splice(i,1); persist(); afterChange(); openFonts(); toast(T('Font verwijderd','Font deleted'));
   });
   // new-font form: toggle gfonts/local fields
   const kindSel=$('#nf-kind');
@@ -1421,8 +1423,8 @@ function openFonts(){
   $('#nf-upload').onchange=e=>{ const file=e.target.files[0]; if(!file)return; const rd=new FileReader(); rd.onload=()=>{ pendingUpload=rd.result; if(!$('#nf-file').value) $('#nf-file').value='fonts/'+file.name; }; rd.readAsDataURL(file); };
   $('#nf-add').onclick=async()=>{
     const id=($('#nf-id').value||'').trim();
-    if(!/^[a-z_][a-z0-9_]*$/i.test(id)){ toast('Geef een geldig id (letters/cijfers/_)'); return; }
-    if(fontById(id)){ toast('Dit id bestaat al'); return; }
+    if(!/^[a-z_][a-z0-9_]*$/i.test(id)){ toast(T('Geef een geldig id (letters/cijfers/_)','Enter a valid id (letters/digits/_)')); return; }
+    if(fontById(id)){ toast(T('Dit id bestaat al','This id already exists')); return; }
     const size=+$('#nf-size').value||30;
     const f={ id, size, kind:kindSel.value, dynamic:false, baseCharset:' -.:%/°0123456789', dataUrl:null, seedGlyphs:[] };
     if(kindSel.value==='gfonts'){ f.family=($('#nf-family').value||'Roboto').trim(); f.weight=+$('#nf-weight').value||400; f.file=null; }
@@ -1430,7 +1432,7 @@ function openFonts(){
     profile().fonts.push(f);
     injectGoogleFonts(); await registerUploadedFonts();
     if(f.dataUrl) await maybeUploadFont(f, (f.file||'').split('/').pop()||f.id+'.ttf');
-    persist(); afterChange(); openFonts(); toast('Font toegevoegd');
+    persist(); afterChange(); openFonts(); toast(T('Font toegevoegd','Font added'));
   };
 }
 /* push an uploaded font's bytes to the add-on /data/fonts (preview persistence) */
@@ -1497,7 +1499,7 @@ function openProfileSettings(){
       persist(); initStage(); renderProfiles(); afterChange(); closeModal();
     }}]);
   $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>{ $('#ps-bg').value=b.dataset.bg; });
-  $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast('Minstens één profiel nodig');return;}
+  $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
     if(confirm('Profiel verwijderen?')){ state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist(); boot(); closeModal(); } };
 }
 
@@ -1510,8 +1512,8 @@ function openImport(){
 }
 function doImport(){
   const text=$('#imp-area').value; let doc;
-  try{ doc=jsyaml.load(text); }catch(e){ toast('YAML-fout: '+e.message); return; }
-  if(!doc||typeof doc!=='object'){ toast('Niets bruikbaars gevonden'); return; }
+  try{ doc=jsyaml.load(text); }catch(e){ toast(T('YAML-fout: ','YAML error: ')+e.message); return; }
+  if(!doc||typeof doc!=='object'){ toast(T('Niets bruikbaars gevonden','Nothing usable found')); return; }
   const p=profile(); let n=0;
   if(Array.isArray(doc.font)){ p.fonts=doc.font.map(parseFont); n+=p.fonts.length; }
   if(Array.isArray(doc.color)){ p.colors=doc.color.map(parseColor); n+=p.colors.length; }
@@ -1523,7 +1525,7 @@ function doImport(){
       n++;
     }});
   });
-  persist(); afterChange(); closeModal(); toast(`Geïmporteerd: ${n} items`);
+  persist(); afterChange(); closeModal(); toast(T(`Geïmporteerd: ${n} items`,`Imported: ${n} items`));
   function parseFont(o){
     const file = typeof o.file==='string'?o.file:null;
     const g = (o.file&&o.file.type==='gfonts')?o.file:null;
@@ -1572,13 +1574,13 @@ async function serverSaveProject(){
       method:'PUT', headers:{'Content-Type':'application/json'},
       body:JSON.stringify(profile()) });
     if(!r.ok) throw new Error('http '+r.status);
-    toast('Opgeslagen in add-on ('+pname()+')');
-  }catch(e){ console.warn(e); toast('Opslaan op server mislukt — gedownload als bestand'); fileSaveProject(); }
+    toast(T('Opgeslagen in add-on ('+pname()+')','Saved in add-on ('+pname()+')'));
+  }catch(e){ console.warn(e); toast(T('Opslaan op server mislukt — gedownload als bestand','Server save failed — downloaded as file')); fileSaveProject(); }
 }
 async function serverOpenProject(){
   let list=[];
   try{ const r=await fetch('api/projects'); list=(await r.json()).projects||[]; }
-  catch(e){ toast('Kon serverlijst niet laden'); return; }
+  catch(e){ toast(T('Kon serverlijst niet laden','Could not load server list')); return; }
   const rows = list.length
     ? list.map(n=>`<div class="row" style="align-items:center"><div class="mono" style="flex:1">${n}</div>
         <button class="btn sm" data-open="${attr(n)}">Openen</button>
@@ -1589,8 +1591,8 @@ async function serverOpenProject(){
     [{label:'Sluiten',onClick:closeModal}]);
   $$('#modal-body [data-open]').forEach(b=>b.onclick=async()=>{
     try{ const r=await fetch('api/projects/'+encodeURIComponent(b.dataset.open));
-      const p=await r.json(); p.id=uid('p'); state.profiles.push(p); state.current=p.id; persist(); closeModal(); boot(); toast('Geopend: '+b.dataset.open);
-    }catch(e){ toast('Openen mislukt'); }
+      const p=await r.json(); p.id=uid('p'); state.profiles.push(p); state.current=p.id; persist(); closeModal(); boot(); toast(T('Geopend: ','Opened: ')+b.dataset.open);
+    }catch(e){ toast(T('Openen mislukt','Open failed')); }
   });
   $$('#modal-body [data-del]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Verwijder serverproject "'+b.dataset.del+'"?')) return;
@@ -1603,12 +1605,12 @@ async function serverOpenProject(){
 function fileSaveProject(){
   const blob=new Blob([JSON.stringify(profile(),null,2)],{type:'application/json'});
   download(blob, pname()+'.eink.json');
-  toast('Project gedownload');
+  toast(T('Project gedownload','Project downloaded'));
 }
 function fileOpenProject(){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
   inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const rd=new FileReader();
-    rd.onload=()=>{ try{ const p=JSON.parse(rd.result); p.id=uid('p'); state.profiles.push(p); state.current=p.id; persist(); closeModal&&closeModal(); boot(); toast('Project geladen'); }catch(e){ toast('Ongeldig bestand'); } };
+    rd.onload=()=>{ try{ const p=JSON.parse(rd.result); p.id=uid('p'); state.profiles.push(p); state.current=p.id; persist(); closeModal&&closeModal(); boot(); toast(T('Project geladen','Project loaded')); }catch(e){ toast(T('Ongeldig bestand','Invalid file')); } };
     rd.readAsText(f); };
   inp.click();
 }
@@ -1725,7 +1727,7 @@ function wire(){
   setupPaletteDnD();
   setupContextMenu();
   $('#profile-select').onchange=e=>{ state.current=e.target.value; selectedId=null; persist(); boot(); };
-  $('#profile-new').onclick=()=>{ const p=seedProfile('Nieuw profiel '+(state.profiles.length+1)); p.elements=[]; state.profiles.push(p); state.current=p.id; persist(); boot(); };
+  $('#profile-new').onclick=()=>{ const p=seedProfile(T('Nieuw profiel ','New profile ')+(state.profiles.length+1)); p.elements=[]; state.profiles.push(p); state.current=p.id; persist(); boot(); };
   $('#profile-settings').onclick=openProfileSettings;
 
   $('#btn-import').onclick=openImport;
@@ -1739,8 +1741,8 @@ function wire(){
 
   $('#btn-code').onclick=()=>{ renderCode(); $('#code-drawer').classList.add('open'); };
   $('#code-close').onclick=()=>$('#code-drawer').classList.remove('open');
-  $('#code-copy').onclick=()=>{ navigator.clipboard.writeText(genYAML()).then(()=>toast('Naar klembord gekopieerd')); };
-  $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), (profile().device.name||'display')+'.yaml'); toast('YAML gedownload'); };
+  $('#code-copy').onclick=()=>{ navigator.clipboard.writeText(genYAML()).then(()=>toast(T('Naar klembord gekopieerd','Copied to clipboard'))); };
+  $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), (profile().device.name||'display')+'.yaml'); toast(T('YAML gedownload','YAML downloaded')); };
 
   $('#zoom-in').onclick=()=>{ zoom=clamp(zoom+0.1,0.3,2); applyZoom(); };
   $('#zoom-out').onclick=()=>{ zoom=clamp(zoom-0.1,0.3,2); applyZoom(); };
@@ -1816,10 +1818,11 @@ async function refreshLive(){
     HA_LIVE=true;
     updateLiveBadge();
     renderCanvas(); renderInspector();
-    toast('Live data bijgewerkt ('+Object.keys(HA_STATES).length+' entiteiten)');
+    const n=Object.keys(HA_STATES).length;
+    toast(T('Live data bijgewerkt ('+n+' entiteiten)','Live data updated ('+n+' entities)'));
   }catch(e){
     HA_LIVE=false; updateLiveBadge();
-    toast('Live data niet beschikbaar');
+    toast(T('Live data niet beschikbaar','Live data unavailable'));
     console.warn('live fetch failed', e);
   }
 }
@@ -1842,8 +1845,12 @@ async function boot(){
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>renderCanvas());
   // Check add-on API + live data (fire-and-forget to keep boot fast)
   fetch('api/info').then(r=>r.json()).then(info=>{
-    if(info && info.app){ SERVER_STORAGE=true; syncProfilesToServer(); }
-    if(info && info.live_data){ refreshLive(); }
+    if(!info) return;
+    if(info.app){ SERVER_STORAGE=true; syncProfilesToServer(); }
+    // Apply add-on language/theme options BEFORE any toast fires
+    if(info.language){ window.ADDON_LANGUAGE=info.language; if(window.haRefreshLang) window.haRefreshLang(); }
+    if(info.theme){ window.ADDON_THEME=info.theme; if(window.haTheme) window.haTheme.apply(window.haTheme.detect()); }
+    if(info.live_data){ refreshLive(); }
   }).catch(()=>{});
 }
 

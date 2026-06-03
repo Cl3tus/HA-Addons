@@ -1,3 +1,9 @@
+## 1.5.1
+- De add-on opties **language** en **theme** werken nu écht door in de app: bij het opstarten leest de editor `/api/info` en past taal/thema toe vóórdat er iets gerenderd wordt
+- Alle meldingen (toasts) in de editor zijn nu vertaald — inclusief "Live data bijgewerkt / Live data updated" bij het opstarten
+- Standaard-profiel heet nu "My display" (Engels); nieuw-profiel knop volgt de taal
+- **Tekst-editor in bestandsbeheer**: dubbelklik op een tekstbestand (yaml, json, txt, md, js, css, py, conf, …) of kies "Bewerken" in het rechtsklikmenu. Bewerk en sla op met de knop of Ctrl+S, Tab = 2 spaties, Esc sluit. Nieuwe endpoints `GET /api/fs/read` en `POST /api/fs/write` (max 2 MB, alleen tekst)
+
 ## 1.5.0
 - Nieuwe add-on opties (Configuration tab): **language** (auto/nl/en) en **theme** (auto/light/dark). Deze worden gerespecteerd door de editor en bestandsbeheerder; de in-app knoppen blijven werken als snelle override wanneer de optie op auto staat
 - `samba_host` optie verwijderd — niet meer nodig (pad is altijd `\\<HA-IP>\addon_configs\<slug>`)

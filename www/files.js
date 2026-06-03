@@ -68,6 +68,84 @@ async function loadSambaInfo() {
 
 function _t(nl, en) { return (window.t ? window.t(nl, en) : nl); }
 
+// ---------------------------------------------------------------- text editor
+
+const TEXT_EXT = new Set([
+  'txt','md','markdown','yaml','yml','json','js','mjs','css','html','htm','xml',
+  'svg','py','sh','bash','conf','cfg','ini','toml','env','log','csv','tsv',
+  'c','h','cpp','hpp','ino','rs','go','java','ts','php','rb','sql','gitignore',
+]);
+
+function isTextFile(name) {
+  if (name.indexOf('.') === -1) return false;           // extensionless: treat as binary
+  return TEXT_EXT.has(name.split('.').pop().toLowerCase());
+}
+
+async function apiRead(path) {
+  const r = await fetch(`api/fs/read?path=${enc(path)}`);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+  return (await r.json()).content;
+}
+
+async function apiWrite(path, content) {
+  const r = await fetch('api/fs/write', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({path, content}),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+}
+
+let _editPath = null;
+let _editClean = '';
+
+async function openEditor(name) {
+  const path = entryPath(name);
+  try {
+    const content = await apiRead(path);
+    _editPath  = path;
+    _editClean = content;
+    $('#fe-editor-name').textContent = path;
+    $('#fe-editor-area').value = content;
+    $('#fe-editor-dirty').textContent = '';
+    $('#fe-editor-back').classList.add('open');
+    $('#fe-editor-area').focus();
+  } catch (e) {
+    if (String(e.message) === 'not_text' || String(e.message) === '415')
+      toast(_t('Dit is geen tekstbestand', 'This is not a text file'), true);
+    else if (String(e.message) === 'too_large' || String(e.message) === '413')
+      toast(_t('Bestand te groot om te bewerken', 'File too large to edit'), true);
+    else
+      toast(_t('Openen mislukt: ', 'Open failed: ') + e.message, true);
+  }
+}
+
+function editorDirty() {
+  return $('#fe-editor-area').value !== _editClean;
+}
+
+async function saveEditor() {
+  if (!_editPath) return;
+  try {
+    const content = $('#fe-editor-area').value;
+    await apiWrite(_editPath, content);
+    _editClean = content;
+    $('#fe-editor-dirty').textContent = '';
+    toast(_t('Opgeslagen', 'Saved'));
+    navigate(currentPath);
+  } catch (e) {
+    toast(_t('Opslaan mislukt: ', 'Save failed: ') + e.message, true);
+  }
+}
+
+function closeEditor() {
+  if (editorDirty() && !confirm(_t('Niet-opgeslagen wijzigingen weggooien?',
+                                    'Discard unsaved changes?'))) return;
+  $('#fe-editor-back').classList.remove('open');
+  _editPath = null;
+  _editClean = '';
+}
+
 // ---------------------------------------------------------------- Navigation
 
 async function navigate(path) {
@@ -171,6 +249,7 @@ function makeRow(e, upPath) {
 
   row.ondblclick = () => {
     if (isDir) navigate(currentPath ? currentPath + '/' + e.name : e.name);
+    else if (isTextFile(e.name)) openEditor(e.name);
     else doDownload(e.name);
   };
 
@@ -407,6 +486,10 @@ function showCtxMenu(x, y, entry) {
     item(_t('Openen', 'Open'), 'mdi-folder-open-outline',
       () => navigate(entryPath(entry.name)));
   } else {
+    if (isTextFile(entry.name)) {
+      item(_t('Bewerken', 'Edit'), 'mdi-file-edit-outline',
+        () => openEditor(entry.name));
+    }
     item(_t('Downloaden', 'Download'), 'mdi-download-outline',
       () => doDownload(entry.name));
   }
@@ -458,6 +541,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('#btn-theme-fe').onclick = () => window.haTheme?.toggle();
   $('#btn-upload').onclick   = () => $('#upload-input').click();
+
+  // Text editor
+  $('#fe-editor-save').onclick  = saveEditor;
+  $('#fe-editor-close').onclick = closeEditor;
+  const area = $('#fe-editor-area');
+  area.addEventListener('input', () => {
+    $('#fe-editor-dirty').textContent = editorDirty() ? '●' : '';
+  });
+  area.addEventListener('keydown', ev => {
+    // Ctrl/Cmd+S saves
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') {
+      ev.preventDefault(); saveEditor(); return;
+    }
+    // Tab inserts two spaces
+    if (ev.key === 'Tab') {
+      ev.preventDefault();
+      const s = area.selectionStart, e = area.selectionEnd;
+      area.value = area.value.slice(0, s) + '  ' + area.value.slice(e);
+      area.selectionStart = area.selectionEnd = s + 2;
+      $('#fe-editor-dirty').textContent = editorDirty() ? '●' : '';
+    }
+    // Escape closes the editor
+    if (ev.key === 'Escape') { ev.preventDefault(); closeEditor(); }
+  });
+  $('#fe-editor-back').addEventListener('mousedown', ev => {
+    if (ev.target === $('#fe-editor-back')) closeEditor();
+  });
   $('#btn-mkdir').onclick    = doMkdir;
   $('#btn-rename').onclick   = doRename;
   $('#btn-move').onclick     = doMove;

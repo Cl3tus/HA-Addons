@@ -321,6 +321,34 @@ async def fs_download(request: web.Request) -> web.StreamResponse:
     )
 
 
+async def fs_read(request: web.Request) -> web.Response:
+    """Return a text file's contents for in-browser editing."""
+    target = _resolve_fs(request.rel_url.query.get("path", ""))
+    if target is None or not target.exists() or not target.is_file():
+        return web.json_response({"error": "not_found"}, status=404)
+    if target.stat().st_size > 2 * 1024 * 1024:
+        return web.json_response({"error": "too_large"}, status=413)
+    try:
+        text = target.read_text("utf-8")
+    except (UnicodeDecodeError, ValueError):
+        return web.json_response({"error": "not_text"}, status=415)
+    return web.json_response({"path": request.rel_url.query.get("path", ""), "content": text})
+
+
+async def fs_write(request: web.Request) -> web.Response:
+    """Write text content back to a file. Body: {path, content}."""
+    body = await request.json()
+    target = _resolve_fs(body.get("path", ""))
+    if target is None or target == FILES_ROOT.resolve():
+        return web.json_response({"error": "bad_path"}, status=400)
+    content = body.get("content", "")
+    if not isinstance(content, str):
+        return web.json_response({"error": "bad_content"}, status=400)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content, "utf-8")
+    return web.json_response({"ok": True})
+
+
 # ---------------------------------------------------------------- meta
 async def api_info(request: web.Request) -> web.Response:
     return web.json_response({
@@ -359,6 +387,8 @@ def build_app() -> web.Application:
     app.router.add_post("/api/fs/move", fs_move)
     app.router.add_post("/api/fs/upload", fs_upload)
     app.router.add_get("/api/fs/download", fs_download)
+    app.router.add_get("/api/fs/read", fs_read)
+    app.router.add_post("/api/fs/write", fs_write)
     app.router.add_get("/", index)
     app.router.add_static("/", WWW_DIR, show_index=False)
     return app

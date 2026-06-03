@@ -133,6 +133,7 @@
     if (l !== _lang) { _lang = l; window.APP_LANG = l; }
     applyTranslations();
   }
+  window.haRefreshLang = refresh;
 
   // Fetch the add-on Configuration option (auto/nl/en)
   fetch('api/info').then(function (r) { return r.json(); }).then(function (info) {
