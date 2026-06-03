@@ -2059,14 +2059,45 @@ function openProfileSettings(){
 /* ---- YAML import ---- */
 function openImport(){
   openModal(T('YAML importeren','Import YAML'),
-    `<div class="hint" style="margin-bottom:8px">${T('Plak je','Paste your')} <span class="mono">font:</span>, <span class="mono">color:</span>, <span class="mono">sensor:</span> ${T('en/of','and/or')} <span class="mono">text_sensor:</span> ${T('blokken. De editor vult fonts, kleuren en waardebronnen van dit profiel.','blocks. The editor fills the fonts, colours and value sources of this profile.')}</div>
+    `<div class="hint" style="margin-bottom:8px">${T('Plak gerust je hele ESPHome-config','Paste your whole ESPHome config if you like')} — ${T('alleen','only')} <span class="mono">font:</span>, <span class="mono">color:</span> ${T('en','and')} <span class="mono">homeassistant</span>-<span class="mono">sensor:</span>/<span class="mono">text_sensor:</span> ${T('worden ingelezen, de rest wordt genegeerd.','are imported, the rest is ignored.')}</div>
      <textarea class="import-area" id="imp-area" placeholder="font:\n  - file: ..."></textarea>`,
     [{label:T('Annuleer','Cancel'),onClick:closeModal},{label:T('Importeer','Import'),cls:'primary',onClick:doImport}]);
 }
+/* Pull a single top-level block ("key:" at column 0 up to the next top-level
+   key) out of the raw YAML. Lets us ignore everything the studio doesn't use
+   (esphome:, wifi:, api:, !secret tags, the display lambda, …). */
+function _extractTopBlock(text, key){
+  const lines=String(text).split(/\r?\n/);
+  let buf=null;
+  for(const ln of lines){
+    const isTop=/^[A-Za-z_][\w-]*\s*:/.test(ln);          // unindented "key:"
+    if(isTop){
+      const k=ln.split(':')[0].trim();
+      if(buf!==null) break;                                // reached the next top-level key
+      if(k===key) buf=[ln];
+    } else if(buf!==null){ buf.push(ln); }
+  }
+  return buf ? buf.join('\n') : null;
+}
+/* Tolerant parse of one block: neutralises ESPHome custom tags (!secret, !lambda…) */
+function _parseBlock(block){
+  if(!block) return null;
+  const safe = block.replace(/!\s*[A-Za-z_][\w-]*/g, '');  // drop "!secret" etc., keep the value
+  try{ return jsyaml.load(safe); }catch(e){ return null; }
+}
+
 function doImport(){
-  const text=$('#imp-area').value; let doc;
-  try{ doc=jsyaml.load(text); }catch(e){ toast(T('YAML-fout: ','YAML error: ')+e.message); return; }
-  if(!doc||typeof doc!=='object'){ toast(T('Niets bruikbaars gevonden','Nothing usable found')); return; }
+  const text=$('#imp-area').value;
+  if(!text || !text.trim()){ toast(T('Niets bruikbaars gevonden','Nothing usable found')); return; }
+  // parse only the blocks the studio understands; everything else is ignored
+  const doc={};
+  ['font','color','sensor','text_sensor'].forEach(k=>{
+    const parsed=_parseBlock(_extractTopBlock(text,k));
+    if(parsed && Array.isArray(parsed[k])) doc[k]=parsed[k];
+  });
+  if(!doc.font && !doc.color && !doc.sensor && !doc.text_sensor){
+    toast(T('Geen font/color/sensor-blok gevonden','No font/color/sensor block found')); return;
+  }
   const p=profile(); let n=0;
   if(Array.isArray(doc.font)){ p.fonts=doc.font.map(parseFont); n+=p.fonts.length; }
   if(Array.isArray(doc.color)){ p.colors=doc.color.map(parseColor); n+=p.colors.length; }

@@ -1,3 +1,6 @@
+## 2.4.2
+- **YAML importeren** negeert nu alles wat de studio niet kent: plak gerust een complete ESPHome-config (met `esphome:`, `wifi:`, `api:`, `!secret`-tags, de display-lambda, enz.). Alleen `font:`, `color:` en `homeassistant`-`sensor:`/`text_sensor:` worden ingelezen — de rest wordt stil overgeslagen. Eerder liep de import vast op o.a. `!secret`-tags.
+
 ## 2.4.1
 - **Rechthoek**: "verhouding vergrendelen"-optie toegevoegd; bij her-aanvinken reset naar 1:1 (vierkant)
 - **Driehoek**: reset nu ook naar 1:1 bij her-aanvinken van de lock (net als de cirkel)
