@@ -77,7 +77,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 /* ---------- App shell ---------- */
 #app {
   display: grid;
-  grid-template-rows: 46px 1fr;
+  grid-template-rows: 56px 1fr;   /* top bar matches HA's header height */
   grid-template-columns: 240px 1fr 320px;
   grid-template-areas:
     "top top top"
@@ -186,12 +186,12 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
    lines up exactly with the canvas toolbar (grid/snap bar, also 40px). */
 #left > .section:first-child > h3,
 #right > .section:first-child > h3 {
-  height: 40px; padding-top: 0; padding-bottom: 0;
+  height: 39px; padding-top: 0; padding-bottom: 0;   /* +1px border = 40px, matches the canvas toolbar */
 }
 .section .body { padding: 0 12px 12px; }
 
 /* palette */
-.palette { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 0 12px 12px; }
+.palette { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 12px; }
 .tool {
   background: var(--panel-2); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 10px 8px; cursor: pointer;

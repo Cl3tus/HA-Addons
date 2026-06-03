@@ -1,3 +1,9 @@
+## 1.9.2
+- Topbalk verhoogd naar 56px zodat hij gelijk loopt met de HA-header
+- Scheidingslijn onder "Add elements" 1px gecorrigeerd (39px + rand = exact gelijk aan de toolbar)
+- Element-knoppen (palet) iets lager geplaatst met wat ademruimte boven
+- Bestandsbeheer-header ook 56px voor consistentie
+
 ## 1.9.1
 - De scheidingslijn onder "Elementen toevoegen / Add elements" (links) lijnt nu exact uit met de canvas-toolbar (raster/snap-balk): de eerste sectie-header van de zijpanelen is 40px hoog, gelijk aan de toolbar. Werkt in dark én light
 
