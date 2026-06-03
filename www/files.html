@@ -266,10 +266,6 @@
     <div class="topbar-sep"></div>
     <nav id="fe-breadcrumb"></nav>
     <div class="topbar-spacer"></div>
-    <div id="samba-wrap">
-      <span class="mdi mdi-microsoft-windows"></span>
-      <span id="samba-badge"></span>
-    </div>
     <button class="btn ghost sm" data-lang-toggle onclick="toggleLang()" title="Switch language">EN</button>
     <a href="index.html" class="btn ghost sm">← <span data-i18n="Terug naar editor">Terug naar editor</span></a>
   </header>
@@ -339,6 +335,8 @@
       <span class="mdi mdi-file-edit-outline" style="color:var(--accent);font-size:18px"></span>
       <b id="fe-editor-name"></b>
       <span id="fe-editor-dirty"></span>
+      <button class="btn ghost sm" id="fe-editor-undo" title="Undo (Ctrl+Z)" disabled>↶</button>
+      <button class="btn ghost sm" id="fe-editor-redo" title="Redo (Ctrl+Y)" disabled>↷</button>
       <button class="btn primary sm" id="fe-editor-save" data-i18n="Opslaan">Opslaan</button>
       <button class="btn ghost sm" id="fe-editor-close">✕</button>
     </header>
@@ -352,8 +350,8 @@
 <!-- Toast -->
 <div class="toast" id="fe-toast"></div>
 
-<script src="files.js?v=1.6.0"></script>
-<script src="lang.js?v=1.6.0"></script>
-<script src="theme.js?v=1.6.0"></script>
+<script src="files.js?v=1.7.0"></script>
+<script src="lang.js?v=1.7.0"></script>
+<script src="theme.js?v=1.7.0"></script>
 </body>
 </html>

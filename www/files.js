@@ -53,19 +53,6 @@ async function apiUpload(path, files) {
 
 // ---------------------------------------------------------------- SAMBA info
 
-async function loadSambaInfo() {
-  try {
-    const d    = await fetch('api/info').then(r => r.json());
-    const slug = d.samba_slug || '';
-    const wrap = $('#samba-wrap');
-    const badge = $('#samba-badge');
-    if (wrap && badge && slug) {
-      badge.textContent = `\\\\<HA-IP>\\addon_configs\\${slug}`;
-      wrap.style.display = 'flex';
-    }
-  } catch { /* ignore */ }
-}
-
 function _t(nl, en) { return (window.t ? window.t(nl, en) : nl); }
 
 // ---------------------------------------------------------------- text editor
@@ -98,6 +85,46 @@ async function apiWrite(path, content) {
 
 let _editPath = null;
 let _editClean = '';
+let _undoStack = [], _redoStack = [], _editPrev = '', _lastPush = 0;
+
+function _refreshUndoButtons() {
+  $('#fe-editor-undo').disabled = _undoStack.length === 0;
+  $('#fe-editor-redo').disabled = _redoStack.length === 0;
+}
+
+// Called on every input — pushes coalesced snapshots onto the undo stack
+function _recordEdit() {
+  const now = Date.now();
+  if (now - _lastPush > 400 && _editPrev !== $('#fe-editor-area').value) {
+    _undoStack.push(_editPrev);
+    if (_undoStack.length > 200) _undoStack.shift();
+    _redoStack = [];
+    _lastPush = now;
+  }
+  _editPrev = $('#fe-editor-area').value;
+  $('#fe-editor-dirty').textContent = editorDirty() ? '●' : '';
+  _refreshUndoButtons();
+}
+
+function editorUndo() {
+  if (!_undoStack.length) return;
+  const area = $('#fe-editor-area');
+  _redoStack.push(area.value);
+  const val = _undoStack.pop();
+  area.value = val; _editPrev = val; _lastPush = 0;
+  $('#fe-editor-dirty').textContent = editorDirty() ? '●' : '';
+  _refreshUndoButtons();
+}
+
+function editorRedo() {
+  if (!_redoStack.length) return;
+  const area = $('#fe-editor-area');
+  _undoStack.push(area.value);
+  const val = _redoStack.pop();
+  area.value = val; _editPrev = val; _lastPush = 0;
+  $('#fe-editor-dirty').textContent = editorDirty() ? '●' : '';
+  _refreshUndoButtons();
+}
 
 async function openEditor(name) {
   const path = entryPath(name);
@@ -105,9 +132,11 @@ async function openEditor(name) {
     const content = await apiRead(path);
     _editPath  = path;
     _editClean = content;
+    _undoStack = []; _redoStack = []; _editPrev = content; _lastPush = 0;
     $('#fe-editor-name').textContent = path;
     $('#fe-editor-area').value = content;
     $('#fe-editor-dirty').textContent = '';
+    _refreshUndoButtons();
     $('#fe-editor-back').classList.add('open');
     $('#fe-editor-area').focus();
   } catch (e) {
@@ -536,7 +565,6 @@ const fmtSize = b => b < 1024 ? b + ' B'
 // ---------------------------------------------------------------- Init
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadSambaInfo();
   navigate('');
 
   $('#btn-theme-fe').onclick = () => window.haTheme?.toggle();
@@ -545,22 +573,24 @@ document.addEventListener('DOMContentLoaded', () => {
   // Text editor
   $('#fe-editor-save').onclick  = saveEditor;
   $('#fe-editor-close').onclick = closeEditor;
+  $('#fe-editor-undo').onclick  = editorUndo;
+  $('#fe-editor-redo').onclick  = editorRedo;
   const area = $('#fe-editor-area');
-  area.addEventListener('input', () => {
-    $('#fe-editor-dirty').textContent = editorDirty() ? '●' : '';
-  });
+  area.addEventListener('input', _recordEdit);
   area.addEventListener('keydown', ev => {
+    const ctrl = ev.ctrlKey || ev.metaKey;
     // Ctrl/Cmd+S saves
-    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') {
-      ev.preventDefault(); saveEditor(); return;
-    }
+    if (ctrl && ev.key.toLowerCase() === 's') { ev.preventDefault(); saveEditor(); return; }
+    // Undo / Redo (use our own stack so the buttons and shortcuts agree)
+    if (ctrl && ev.key.toLowerCase() === 'z' && !ev.shiftKey) { ev.preventDefault(); editorUndo(); return; }
+    if (ctrl && (ev.key.toLowerCase() === 'y' || (ev.shiftKey && ev.key.toLowerCase() === 'z'))) { ev.preventDefault(); editorRedo(); return; }
     // Tab inserts two spaces
     if (ev.key === 'Tab') {
       ev.preventDefault();
       const s = area.selectionStart, e = area.selectionEnd;
       area.value = area.value.slice(0, s) + '  ' + area.value.slice(e);
       area.selectionStart = area.selectionEnd = s + 2;
-      $('#fe-editor-dirty').textContent = editorDirty() ? '●' : '';
+      _recordEdit();
     }
     // Escape closes the editor
     if (ev.key === 'Escape') { ev.preventDefault(); closeEditor(); }

@@ -80,7 +80,9 @@ function seedProfile(name='My display'){
 /* ---------------- state ---------------- */
 var state = { profiles:[], current:null }; // var zodat window.state toegankelijk is voor theme.js
 let undoStack = [], redoStack = [];
-let selectedId = null;
+let selectedId = null;             // primary selection (drives the inspector)
+let selectedIds = new Set();       // all selected element ids (multi-select)
+let _layerAnchor = null;           // anchor id for shift-range select in layers
 let zoom = 1;
 let HA_STATES=null, HA_LIVE=false;   // live HA data (add-on build)
 let shiftDown = false; // hold Shift to constrain line endpoints to 45° steps
@@ -258,9 +260,52 @@ function initStage(){
   gridLayer = new Konva.Layer({listening:false});
   contentLayer = new Konva.Layer();
   stage.add(gridLayer); stage.add(contentLayer);
-  stage.on('click tap', e=>{ if(e.target===stage){ select(null); } });
+  setupMarquee();
   applyZoom();
 }
+
+/* #11 — rubber-band selection: click+drag on empty canvas selects elements it touches */
+let _marqueeRect=null, _marqueeStart=null;
+function setupMarquee(){
+  stage.on('mousedown touchstart', e=>{
+    if(e.target!==stage) return;                 // only when starting on empty area
+    const e2=e.evt;
+    const add = e2 && (e2.ctrlKey||e2.metaKey||e2.shiftKey);
+    _marqueeStart=stage.getRelativePointerPosition();
+    if(!_marqueeStart) return;
+    _marqueeBase = add ? new Set(selectedIds) : new Set();
+    _marqueeRect=new Konva.Rect({x:_marqueeStart.x,y:_marqueeStart.y,width:0,height:0,
+      stroke:'#e8a13a',dash:[4,3],fill:'rgba(232,161,58,0.08)',listening:false});
+    contentLayer.add(_marqueeRect); contentLayer.draw();
+  });
+  stage.on('mousemove touchmove', ()=>{
+    if(!_marqueeStart||!_marqueeRect) return;
+    const p=stage.getRelativePointerPosition(); if(!p) return;
+    _marqueeRect.setAttrs({x:Math.min(_marqueeStart.x,p.x), y:Math.min(_marqueeStart.y,p.y),
+      width:Math.abs(p.x-_marqueeStart.x), height:Math.abs(p.y-_marqueeStart.y)});
+    contentLayer.batchDraw();
+  });
+  const finish=()=>{
+    if(!_marqueeStart||!_marqueeRect) return;
+    const box=_marqueeRect.getClientRect({relativeTo:contentLayer});
+    _marqueeRect.destroy(); _marqueeRect=null; const start=_marqueeStart; _marqueeStart=null;
+    if(box.width<4 && box.height<4){ // treated as a plain click on empty canvas
+      if(!_marqueeBase || !_marqueeBase.size) select(null);
+      contentLayer.draw(); return;
+    }
+    const hit=new Set(_marqueeBase||[]);
+    els().forEach(el=>{
+      if(el.visible===false) return;
+      const n=contentLayer.getChildren(x=>x._elId===el.id)[0]; if(!n) return;
+      const b=n.getClientRect({relativeTo:contentLayer});
+      const overlap = !(b.x>box.x+box.width || b.x+b.width<box.x || b.y>box.y+box.height || b.y+b.height<box.y);
+      if(overlap) hit.add(el.id);
+    });
+    setSelection([...hit], [...hit][hit.size-1]);
+  };
+  stage.on('mouseup touchend', finish);
+}
+let _marqueeBase=null;
 function applyZoom(){
   const p=profile();
   $('#konva-host').style.width = p.device.w+'px';
@@ -328,12 +373,17 @@ function buildNode(el){
     }
   }
   else if(E.type==='triangle'){
-    node = new Konva.Line({points:flatPts(triVerts(E)), closed:true,
+    // local points centred on (0,0); position/rotate via the node so the
+    // transformer handles (resize + rotate) work naturally
+    const w=E.w, h=E.h;
+    node = new Konva.Line({points:[0,-h/2, -w/2,h/2, w/2,h/2], closed:true,
+      x:E.x, y:E.y, rotation:E.rotation||0,
       stroke:E.filled?undefined:color.css, strokeWidth:1, hitStrokeWidth:10,
       fill:E.filled?color.css:'rgba(0,0,0,0.001)'});
   }
   else if(E.type==='circle'){
-    node = new Konva.Circle({x:E.x,y:E.y,radius:E.r,
+    const rx=(E.rx!=null?E.rx:(E.r!=null?E.r:40)), ry=(E.ry!=null?E.ry:(E.r!=null?E.r:40));
+    node = new Konva.Ellipse({x:E.x,y:E.y,radiusX:rx,radiusY:ry,
       stroke:E.filled?undefined:color.css, strokeWidth:1,
       fill:E.filled?color.css:'rgba(0,0,0,0.001)'});
   }
@@ -393,18 +443,27 @@ function buildNode(el){
   if(!node) return null;
   node._elId = el.id;
   node.draggable(true);
-  node.on('mousedown touchstart', ()=>selectNode(el, node));
-  node.on('dragstart', ()=>{ pushUndo(); if(selectionVisual) selectionVisual.hide(); });
+  node.on('mousedown touchstart', (ev)=>{
+    const e=ev && ev.evt;
+    if(e && (e.ctrlKey||e.metaKey)){ ev.cancelBubble=true; toggleSelect(el.id); return; }
+    if(isSelected(el.id) && selectedIds.size>1) return;   // keep group for drag
+    selectNode(el, node);
+  });
+  node.on('dragstart', ()=>{ pushUndo(); if(selectionVisual) selectionVisual.hide();
+    // remember start centre for group move (apply same delta to other selected els)
+    _groupDrag = (selectedIds.size>1 && isSelected(el.id)) ? {ox:el.x, oy:el.y} : null;
+  });
   node.on('dragend', ()=>{
     // translate node movement back to element anchor coords
     if(el.type==='line'){
       const dx=node.x(), dy=node.y();
       el.x+=dx; el.y+=dy; el.x2+=dx; el.y2+=dy; node.position({x:0,y:0});
-    } else if(el.type==='triangle' || (el.type==='rect' && el.rotation)){
-      // closed-line nodes: node.x()/y() is the drag delta
+    } else if(el.type==='rect' && el.rotation){
+      // rotated rect is an absolute closed-line: node.x()/y() is the drag delta
       const dx=node.x(), dy=node.y();
       el.x=Math.round(el.x+dx); el.y=Math.round(el.y+dy); node.position({x:0,y:0});
-    } else if(el.type==='rect'||el.type==='circle'){
+    } else if(el.type==='triangle' || el.type==='rect' || el.type==='circle'){
+      // triangle/ellipse/rect use node.x()/y() as their origin/centre directly
       el.x=Math.round(node.x()); el.y=Math.round(node.y());
     } else if(el.type==='graph' || el.type==='clock'){
       // groups whose children use absolute coords: node.x()/y() is the drag delta
@@ -416,10 +475,23 @@ function buildNode(el){
       el.x=Math.round(node.x()-ox); el.y=Math.round(node.y()-oy);
     }
     if($('#tg-snap').checked) snapEl(el);
+    // group move: shift the other selected elements by the same delta
+    if(_groupDrag){
+      const dx=el.x-_groupDrag.ox, dy=el.y-_groupDrag.oy; _groupDrag=null;
+      if(dx||dy){
+        els().forEach(o=>{
+          if(o.id!==el.id && selectedIds.has(o.id)){
+            o.x+=dx; o.y+=dy;
+            if(o.x2!=null){ o.x2+=dx; o.y2+=dy; }
+          }
+        });
+      }
+    }
     afterChange();
   });
   return node;
 }
+let _groupDrag=null;
 function snapEl(el){
   const g=gridStep();
   if(el.type==='line'){
@@ -462,13 +534,18 @@ function attachSelection(el, node){
   if(transformer){ try{transformer.destroy();}catch(e){} transformer=null; }
   if(selectionVisual){ try{selectionVisual.destroy();}catch(e){} selectionVisual=null; }
   if(!node) return;
-  if((el.type==='rect'&&!el.rotation)||el.type==='circle'){
-    transformer=new Konva.Transformer({rotateEnabled:false,borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:7});
+  if((el.type==='rect'&&!el.rotation) || el.type==='circle' || el.type==='triangle'){
+    const keepRatio = el.type==='circle' ? (el.lockAspect!==false) : false;
+    const rotateEnabled = el.type==='triangle';
+    transformer=new Konva.Transformer({rotateEnabled, keepRatio,
+      borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:7});
     contentLayer.add(transformer); transformer.nodes([node]);
     node.off('transformend.sel'); node.on('transformend.sel',()=>{ pushUndo();
-      if(el.type==='rect'){ el.w=Math.round(node.width()*node.scaleX()); el.h=Math.round(node.height()*node.scaleY()); }
-      else { el.r=Math.round(node.radius()*node.scaleX()); }
-      node.scaleX(1); node.scaleY(1); el.x=Math.round(node.x()); el.y=Math.round(node.y()); afterChange(); });
+      const sx=node.scaleX(), sy=node.scaleY();
+      if(el.type==='rect'){ el.w=Math.round(node.width()*sx); el.h=Math.round(node.height()*sy); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      else if(el.type==='circle'){ el.rx=Math.max(2,Math.round(node.radiusX()*sx)); el.ry=Math.max(2,Math.round(node.radiusY()*sy)); delete el.r; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      else if(el.type==='triangle'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      node.scaleX(1); node.scaleY(1); afterChange(); });
   } else if(el.type==='graph'){
     // outline + bottom-right resize handle (keeps top-left anchored)
     const g=new Konva.Group();
@@ -517,12 +594,20 @@ function attachSelection(el, node){
     contentLayer.add(selectionVisual);
   }
 }
-/* lightweight select used when clicking a node on the canvas (no full rebuild) */
+/* lightweight single-select used when clicking a node on the canvas (no full rebuild) */
 function selectNode(el, node){
-  selectedId=el.id;
+  selectedId=el.id; selectedIds=new Set([el.id]); _layerAnchor=el.id;
   attachSelection(el, node);
   contentLayer.draw();
   renderLayers(); renderInspector();
+}
+
+/* dashed, non-interactive outline around a node (used to show extra multi-selected items) */
+function outlineNode(node){
+  const b=node.getClientRect({relativeTo:contentLayer});
+  const o=new Konva.Rect({x:b.x-3,y:b.y-3,width:b.width+6,height:b.height+6,
+    stroke:'#e8a13a',strokeWidth:1,dash:[3,3],opacity:.8,listening:false});
+  contentLayer.add(o);
 }
 
 function renderCanvas(){
@@ -531,8 +616,13 @@ function renderCanvas(){
   contentLayer.destroyChildren();
   transformer=null; selectionVisual=null;
   els().forEach(el=>{ const n=buildNode(el); if(n) contentLayer.add(n); });
-  const sel=selected();
-  if(sel){ const selNode=contentLayer.getChildren(n=>n._elId===selectedId)[0]; if(selNode) attachSelection(sel, selNode); }
+  const ids=[...selectedIds];
+  if(ids.length===1){
+    const sel=selected(); const selNode=contentLayer.getChildren(n=>n._elId===selectedId)[0];
+    if(sel && selNode) attachSelection(sel, selNode);
+  } else if(ids.length>1){
+    ids.forEach(id=>{ const n=contentLayer.getChildren(x=>x._elId===id)[0]; if(n) outlineNode(n); });
+  }
   contentLayer.draw();
   if($('#tg-eink').checked) renderEink(); else $('#stage-frame').classList.remove('eink-on');
 }
@@ -579,7 +669,34 @@ function hexToRgb(h){ const m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exe
 /* ============================================================
    SELECTION + LAYERS
    ============================================================ */
-function select(id){ selectedId=id; renderCanvas(); renderLayers(); renderInspector(); }
+function isSelected(id){ return selectedIds.has(id); }
+function setSelection(ids, primary){
+  selectedIds=new Set(ids);
+  selectedId = (primary!=null && selectedIds.has(primary)) ? primary
+             : (ids.length ? ids[ids.length-1] : null);
+  renderCanvas(); renderLayers(); renderInspector();
+}
+function select(id){
+  if(id==null){ setSelection([],null); }
+  else { setSelection([id], id); _layerAnchor=id; }
+}
+function toggleSelect(id){
+  const s=new Set(selectedIds);
+  if(s.has(id)) s.delete(id); else s.add(id);
+  const arr=[...s];
+  setSelection(arr, s.has(id)?id:(arr[arr.length-1]??null));
+  _layerAnchor=id;
+}
+/* layer click with modifier support (#9 ctrl-toggle, #10 shift-range) */
+function layerClick(id, e){
+  if(e && e.shiftKey && _layerAnchor){
+    const order=els().slice().reverse().map(x=>x.id);   // displayed (top→bottom) order
+    const a=order.indexOf(_layerAnchor), b=order.indexOf(id);
+    if(a>=0 && b>=0){ const lo=Math.min(a,b), hi=Math.max(a,b); setSelection(order.slice(lo,hi+1), id); return; }
+  }
+  if(e && (e.ctrlKey||e.metaKey)){ toggleSelect(id); return; }
+  select(id);
+}
 
 function renderLayers(){
   const box=$('#layers'); box.innerHTML='';
@@ -587,16 +704,18 @@ function renderLayers(){
   // top of list = top of z-order (draw last) -> reverse
   els().slice().reverse().forEach(el=>{
     const row=document.createElement('div');
-    row.className='layer'+(el.id===selectedId?' sel':'')+(el.visible===false?' hidden':'');
+    row._elId=el.id;
+    row.className='layer'+(isSelected(el.id)?' sel':'')+(el.visible===false?' hidden':'');
     row.innerHTML=`<span class="ltype">${typeGlyph(el.type)}</span>
-      <span class="lname" title="Dubbelklik om te hernoemen">${el.name||el.type}</span>
-      <span class="lvis" title="Zichtbaarheid">${el.visible===false?'🚫':'👁'}</span>`;
+      <span class="lname" title="${T('Dubbelklik om te hernoemen','Double-click to rename')}">${el.name||el.type}</span>
+      <span class="lvis" title="${T('Zichtbaarheid','Visibility')}">${el.visible===false?'🚫':'👁'}</span>`;
     const nameEl=row.querySelector('.lname');
     let clickTimer=null;
-    nameEl.onclick=()=>{ if(clickTimer) return; clickTimer=setTimeout(()=>{ clickTimer=null; select(el.id); }, 220); };
+    nameEl.onclick=(e)=>{ if(clickTimer) return; clickTimer=setTimeout(()=>{ clickTimer=null; layerClick(el.id, e); }, 220); };
     nameEl.ondblclick=(e)=>{ e.stopPropagation(); if(clickTimer){ clearTimeout(clickTimer); clickTimer=null; } startRename(nameEl, el); };
-    row.querySelector('.ltype').onclick=()=>select(el.id);
+    row.querySelector('.ltype').onclick=(e)=>layerClick(el.id, e);
     row.querySelector('.lvis').onclick=(e)=>{e.stopPropagation(); pushUndo(); el.visible=el.visible===false?true:false; afterChange();};
+    row.oncontextmenu=(e)=>{ e.preventDefault(); if(!isSelected(el.id)) select(el.id); showMenu(e.clientX,e.clientY, elItems(el)); };
     box.appendChild(row);
   });
 }
@@ -636,7 +755,7 @@ function addElement(type, pos){
   } else if(type==='circle'){
     Object.assign(base,{ x:cx,y:cy, r:40, filled:false, colorId:'color_text', anchor:undefined });
   } else if(type==='triangle'){
-    Object.assign(base,{ x:cx,y:cy, w:120,h:100, rotation:0, flipV:false, filled:false, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx,y:cy, w:120,h:100, rotation:0, filled:false, colorId:'color_text', anchor:undefined });
   } else if(type==='widget'){
     // convenience: stamp an icon + a value pair (two independent elements)
     const icon={...base, id:uid(), type:'icon', name:'Widget-icoon', fontId:'font_mdi_large',
@@ -666,10 +785,26 @@ function addElement(type, pos){
   els().push(base); selectedId=base.id; afterChange();
 }
 function elName(t){ const n=els().filter(e=>e.type===t).length+1;
-  return ({text:'Tekst',icon:'Icoon',line:'Lijn',rect:'Rechthoek',circle:'Cirkel',triangle:'Driehoek',wifi:'WiFi',clock:'Klok',graph:'Grafiek'}[t]||'Element')+' '+n; }
+  const m={text:T('Tekst','Text'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
+           circle:T('Cirkel','Circle'),triangle:T('Driehoek','Triangle'),wifi:'WiFi',clock:T('Klok','Clock'),graph:T('Grafiek','Graph')};
+  return (m[t]||'Element')+' '+n; }
 
-function deleteSel(){ if(!selectedId) return; pushUndo(); profile().elements=els().filter(e=>e.id!==selectedId); selectedId=null; afterChange(); }
-function dupSel(){ const e=selected(); if(!e) return; pushUndo(); const cp=JSON.parse(JSON.stringify(e)); cp.id=uid(); cp.x+=14; cp.y+=14; if(cp.x2!=null){cp.x2+=14;cp.y2+=14;} cp.name=(e.name||e.type)+' kopie'; els().push(cp); selectedId=cp.id; afterChange(); }
+function deleteSel(){
+  const ids = selectedIds.size ? selectedIds : (selectedId?new Set([selectedId]):null);
+  if(!ids||!ids.size) return;
+  pushUndo(); profile().elements=els().filter(e=>!ids.has(e.id));
+  selectedIds=new Set(); selectedId=null; afterChange();
+}
+function dupSel(){
+  const ids = selectedIds.size ? [...selectedIds] : (selectedId?[selectedId]:[]);
+  if(!ids.length) return;
+  pushUndo(); const arr=els(); const newIds=[];
+  ids.forEach(id=>{ const e=arr.find(x=>x.id===id); if(!e) return;
+    const cp=JSON.parse(JSON.stringify(e)); cp.id=uid(); cp.x+=14; cp.y+=14;
+    if(cp.x2!=null){cp.x2+=14;cp.y2+=14;} cp.name=(e.name||e.type)+' '+T('kopie','copy');
+    arr.push(cp); newIds.push(cp.id); });
+  selectedIds=new Set(newIds); selectedId=newIds[newIds.length-1]||null; afterChange();
+}
 
 /* point 7: align the selected element to the canvas edges/centre.
    Works on the element's rendered bounding box, then shifts the element by a delta. */
@@ -698,6 +833,17 @@ function alignSel(how){
 function renderInspector(){
   const host=$('#inspector'); const el=selected();
   if(!el){ host.innerHTML='<div class="inspector-empty">'+T('Selecteer een element op het canvas','Select an element on the canvas')+'<br>'+T('of voeg er een toe.','or add a new one.')+'</div>'; return; }
+  if(selectedIds.size>1){
+    host.innerHTML=`<div class="insp-group"><h4>${T('Selectie','Selection')}</h4>
+      <div class="hint" style="margin-bottom:10px">${selectedIds.size} ${T('elementen geselecteerd','elements selected')}</div>
+      <div class="row tight">
+        <button class="btn sm" id="msel-dup">⧉ ${T('Dupliceren','Duplicate')}</button>
+        <button class="btn ghost sm danger" id="msel-del">🗑 ${T('Verwijderen','Delete')}</button>
+      </div>
+      <div class="hint" style="margin-top:8px">${T('Sleep een element om de hele selectie te verplaatsen.','Drag an element to move the whole selection.')}</div></div>`;
+    $('#msel-dup').onclick=dupSel; $('#msel-del').onclick=deleteSel;
+    return;
+  }
   let h='';
   h+=g('Element',`
     <div class="row"><div><label class="fld">Naam</label><input data-k="name" type="text" value="${attr(el.name)}"></div></div>`);
@@ -713,15 +859,17 @@ function renderInspector(){
       <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
       <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
   } else if(el.type==='circle'){
+    const rx=(el.rx!=null?el.rx:(el.r!=null?el.r:40)), ry=(el.ry!=null?el.ry:(el.r!=null?el.r:40));
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
-      <div class="row"><div><label class="fld">${T('Straal','Radius')}</label><input data-k="r" type="number" value="${el.r}"></div></div>
-      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
+      <div class="row"><div><label class="fld">${T('Straal X','Radius X')}</label><input data-k="rx" type="number" value="${rx}"></div><div><label class="fld">${T('Straal Y','Radius Y')}</label><input data-k="ry" type="number" value="${ry}"></div></div>
+      <label class="toggle"><input type="checkbox" data-k="lockAspect" ${el.lockAspect!==false?'checked':''}> ${T('Rond houden (vaste verhouding)','Keep circular (lock ratio)')}</label>
+      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>
+      <div class="hint">${T('Ovaal wordt geëxporteerd als veelhoek-benadering (ESPHome heeft geen ellipse).','An oval is exported as a polygon approximation (ESPHome has no ellipse).')}</div>`);
   } else if(el.type==='triangle'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
       <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
       <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
-      <label class="toggle"><input type="checkbox" data-k="flipV" ${el.flipV?'checked':''}> ${T('Ondersteboven','Upside down')}</label>
       <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
   } else if(el.type==='graph'){
     h+=g('Positie & maat',`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
@@ -1077,7 +1225,19 @@ function drawStmt(el, indent){
     const fn=el.filled?'filled_triangle':'triangle';
     return `${I}it.${fn}(${v.join(', ')}, ${color});`;
   }
-  if(el.type==='circle'){ const fn=el.filled?'filled_circle':'circle'; return `${I}it.${fn}(${el.x}, ${el.y}, ${el.r}, ${color});`; }
+  if(el.type==='circle'){
+    const rx=(el.rx!=null?el.rx:(el.r!=null?el.r:40)), ry=(el.ry!=null?el.ry:(el.r!=null?el.r:40));
+    if(rx===ry){ const fn=el.filled?'filled_circle':'circle'; return `${I}it.${fn}(${el.x}, ${el.y}, ${rx}, ${color});`; }
+    // ellipse → polygon approximation (no native ESPHome ellipse)
+    const seg=48, pts=[];
+    for(let i=0;i<seg;i++){ const a=i/seg*2*Math.PI; pts.push([Math.round(el.x+rx*Math.cos(a)), Math.round(el.y+ry*Math.sin(a))]); }
+    const out=[];
+    for(let i=0;i<seg;i++){ const p=pts[i], q=pts[(i+1)%seg];
+      out.push(el.filled
+        ? `${I}it.filled_triangle(${el.x}, ${el.y}, ${p[0]}, ${p[1]}, ${q[0]}, ${q[1]}, ${color});`
+        : `${I}it.line(${p[0]}, ${p[1]}, ${q[0]}, ${q[1]}, ${color});`); }
+    return out.join('\n');
+  }
   if(el.type==='graph') return graphDrawCode(el, I);
   if(el.type==='wifi') return wifiCode(el, I, color, anchor);
   if(el.type==='clock') return clockCode(el, I, color, anchor);
@@ -1807,14 +1967,45 @@ function applyTheme(){
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1800); }
 
 /* point 2: right-click context menu on the canvas */
-function setupContextMenu(){
+function hideCtxMenu(){ $('#ctxmenu').classList.remove('open'); }
+
+/* context-menu items for a given element (used by canvas + layers) */
+function elItems(el){
+  const items=[];
+  items.push(['✎ '+T('Hernoemen','Rename'),'',()=>{ const row=[...document.querySelectorAll('#layers .layer')].find(r=>r._elId===el.id);
+    if(row){ const span=row.querySelector('.lname'); if(span) startRename(span, el); } else { select(el.id); } }]);
+  items.push(['⧉ '+T('Dupliceren','Duplicate'),'Ctrl+D',()=>{ selectedId=el.id; dupSel(); }]);
+  items.push([el.visible===false?('👁 '+T('Tonen','Show')):('🚫 '+T('Verbergen','Hide')),'',()=>{ pushUndo(); el.visible=el.visible===false?true:false; afterChange(); }]);
+  items.push(['↑ '+T('Naar voren','Bring forward'),'',()=>reorder(el,1)]);
+  items.push(['↓ '+T('Naar achteren','Send backward'),'',()=>reorder(el,-1)]);
+  items.push(['sep']);
+  items.push(['🗑 '+T('Verwijderen','Delete'),'Del',()=>{ selectedId=el.id; deleteSel(); },'danger']);
+  return items;
+}
+
+function showMenu(x,y,items){
   const menu=$('#ctxmenu');
-  const hide=()=>menu.classList.remove('open');
-  window.addEventListener('click', hide);
-  window.addEventListener('scroll', hide, true);
+  menu.innerHTML = items.map(it=>{
+    if(it[0]==='sep') return '<div class="sep"></div>';
+    const cls=it[3]?` class="${it[3]}"`:'';
+    const k=it[1]?`<span class="k">${it[1]}</span>`:'';
+    return `<button${cls} data-act>${it[0]}${k}</button>`;
+  }).join('');
+  const acts=items.filter(x=>x[0]!=='sep');
+  Array.from(menu.querySelectorAll('[data-act]')).forEach((b,i)=>{
+    const fn=acts[i] && acts[i][2];
+    b.onclick=()=>{ hideCtxMenu(); if(fn) fn(); };
+  });
+  menu.style.left=Math.min(x,window.innerWidth-200)+'px';
+  menu.style.top=Math.min(y,window.innerHeight-240)+'px';
+  menu.classList.add('open');
+}
+
+function setupContextMenu(){
+  window.addEventListener('click', hideCtxMenu);
+  window.addEventListener('scroll', hideCtxMenu, true);
   $('#stage-wrap').addEventListener('contextmenu', e=>{
     e.preventDefault();
-    // figure out which element is under the cursor (topmost), else use current selection
     let hitId=null;
     if(stage){ const pos=stage.getPointerPosition();
       const shape=pos && stage.getIntersection(pos);
@@ -1822,30 +2013,8 @@ function setupContextMenu(){
     }
     if(hitId){ selectedId=hitId; const node=contentLayer.getChildren(n=>n._elId===hitId)[0]; attachSelection(selected(),node); contentLayer.draw(); renderLayers(); renderInspector(); }
     const el=selected();
-    const items=[];
-    if(el){
-      items.push(['⧉ Dupliceren','Ctrl+D',dupSel]);
-      items.push([el.visible===false?'👁 Tonen':'🚫 Verbergen','',()=>{ pushUndo(); el.visible=el.visible===false?true:false; afterChange(); }]);
-      items.push(['↑ Naar voren','',()=>reorder(el,1)]);
-      items.push(['↓ Naar achteren','',()=>reorder(el,-1)]);
-      items.push(['sep']);
-      items.push(['🗑 Verwijderen','Del',deleteSel,'danger']);
-    } else {
-      items.push(['Niets geselecteerd','',null]);
-    }
-    menu.innerHTML = items.map(it=>{
-      if(it[0]==='sep') return '<div class="sep"></div>';
-      const cls=it[3]?` class="${it[3]}"`:'';
-      const k=it[1]?`<span class="k">${it[1]}</span>`:'';
-      return `<button${cls} data-act>${it[0]}${k}</button>`;
-    }).join('');
-    Array.from(menu.querySelectorAll('[data-act]')).forEach((b,i)=>{
-      const fn=items.filter(x=>x[0]!=='sep')[i] && items.filter(x=>x[0]!=='sep')[i][2];
-      b.onclick=()=>{ hide(); if(fn) fn(); };
-    });
-    menu.style.left=Math.min(e.clientX,window.innerWidth-190)+'px';
-    menu.style.top=Math.min(e.clientY,window.innerHeight-220)+'px';
-    menu.classList.add('open');
+    if(el) showMenu(e.clientX,e.clientY, elItems(el));
+    else showMenu(e.clientX,e.clientY, [[T('Niets geselecteerd','Nothing selected'),'',null]]);
   });
 }
 function reorder(el, dir){
@@ -1940,14 +2109,17 @@ function wire(){
     if(e.target.matches('input,textarea,select')) return;
     if((e.ctrlKey||e.metaKey)&&e.key==='z'){ e.preventDefault(); undo(); }
     else if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.shiftKey&&e.key==='Z'))){ e.preventDefault(); redo(); }
+    else if((e.ctrlKey||e.metaKey)&&e.key==='a'){ e.preventDefault(); setSelection(els().map(x=>x.id), null); }
     else if((e.ctrlKey||e.metaKey)&&e.key==='d'){ e.preventDefault(); dupSel(); }
     else if(e.key==='Delete'||e.key==='Backspace'){ deleteSel(); }
+    else if(e.key==='Escape'){ select(null); }
     else if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){ nudge(e); }
   });
 }
-function nudge(e){ const el=selected(); if(!el) return; e.preventDefault(); const d=e.shiftKey?10:1;
+function nudge(e){ if(!selectedIds.size) return; e.preventDefault(); const d=e.shiftKey?10:1;
   const dx=(e.key==='ArrowLeft'?-d:e.key==='ArrowRight'?d:0), dy=(e.key==='ArrowUp'?-d:e.key==='ArrowDown'?d:0);
-  el.x+=dx; el.y+=dy; if(el.x2!=null){el.x2+=dx;el.y2+=dy;} afterChange(); }
+  els().forEach(el=>{ if(selectedIds.has(el.id)){ el.x+=dx; el.y+=dy; if(el.x2!=null){el.x2+=dx;el.y2+=dy;} } });
+  afterChange(); }
 function fitZoom(){ const wrap=$('#stage-wrap'); const p=profile(); const avail=wrap.clientHeight-56; zoom=clamp(avail/p.device.h,0.3,2); applyZoom(); }
 
 /* ============================================================

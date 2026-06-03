@@ -1,3 +1,14 @@
+## 1.7.0
+- **Multi-select**: Ctrl/Cmd+klik op canvas én in de lagenlijst selecteert meerdere; Shift+klik in lagen selecteert een reeks; sleep op een leeg canvas trekt een selectiekader (rubber-band). Ctrl+A = alles. Sleep een geselecteerd element om de hele selectie te verplaatsen; Delete/Dupliceren werken op de hele selectie
+- **Lagen-rechtermuismenu**: hernoemen, dupliceren, tonen/verbergen, naar voren/achteren, verwijderen
+- **Ovaal**: cirkel heeft nu losse Straal X/Y; sleep-handvatten respecteren een nieuwe checkbox "Rond houden (vaste verhouding)". Ovaal exporteert als veelhoek-benadering (ESPHome heeft geen ellipse-primitief)
+- **Driehoek**: heeft nu sleep-handvatten (vergroten/verkleinen + roteren via de hoek-handle); "ondersteboven" verwijderd (rotatie volstaat)
+- **Vullen** werkt voor cirkel/ovaal, rechthoek en driehoek
+- **Tekst-editor** in bestandsbeheer: undo/redo-knoppen (en Ctrl+Z / Ctrl+Y)
+- Laag- en elementnamen + tooltips + menu's volgen nu de ingestelde taal (NL/EN)
+- SAMBA-pad-badge verwijderd uit de bestandsbeheerder
+- Topbalk "v1 · lambda generator" → "lambda generator"; scrollbars bij kleine vensters
+
 ## 1.6.0
 - **Driehoek-element** toegevoegd aan het palet: schaalbaar (breedte/hoogte), roteerbaar (0–360° schuifregelaar), omklapbaar (ondersteboven) en vulbaar. Exporteert als `it.triangle` / `it.filled_triangle`
 - **Rechthoek kan nu roteren** (schuifregelaar). Geroteerde rechthoeken exporteren als 4× `it.line` (omtrek) of 2× `it.filled_triangle` (gevuld)
