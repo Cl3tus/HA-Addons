@@ -9,6 +9,10 @@ Drag elements onto a paper-accurate canvas, bind them to live Home Assistant
 sensor values, preview the 1-bit (or tri-colour red) result, and copy the
 generated code straight into your ESPHome device config.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-Editor-Screenshot.png" alt="E-ink Studio editor — dark mode" width="100%">
+</p>
+
 ---
 
 ## ✨ What you can do
@@ -23,8 +27,7 @@ generated code straight into your ESPHome device config.
 - 🖤 **1-bit e-ink preview** — see exactly how it renders on a black/white or
   tri-colour panel.
 - 🔤 **Fonts & colours** — manage Google/local fonts and the tri-colour palette.
-- 🧩 **Value sources & scenarios** — map entities to placeholders, preview
-  different states.
+- 🧩 **Value sources** — map entities to placeholders and preview their states.
 - 📐 **Multi-select** — Ctrl/Shift-click and rubber-band selection to move,
   duplicate or delete groups at once.
 - 🗂️ **Built-in file manager** with a text editor (undo/redo) for the add-on
@@ -44,6 +47,44 @@ generated code straight into your ESPHome device config.
 4. Drag elements onto the canvas and bind each value element to a source.
 5. Click **&lt;/&gt; Generate YAML**, then **Copy** or **Download** and paste it
    into your ESPHome device config.
+
+---
+
+## 📸 Screenshots
+
+### Editor — light & dark theme
+
+The editor follows your Home Assistant theme automatically (or you can fix it in
+the options).
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-Editor-Screenshot-Lightmode.png" alt="E-ink Studio editor — light mode" width="100%">
+</p>
+
+### Built-in file manager
+
+Browse, upload, download, rename, move and delete the add-on storage — projects,
+fonts and profiles — straight from the sidebar.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-File-Manager-Screenshot1.png" alt="E-ink Studio file manager" width="100%">
+</p>
+
+### File manager — text editor
+
+A built-in text editor with undo/redo for tweaking YAML and config files in place.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-File-Manager-Editor.png" alt="E-ink Studio file manager — text editor" width="100%">
+</p>
+
+### File manager — font viewer
+
+Double-click any TTF/OTF/WOFF to preview the actual typeface before you use it.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-File-Manager-Font-Viewer.png" alt="E-ink Studio file manager — font viewer" width="100%">
+</p>
 
 ---
 

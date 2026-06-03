@@ -32,6 +32,38 @@ following Home Assistant, or fixed in the options.
 A built-in file manager (with a text editor) gives you access to the add-on
 storage, which is also reachable over SAMBA.
 
+## Screenshots
+
+**Editor — dark mode**
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-Editor-Screenshot.png" alt="Editor — dark mode" width="100%">
+</p>
+
+**Editor — light mode**
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-Editor-Screenshot-Lightmode.png" alt="Editor — light mode" width="100%">
+</p>
+
+**Built-in file manager**
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-File-Manager-Screenshot1.png" alt="File manager" width="100%">
+</p>
+
+**File manager — text editor**
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-File-Manager-Editor.png" alt="File manager — text editor" width="100%">
+</p>
+
+**File manager — font viewer**
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-File-Manager-Font-Viewer.png" alt="File manager — font viewer" width="100%">
+</p>
+
 [version-badge]: https://img.shields.io/github/v/release/Cl3tus/HA-Eink-Studio-App?label=version
 [maintained-badge]: https://img.shields.io/badge/maintained-yes-green.svg
 [aarch64-badge]: https://img.shields.io/badge/aarch64-yes-green.svg
