@@ -1,5 +1,9 @@
+## 1.8.2
+- **About-kaart op de Info-pagina** toegevoegd via `eink_studio/README.md` (zoals hassio-add-ons doen met hun `.README.j2`-template): titel, badges en een About-sectie. Dit verschijnt op het Info-tabblad van de add-on
+- DOCS.md (Documentation-tab) teruggezet naar de eerdere versie
+
 ## 1.8.1
-- Add-on documentatie (Documentation-tab) herschreven in hassio-addons-stijl met een duidelijke **About**-sectie, architectuur-badges, installatie, gebruik, voorbeeld-YAML, configuratie, opslag en support (screenshots volgen later)
+- (teruggedraaid) DOCS.md was tijdelijk herschreven; teruggezet in 1.8.2
 
 ## 1.8.0
 - **Add-on opties als nette dropdowns** met hoofdletters: Language → Auto/Nederlands/English, Theme → Auto/Light/Dark
