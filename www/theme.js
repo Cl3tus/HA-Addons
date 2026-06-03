@@ -82,10 +82,12 @@
     _current = scheme;
     document.body.classList.toggle('light', scheme === 'light');
     if (window.state) window.state.theme = scheme;
+    var t = window.t || function (nl, en) { return nl; };
+    var label = scheme === 'light' ? ('◑ ' + t('Licht', 'Light')) : ('◐ ' + t('Donker', 'Dark'));
     var btn   = document.getElementById('btn-theme');
-    if (btn)   btn.textContent = scheme === 'light' ? '◑ Licht' : '◐ Donker';
+    if (btn)   btn.textContent = label;
     var btnFe = document.getElementById('btn-theme-fe');
-    if (btnFe) btnFe.textContent = scheme === 'light' ? '◑ Licht' : '◐ Donker';
+    if (btnFe) btnFe.textContent = label;
   }
 
   /* ---- session-only manual toggle (not persisted) ---- */

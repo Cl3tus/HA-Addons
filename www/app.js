@@ -22,21 +22,19 @@ const escFmt = s => esc(s).replace(/%/g,'%%');
 /* i18n helper — delegates to lang.js if present, else returns the Dutch text */
 const T = (nl,en) => (window.t ? window.t(nl,en) : nl);
 
-/* ---------------- seed profile (Paul's aquarium config) ---------------- */
+/* ---------------- seed profile (clean, empty starting point) ---------------- */
 function seedProfile(name='My display'){
   return {
     id: uid('p'),
     name,
     schema_version: 1,
-    device: { name:'aquarium-display', comment:'Aquarium Display',
+    device: { name:'eink-display', comment:'E-ink Display',
               model:'7.50in-bv3', rotation:90, w:480, h:800, bg:'#d4d6d7' },
+    // a minimal, generic font set so text/icons render out of the box
     fonts: [
-      f('font_small_book','local','fonts/GothamRnd-Book.ttf',null,null,18,false),
-      f('digital_face','local','fonts/digital.ttf',null,null,60,true),
-      f('digital_face_small','local','fonts/digital.ttf',null,null,30,true,' -°0123456789C.w:UR%L/at'),
-      f('font_boven','gfonts',null,'Noto Sans Display',900,35,false),
       f('font_klein','gfonts',null,'Roboto',400,25,false),
       f('font_medium','gfonts',null,'Roboto',500,25,false),
+      f('font_boven','gfonts',null,'Noto Sans Display',900,35,false),
       f('font_mdi_large','local','fonts/materialdesignicons-webfont.ttf',null,null,50,false),
       f('font_mdi_medium','local','fonts/materialdesignicons-webfont.ttf',null,null,60,false),
       f('font_mdi_small','local','fonts/materialdesignicons-webfont.ttf',null,null,30,false),
@@ -46,24 +44,7 @@ function seedProfile(name='My display'){
       c('color_text',0,0,0,100,'#1d1d1b'), // ink black
       c('red',100,0,0,0,'#d6483b'),        // tri-color red
     ],
-    sources: [
-      s('aquatemp','sensor.aquarium_esp_aquarium_temperatuur','number',24.6),
-      s('aquawatt','sensor.aquarium_main_power','number',38.4),
-      s('pumpspeed','sensor.aquarium_filter_current_speed','number',65),
-      s('pumpflow','sensor.aquarium_pomp_flow_rate','number',900),
-      s('aquaamountlight','sensor.aquarium_uren_licht','number',8),
-      s('aquaamountdark','sensor.aquarium_uren_donker','number',16),
-      s('phsensor','sensor.aquarium_ph_controller_current_ph','number',6.8),
-      s('phtarget','sensor.aquarium_ph_controller_target_ph','number',6.5),
-      s('khsensor','sensor.aquarium_ph_controller_kh_value','number',4.2),
-      s('aquasunup','input_datetime.aquarium_ochtend','time','08:30:00'),
-      s('aquasundown','input_datetime.aquarium_avond','time','21:00:00'),
-      s('schoongemaaktop','input_datetime.aquarium_schoongemaakt','time','12:00:00'),
-      s('volgendeschoonmaak','sensor.aquarium_schoonmaak_7d','string','3 dagen'),
-      s('eten','input_boolean.vissen_gevoerd','bool','off'),
-      s('co2state','binary_sensor.aquarium_ph_controller_ph_valve_is_active','bool','on'),
-      s('skimmerstate','switch.aquarium_skimmer','bool','on'),
-    ],
+    sources: [],          // start empty — add via "Value sources → From Home Assistant"
     elements: [],
     scenarios: [],
     activeScenario: null,
@@ -751,9 +732,9 @@ function addElement(type, pos){
     // convenience: stamp an icon + a value pair (two independent elements)
     const icon={...base, id:uid(), type:'icon', name:'Widget-icoon', fontId:'font_mdi_large',
                 iconName:'thermometer-water', iconHex:'F1A80', x:cx-60, y:cy, anchor:'TOP_CENTER'};
-    const val ={...base, id:uid(), type:'text', name:'Widget-waarde', fontId:'digital_face',
+    const val ={...base, id:uid(), type:'text', name:'Widget-waarde', fontId:'font_medium',
                 x:cx+30, y:cy, anchor:'TOP_CENTER',
-                source:{kind:'sensor',sourceId:'aquatemp',text:'',expr:''},
+                source:{kind:'static',text:'21.5',sourceId:'',expr:''},
                 format:{mode:'builder',decimals:1,prefix:'',suffix:'°C',raw:'%s'}, transform:'none', transformArg:{},
                 condition:JSON.parse(JSON.stringify(base.condition))};
     els().push(icon, val); selectedId=val.id; afterChange(); toast(T('Widget toegevoegd (icoon + waarde)','Widget added (icon + value)')); return;

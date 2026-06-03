@@ -1,3 +1,9 @@
+## 1.9.0
+- **Nieuw HA-stijl dark theme** (standaard): achtergrond #111111, kaarten #1C1C1C, lijnen #343434, HA-achtige tekstkleuren, rondere hoeken (10px), amber/oranje accent. De blauwige tinten zijn eruit. De **vorige (klassieke) dark theme is bewaard** als comment-blok bovenin styles.css voor makkelijke rollback
+- **Thema-knop** toont nu het juiste label in beide talen (Dark/Donker, Light/Licht)
+- **Schoon startprofiel**: nieuwe/initiële profielen beginnen met **lege waardebronnen** (voeg toe via "Uit Home Assistant") en een minimale generieke fontset. Bronnen en fonts worden per profiel bewaard
+- Cache-busting toegevoegd aan `styles.css` zodat thema-updates direct geladen worden
+
 ## 1.8.2
 - **About-kaart op de Info-pagina** toegevoegd via `eink_studio/README.md` (zoals hassio-add-ons doen met hun `.README.j2`-template): titel, badges en een About-sectie. Dit verschijnt op het Info-tabblad van de add-on
 - DOCS.md (Documentation-tab) teruggezet naar de eerdere versie
