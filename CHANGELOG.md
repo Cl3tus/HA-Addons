@@ -1,3 +1,6 @@
+## 2.4.6
+- **Documentatie + screenshots**: de Documentation-tab en de About/Info-omschrijving tonen nu screenshots van de editor (light/dark) en de bestandsbeheerder (overzicht, teksteditor, font-viewer). Versie-bump zodat HA de bijgewerkte documentatie ophaalt.
+
 ## 2.4.5
 - **Import-overzicht (popup)**: na het importeren van een YAML toont de studio nu een overzicht met twee kolommen — *Wel meegenomen* (fonts, kleuren, waardebronnen en de tekenobjecten per type) en *Niet meegenomen* (elke overgeslagen `it.*`-regel met de reden, bv. "variabele/berekende waarde" of "driehoek wordt niet teruggelezen"). Zo zie je precies wat wél en niet op het canvas is gezet.
 
