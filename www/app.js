@@ -433,9 +433,9 @@ function buildNode(el){
       if(ax.showXScale!==false){ add('-'+(E.graph.duration||'1h'),E.x,E.y+E.h+2,'l'); add('0',E.x+E.w,E.y+E.h+2,'r'); }
       if(ax.xTitle) add(ax.xTitle, E.x+E.w/2, E.y+E.h+16,'c');
     }
-    // pivot the (absolute-coord) group around its centre so it can be rotated
+    // centre-origin so the transformer resizes around the middle (no rotation for graphs)
     const gcx=E.x+E.w/2, gcy=E.y+E.h/2;
-    g.offset({x:gcx,y:gcy}); g.position({x:gcx,y:gcy}); g.rotation(E.rotation||0);
+    g.offset({x:gcx,y:gcy}); g.position({x:gcx,y:gcy});
     node=g;
   }
   if(!node) return null;
@@ -533,14 +533,15 @@ function attachSelection(el, node){
   if(!node) return;
   if(el.type==='rect' || el.type==='circle' || el.type==='triangle' || el.type==='graph'){
     const keepRatio = el.type==='circle' ? (el.lockAspect!==false) : false;
-    const rotateEnabled = (el.type!=='circle');   // rect/triangle/graph get the rotate handle
+    // rect/triangle can rotate; circle (ellipse) and graph cannot (graph is axis-aligned in ESPHome)
+    const rotateEnabled = (el.type==='rect' || el.type==='triangle');
     transformer=new Konva.Transformer({rotateEnabled, keepRatio,
       borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:8,rotateAnchorOffset:24});
     contentLayer.add(transformer); transformer.nodes([node]);
     node.off('transformend.sel'); node.on('transformend.sel',()=>{ pushUndo();
       const sx=node.scaleX(), sy=node.scaleY();
       if(el.type==='rect'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()-el.w/2); el.y=Math.round(node.y()-el.h/2); }
-      else if(el.type==='graph'){ el.w=Math.max(40,Math.round(el.w*sx)); el.h=Math.max(30,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()-el.w/2); el.y=Math.round(node.y()-el.h/2); }
+      else if(el.type==='graph'){ el.w=Math.max(40,Math.round(el.w*sx)); el.h=Math.max(30,Math.round(el.h*sy)); el.x=Math.round(node.x()-el.w/2); el.y=Math.round(node.y()-el.h/2); }
       else if(el.type==='circle'){ el.rx=Math.max(2,Math.round(node.radiusX()*sx)); el.ry=Math.max(2,Math.round(node.radiusY()*sy)); delete el.r; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='triangle'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       node.scaleX(1); node.scaleY(1); afterChange(); });
@@ -864,9 +865,6 @@ function renderInspector(){
   } else if(el.type==='graph'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
-      <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
-      <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
-      ${el.rotation?`<div class="hint">⚠ ${T('Rotatie is alleen voor de preview — ESPHome tekent grafieken altijd recht.','Rotation is preview-only — ESPHome always draws graphs upright.')}</div>`:''}
       <div class="hint">${T('De golf in de preview is een voorbeeld; op het device tekent ESPHome de echte sensorgeschiedenis. De Y-as-getallen verschijnen pas als je hieronder een vaste Y-min én Y-max invult.','The wave in the preview is a placeholder; on the device ESPHome draws the real sensor history. The Y-axis numbers only appear once you set a fixed Y-min and Y-max below.')}</div>`);
   } else {
     h+=g('Positie & uitlijning',`<div class="row"><div><label class="fld">Anker X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Anker Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
@@ -1246,7 +1244,6 @@ function numFilled(v){ return v!==''&&v!=null&&!isNaN(+v); }
 function graphId(el){ return 'graph_'+el.id.replace(/[^a-z0-9_]/gi,''); }
 function graphDrawCode(el, I){
   let out=`${I}it.graph(${el.x}, ${el.y}, id(${graphId(el)}));`;
-  if(el.rotation){ out=`${I}// note: graph rotation (${el.rotation}°) is preview-only; ESPHome draws graphs upright\n`+out; }
   const gr=el.graph||{}, ax=gr.axes||{};
   if(!ax.show) return out;
   const font=(fontById(ax.fontId)||{id:'font_klein'}).id;

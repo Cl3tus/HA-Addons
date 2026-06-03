@@ -1,3 +1,6 @@
+## 1.7.2
+- Rotatie-handle weggehaald bij de grafiek (rotatie was toch preview-only en niet exporteerbaar). De grafiek houdt zijn resize-handvatten
+
 ## 1.7.1
 - **Rechthoek** heeft nu de rotatie-handle + sleep-handvatten via dezelfde transformer als de driehoek (roteert rond het midden, exporteert correct)
 - **Grafiek** heeft nu ook sleep-handvatten + rotatie-handle. Let op: grafiek-rotatie is **alleen voor de preview** — ESPHome tekent grafieken altijd recht (staat als comment in de YAML)
