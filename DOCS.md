@@ -1,33 +1,47 @@
 # E-ink Studio
 
-WYSIWYG-editor voor ESPHome e-ink displays, als Home Assistant add-on. Ontwerp je
-display-layout visueel en genereer de ESPHome `lambda` + bijbehorende YAML.
+A WYSIWYG editor for ESPHome e-ink displays, running as a Home Assistant add-on.
+Design your display layout visually and generate the ESPHome `lambda` + matching
+YAML.
 
-## Functies
-- Volledige editor in de HA-zijbalk (Ingress, geen apart tabblad nodig).
-- **Live preview**: leest read-only de states van Home Assistant, zodat de preview echte
-  sensorwaarden toont. Klik op **○ Live** in de bovenbalk om te verversen.
-- Fonts en projecten worden **in de add-on** bewaard (persistent `/data`-volume). Er wordt
-  niets naar je ESPHome-config geschreven.
-- Alle libraries (Konva, js-yaml, Material Design Icons, IBM Plex, Noto/Roboto) zijn
-  **meegebundeld** — werkt zonder internet.
+## Features
+- Full editor in the HA sidebar (Ingress — no separate tab needed).
+- **Live preview**: reads Home Assistant states read-only, so the preview shows
+  real sensor values. Click **○ Live** in the top bar to refresh.
+- Projects, fonts and profiles are stored **inside the add-on** and exposed over
+  SAMBA at `\\<HA-IP>\addon_configs\<slug>_eink_studio\`. Nothing is written to
+  your ESPHome config.
+- Built-in **file manager** (📁 Files) to browse, upload, download, rename, move
+  and delete files/folders.
+- All libraries (Konva, js-yaml, Material Design Icons, IBM Plex, Noto/Roboto)
+  are **bundled** — works without an internet connection.
 
-## Gebruik
-1. Open **E-ink Studio** in de zijbalk.
-2. Ontwerp je layout; kies bij elk waarde-element de juiste HA-sensor.
-3. Klik **○ Live** om echte data in de preview te laden (alle entiteiten worden opgehaald;
-   je filtert/kiest ze in de UI).
-4. **Genereer YAML** → kopieer of download, en plak in je ESPHome-config.
+## Usage
+1. Open **E-ink Studio** in the sidebar.
+2. Design your layout; for each value element pick the right HA sensor.
+3. Click **○ Live** to load real data into the preview (all entities are
+   fetched; you filter/pick them in the UI).
+4. **Generate YAML** → copy or download, then paste into your ESPHome config.
 
-## Opslag
-- Projecten: `/data/projects/*.json` — **Opslaan** schrijft hierheen, **Openen** toont de lijst.
-- Fonts: `/data/fonts/*` — geüploade TTF's worden hierheen gekopieerd (persistent).
+## Configuration
+Two options on the **Configuration** tab:
 
-Binnen de add-on gebruiken Opslaan/Openen automatisch deze centrale opslag (i.p.v. de browser).
-Buiten de add-on (standalone in een browser) valt het terug op bestand-download/-upload.
-Beide blijven bewaard bij herstart/update van de add-on.
+- `language` — `auto` (follow HA / browser), `nl` or `en`.
+- `theme` — `auto` (follow HA light/dark), `light` or `dark`.
 
-## Let op
-- De add-on schrijft **niet** naar je ESPHome-config of fonts-map (preview-only, zoals gekozen).
-- Voor een exacte preview van eigen fonts (digital.ttf, GothamRnd-Book.ttf): upload ze via
-  **Fonts & kleuren**. Material Design Icons (v7.4.47) zit al ingebouwd.
+Both can also be toggled from inside the editor; the add-on option is the
+default.
+
+## Storage
+- Projects: `projects/*.json` — **Save** writes here, **Open** lists them.
+- Fonts: `fonts/*` — uploaded TTFs are copied here (persistent).
+- Profiles: `profiles/*.json` — profile settings.
+
+All of these live in the add-on config folder, reachable over SAMBA so you can
+edit/back them up from your computer. They survive add-on restarts and updates.
+
+## Note
+- The add-on does **not** write to your ESPHome config or fonts folder
+  (preview-only by design).
+- For an exact preview of custom fonts (e.g. digital.ttf, GothamRnd-Book.ttf):
+  upload them via **Fonts & colours**. Material Design Icons (v7.4.47) is built in.

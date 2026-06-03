@@ -60,8 +60,11 @@
     return null;
   }
 
-  /* ---- detect (priority: manual → Canvas probe → HA var → OS) ---- */
+  /* ---- detect (priority: addon option → manual toggle → Canvas → HA var → OS) ---- */
   function detect() {
+    // Add-on Configuration tab option (auto | light | dark)
+    if (window.ADDON_THEME === 'light' || window.ADDON_THEME === 'dark') return window.ADDON_THEME;
+
     var manual = localStorage.getItem(LS_MANUAL);
     if (manual === 'dark' || manual === 'light') return manual;
 
@@ -96,11 +99,20 @@
   /* ---- init + poll for live HA switches ---- */
   function init() {
     apply(detect());
+
+    // Fetch the add-on Configuration option (auto/light/dark)
+    fetch('api/info').then(function (r) { return r.json(); }).then(function (info) {
+      if (info && info.theme) { window.ADDON_THEME = info.theme; _current = null; apply(detect()); }
+    }).catch(function () {});
+
     setInterval(function () {
-      if (localStorage.getItem(LS_MANUAL)) return;
+      // When the addon forces a theme, keep enforcing it; otherwise respect manual toggle
+      if (window.ADDON_THEME !== 'light' && window.ADDON_THEME !== 'dark'
+          && localStorage.getItem(LS_MANUAL)) return;
       var s = detect();
       if (s !== _current) apply(s);
     }, 500);
+
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
       if (!localStorage.getItem(LS_MANUAL)) { _current = null; apply(detect()); }
     });

@@ -72,20 +72,23 @@
     'Sleep bestanden hierheen of gebruik': 'Drop files here or use',
   };
 
-  /* ---- detect / store ---- */
+  /* ---- detect / store ----
+     Priority: addon Configuration option → in-app toggle → HA lang → browser */
   function detectLang() {
-    // Always try HA first — HA sets lang on <html> based on the user's HA language setting
-    // e.g. "en", "en-GB", "en-US", "nl", "nl-NL"
+    // Add-on Configuration tab option (auto | nl | en)
+    if (window.ADDON_LANGUAGE === 'nl' || window.ADDON_LANGUAGE === 'en') return window.ADDON_LANGUAGE;
+
+    // In-app toggle (localStorage)
+    var stored = localStorage.getItem(LS_LANG);
+    if (stored === 'en' || stored === 'nl') return stored;
+
+    // Auto: HA sets lang on <html> ("en", "en-GB", "nl", "nl-NL", …)
     try {
       var haLang = (window.parent.document.documentElement.getAttribute('lang') || '').toLowerCase();
       if (haLang) return haLang.startsWith('nl') ? 'nl' : 'en';
     } catch (_) {}
 
-    // If HA lang is unavailable (e.g. not in Ingress), use manual override
-    var stored = localStorage.getItem(LS_LANG);
-    if (stored === 'en' || stored === 'nl') return stored;
-
-    // Last fallback: browser language
+    // Browser fallback
     var nav = (navigator.language || navigator.userLanguage || '').toLowerCase();
     return nav.startsWith('nl') ? 'nl' : 'en';
   }
@@ -123,6 +126,18 @@
   window.toggleLang = function () {
     window.setLang(_lang === 'nl' ? 'en' : 'nl');
   };
+
+  /* ---- re-evaluate language once the addon option is known ---- */
+  function refresh() {
+    var l = detectLang();
+    if (l !== _lang) { _lang = l; window.APP_LANG = l; }
+    applyTranslations();
+  }
+
+  // Fetch the add-on Configuration option (auto/nl/en)
+  fetch('api/info').then(function (r) { return r.json(); }).then(function (info) {
+    if (info && info.language) { window.ADDON_LANGUAGE = info.language; refresh(); }
+  }).catch(function () {});
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyTranslations);

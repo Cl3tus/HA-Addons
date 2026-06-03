@@ -1,3 +1,9 @@
+## 1.5.0
+- Nieuwe add-on opties (Configuration tab): **language** (auto/nl/en) en **theme** (auto/light/dark). Deze worden gerespecteerd door de editor en bestandsbeheerder; de in-app knoppen blijven werken als snelle override wanneer de optie op auto staat
+- `samba_host` optie verwijderd — niet meer nodig (pad is altijd `\\<HA-IP>\addon_configs\<slug>`)
+- Add-on beschrijving + DOCS.md naar het Engels
+- Volledig herschreven README.md (Engels) met een "Add repository to Home Assistant" knop, uitleg van functies, configuratie en SAMBA-opslag
+
 ## 1.4.5
 - Thema: exact ESPHome-mechanisme. Detectie via een onzichtbaar `Canvas`-system-color probe-element met `color-scheme: light dark`. De browser geeft HA's `color-scheme` door aan de iframe, dus `Canvas` lost op naar HA's échte thema — onafhankelijk van het OS (daar ging `prefers-color-scheme` de mist in). `--primary-background-color` en `prefers-color-scheme` blijven als fallbacks
 - FOUC-fix bestandsbeheer gebruikt nu ook de Canvas-probe

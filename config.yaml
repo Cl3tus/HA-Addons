@@ -1,7 +1,7 @@
 name: E-ink Studio
-version: "1.4.5"
+version: "1.5.0"
 slug: eink_studio
-description: WYSIWYG-editor voor ESPHome e-ink displays — ontwerp je layout en genereer de lambda + YAML.
+description: WYSIWYG editor for ESPHome e-ink displays — design your layout and generate the lambda + YAML.
 url: https://github.com/Cl3tus/HA-Eink-Studio-App
 arch:
   - aarch64
@@ -22,12 +22,17 @@ panel_admin: true
 homeassistant_api: true
 hassio_api: false
 
-# Persistente opslag voor projecten + geüploade fonts staat in /data (automatisch persistent).
-# addon_configs geeft toegang tot de gedeelde config-map (SAMBA: \\<HA-IP>\addon_configs).
+# Projects, fonts and profiles are stored in the add-on config folder,
+# reachable over SAMBA at \\<HA-IP>\addon_configs\<slug>.
 map:
   - addon_config:rw
 
+# --- User options (Configuration tab) ---
+#   language : auto (follow HA / browser) | nl | en
+#   theme    : auto (follow HA) | light | dark
 options:
-  samba_host: ""
+  language: auto
+  theme: auto
 schema:
-  samba_host: str?
+  language: list(auto|nl|en)
+  theme: list(auto|light|dark)

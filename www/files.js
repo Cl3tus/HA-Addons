@@ -56,14 +56,11 @@ async function apiUpload(path, files) {
 async function loadSambaInfo() {
   try {
     const d    = await fetch('api/info').then(r => r.json());
-    const host = d.samba_host || '';
     const slug = d.samba_slug || '';
     const wrap = $('#samba-wrap');
     const badge = $('#samba-badge');
     if (wrap && badge && slug) {
-      badge.textContent = host
-        ? `\\\\${host}\\addon_configs\\${slug}`
-        : `\\\\<HA-IP>\\addon_configs\\${slug}`;
+      badge.textContent = `\\\\<HA-IP>\\addon_configs\\${slug}`;
       wrap.style.display = 'flex';
     }
   } catch { /* ignore */ }

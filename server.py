@@ -39,13 +39,14 @@ PORT = 8099
 SUPERVISOR_TOKEN      = os.environ.get("SUPERVISOR_TOKEN", "")
 SUPERVISOR_STATES_URL = "http://supervisor/core/api/states"
 
-# samba_host from add-on options (/data/options.json) – optional
+# User options from /data/options.json
 _options_file = DATA_DIR / "options.json"
 try:
     _opts = json.loads(_options_file.read_text("utf-8")) if _options_file.exists() else {}
 except Exception:
     _opts = {}
-SAMBA_HOST = _opts.get("samba_host", "")
+LANGUAGE   = _opts.get("language", "auto")   # auto | nl | en
+THEME      = _opts.get("theme", "auto")      # auto | light | dark
 SAMBA_SLUG = os.environ.get("SAMBA_SLUG", "")
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -326,8 +327,9 @@ async def api_info(request: web.Request) -> web.Response:
         "app": "E-ink Studio",
         "version": os.environ.get("ADDON_VERSION", "1.0.0"),
         "live_data": bool(SUPERVISOR_TOKEN),
-        "samba_host": SAMBA_HOST,
         "samba_slug": SAMBA_SLUG,
+        "language": LANGUAGE,
+        "theme": THEME,
     })
 
 
