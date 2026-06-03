@@ -1,3 +1,6 @@
+## 2.4.3
+- **YAML importeren herstelt nu je volledige ontwerp** wanneer de geplakte YAML door de studio zelf is gemaakt (de `# eink-editor:v1:`-herstelcode onderaan). Elementen, wachtscherm én displaymodel komen terug op het canvas. Let op: bij een hándgeschreven ESPHome-config blijft het canvas leeg — daar zit geen herstelcode in, dus alleen fonts/kleuren/waardebronnen worden ingelezen (de layout in de display-lambda kan niet worden teruggelezen).
+
 ## 2.4.2
 - **YAML importeren** negeert nu alles wat de studio niet kent: plak gerust een complete ESPHome-config (met `esphome:`, `wifi:`, `api:`, `!secret`-tags, de display-lambda, enz.). Alleen `font:`, `color:` en `homeassistant`-`sensor:`/`text_sensor:` worden ingelezen — de rest wordt stil overgeslagen. Eerder liep de import vast op o.a. `!secret`-tags.
 

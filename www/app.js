@@ -2059,7 +2059,7 @@ function openProfileSettings(){
 /* ---- YAML import ---- */
 function openImport(){
   openModal(T('YAML importeren','Import YAML'),
-    `<div class="hint" style="margin-bottom:8px">${T('Plak gerust je hele ESPHome-config','Paste your whole ESPHome config if you like')} — ${T('alleen','only')} <span class="mono">font:</span>, <span class="mono">color:</span> ${T('en','and')} <span class="mono">homeassistant</span>-<span class="mono">sensor:</span>/<span class="mono">text_sensor:</span> ${T('worden ingelezen, de rest wordt genegeerd.','are imported, the rest is ignored.')}</div>
+    `<div class="hint" style="margin-bottom:8px">${T('Plak gerust je hele ESPHome-config','Paste your whole ESPHome config if you like')} — ${T('alleen','only')} <span class="mono">font:</span>, <span class="mono">color:</span> ${T('en','and')} <span class="mono">homeassistant</span>-<span class="mono">sensor:</span>/<span class="mono">text_sensor:</span> ${T('worden ingelezen, de rest wordt genegeerd.','are imported, the rest is ignored.')} ${T('Plak je een YAML die de studio zelf maakte (met herstelcode), dan komt je hele ontwerp terug.','Paste a YAML the studio generated itself (with recovery code) to restore your whole design.')}</div>
      <textarea class="import-area" id="imp-area" placeholder="font:\n  - file: ..."></textarea>`,
     [{label:T('Annuleer','Cancel'),onClick:closeModal},{label:T('Importeer','Import'),cls:'primary',onClick:doImport}]);
 }
@@ -2085,6 +2085,13 @@ function _parseBlock(block){
   const safe = block.replace(/!\s*[A-Za-z_][\w-]*/g, '');  // drop "!secret" etc., keep the value
   try{ return jsyaml.load(safe); }catch(e){ return null; }
 }
+/* Studio-generated YAML carries the full editable layout as a base64 comment
+   (# eink-editor:v1:…). Decode it so a round-trip restores the canvas. */
+function _readSnapshot(text){
+  const m=/#\s*eink-editor:v1:([A-Za-z0-9+/=]+)/.exec(String(text));
+  if(!m) return null;
+  try{ return JSON.parse(decodeURIComponent(escape(atob(m[1])))); }catch(e){ return null; }
+}
 
 function doImport(){
   const text=$('#imp-area').value;
@@ -2095,7 +2102,8 @@ function doImport(){
     const parsed=_parseBlock(_extractTopBlock(text,k));
     if(parsed && Array.isArray(parsed[k])) doc[k]=parsed[k];
   });
-  if(!doc.font && !doc.color && !doc.sensor && !doc.text_sensor){
+  const snap=_readSnapshot(text);   // full layout, only present in studio-generated YAML
+  if(!snap && !doc.font && !doc.color && !doc.sensor && !doc.text_sensor){
     toast(T('Geen font/color/sensor-blok gevonden','No font/color/sensor block found')); return;
   }
   const p=profile(); let n=0;
@@ -2109,7 +2117,17 @@ function doImport(){
       n++;
     }});
   });
-  persist(); afterChange(); closeModal(); toast(T(`Geïmporteerd: ${n} items`,`Imported: ${n} items`));
+  // full round-trip: restore the editable layout if this YAML came from the studio
+  if(snap){
+    if(snap.device) p.device=snap.device;
+    if(Array.isArray(snap.elements)) p.elements=snap.elements;
+    if(Array.isArray(snap.waitElements)) p.waitElements=snap.waitElements;
+    selectedIds=new Set(); selectedId=null; applyZoom();   // device may have changed → resize the stage
+  }
+  persist(); afterChange(); closeModal();
+  toast(snap
+    ? T('Ontwerp hersteld uit herstelcode','Design restored from recovery code')
+    : T(`Geïmporteerd: ${n} items`,`Imported: ${n} items`));
   function parseFont(o){
     const file = typeof o.file==='string'?o.file:null;
     const g = (o.file&&o.file.type==='gfonts')?o.file:null;
