@@ -362,15 +362,10 @@ function buildNode(el){
     node = new Konva.Line({points:[E.x,E.y,E.x2,E.y2], stroke:color.css, strokeWidth:1, hitStrokeWidth:10});
   }
   else if(E.type==='rect'){
-    if(E.rotation){
-      node = new Konva.Line({points:flatPts(rectCorners(E)), closed:true,
-        stroke:E.filled?undefined:color.css, strokeWidth:1, hitStrokeWidth:10,
-        fill:E.filled?color.css:'rgba(0,0,0,0.001)'});
-    } else {
-      node = new Konva.Rect({x:E.x,y:E.y,width:E.w,height:E.h,
-        stroke:E.filled?undefined:color.css, strokeWidth:1,
-        fill:E.filled?color.css:'rgba(0,0,0,0.001)'});
-    }
+    const w=E.w, h=E.h;   // centre-origin so the transformer rotates around the middle
+    node = new Konva.Rect({x:E.x+w/2,y:E.y+h/2,width:w,height:h,offsetX:w/2,offsetY:h/2,rotation:E.rotation||0,
+      stroke:E.filled?undefined:color.css, strokeWidth:1,
+      fill:E.filled?color.css:'rgba(0,0,0,0.001)'});
   }
   else if(E.type==='triangle'){
     // local points centred on (0,0); position/rotate via the node so the
@@ -438,6 +433,9 @@ function buildNode(el){
       if(ax.showXScale!==false){ add('-'+(E.graph.duration||'1h'),E.x,E.y+E.h+2,'l'); add('0',E.x+E.w,E.y+E.h+2,'r'); }
       if(ax.xTitle) add(ax.xTitle, E.x+E.w/2, E.y+E.h+16,'c');
     }
+    // pivot the (absolute-coord) group around its centre so it can be rotated
+    const gcx=E.x+E.w/2, gcy=E.y+E.h/2;
+    g.offset({x:gcx,y:gcy}); g.position({x:gcx,y:gcy}); g.rotation(E.rotation||0);
     node=g;
   }
   if(!node) return null;
@@ -458,15 +456,14 @@ function buildNode(el){
     if(el.type==='line'){
       const dx=node.x(), dy=node.y();
       el.x+=dx; el.y+=dy; el.x2+=dx; el.y2+=dy; node.position({x:0,y:0});
-    } else if(el.type==='rect' && el.rotation){
-      // rotated rect is an absolute closed-line: node.x()/y() is the drag delta
-      const dx=node.x(), dy=node.y();
-      el.x=Math.round(el.x+dx); el.y=Math.round(el.y+dy); node.position({x:0,y:0});
-    } else if(el.type==='triangle' || el.type==='rect' || el.type==='circle'){
-      // triangle/ellipse/rect use node.x()/y() as their origin/centre directly
+    } else if(el.type==='rect' || el.type==='graph'){
+      // centre-origin nodes: node.x()/y() is the centre
+      el.x=Math.round(node.x()-el.w/2); el.y=Math.round(node.y()-el.h/2);
+    } else if(el.type==='triangle' || el.type==='circle'){
+      // triangle/ellipse use node.x()/y() as their centre directly
       el.x=Math.round(node.x()); el.y=Math.round(node.y());
-    } else if(el.type==='graph' || el.type==='clock'){
-      // groups whose children use absolute coords: node.x()/y() is the drag delta
+    } else if(el.type==='clock'){
+      // group whose children use absolute coords: node.x()/y() is the drag delta
       const dx=node.x(), dy=node.y();
       el.x=Math.round(el.x+dx); el.y=Math.round(el.y+dy); node.position({x:0,y:0});
     } else {
@@ -534,28 +531,19 @@ function attachSelection(el, node){
   if(transformer){ try{transformer.destroy();}catch(e){} transformer=null; }
   if(selectionVisual){ try{selectionVisual.destroy();}catch(e){} selectionVisual=null; }
   if(!node) return;
-  if((el.type==='rect'&&!el.rotation) || el.type==='circle' || el.type==='triangle'){
+  if(el.type==='rect' || el.type==='circle' || el.type==='triangle' || el.type==='graph'){
     const keepRatio = el.type==='circle' ? (el.lockAspect!==false) : false;
-    const rotateEnabled = el.type==='triangle';
+    const rotateEnabled = (el.type!=='circle');   // rect/triangle/graph get the rotate handle
     transformer=new Konva.Transformer({rotateEnabled, keepRatio,
-      borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:7});
+      borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:8,rotateAnchorOffset:24});
     contentLayer.add(transformer); transformer.nodes([node]);
     node.off('transformend.sel'); node.on('transformend.sel',()=>{ pushUndo();
       const sx=node.scaleX(), sy=node.scaleY();
-      if(el.type==='rect'){ el.w=Math.round(node.width()*sx); el.h=Math.round(node.height()*sy); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      if(el.type==='rect'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()-el.w/2); el.y=Math.round(node.y()-el.h/2); }
+      else if(el.type==='graph'){ el.w=Math.max(40,Math.round(el.w*sx)); el.h=Math.max(30,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()-el.w/2); el.y=Math.round(node.y()-el.h/2); }
       else if(el.type==='circle'){ el.rx=Math.max(2,Math.round(node.radiusX()*sx)); el.ry=Math.max(2,Math.round(node.radiusY()*sy)); delete el.r; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='triangle'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       node.scaleX(1); node.scaleY(1); afterChange(); });
-  } else if(el.type==='graph'){
-    // outline + bottom-right resize handle (keeps top-left anchored)
-    const g=new Konva.Group();
-    g.add(new Konva.Rect({x:el.x,y:el.y,width:el.w,height:el.h,stroke:'#e8a13a',strokeWidth:1,dash:[4,3],listening:false}));
-    const hb=new Konva.Circle({x:el.x+el.w,y:el.y+el.h,radius:6,fill:'#fff',stroke:'#e8a13a',strokeWidth:2,draggable:true});
-    hb.on('mousedown touchstart',e=>{e.cancelBubble=true;});
-    hb.on('dragstart',e=>{e.cancelBubble=true; pushUndo();});
-    hb.on('dragmove',e=>{e.cancelBubble=true; el.w=Math.max(40,Math.round(hb.x()-el.x)); el.h=Math.max(30,Math.round(hb.y()-el.y)); renderCanvasKeepSel(el);});
-    hb.on('dragend',e=>{e.cancelBubble=true; afterChange();});
-    g.add(hb); contentLayer.add(g); selectionVisual=g;
   } else if(el.type==='line'){
     // one draggable handle per endpoint -> move endpoints, make vertical, resize
     const g=new Konva.Group();
@@ -605,8 +593,10 @@ function selectNode(el, node){
 /* dashed, non-interactive outline around a node (used to show extra multi-selected items) */
 function outlineNode(node){
   const b=node.getClientRect({relativeTo:contentLayer});
-  const o=new Konva.Rect({x:b.x-3,y:b.y-3,width:b.width+6,height:b.height+6,
-    stroke:'#e8a13a',strokeWidth:1,dash:[3,3],opacity:.8,listening:false});
+  // bright, slightly filled box so multi-selected items stand out clearly
+  const o=new Konva.Rect({x:b.x-4,y:b.y-4,width:b.width+8,height:b.height+8,
+    stroke:'#ffb43a',strokeWidth:2.5,dash:[8,4],fill:'rgba(232,161,58,0.14)',
+    shadowColor:'#000',shadowBlur:2,shadowOpacity:.4,listening:false});
   contentLayer.add(o);
 }
 
@@ -872,8 +862,12 @@ function renderInspector(){
       <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
       <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
   } else if(el.type==='graph'){
-    h+=g('Positie & maat',`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
-      <div class="row"><div><label class="fld">Breedte</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">Hoogte</label><input data-k="h" type="number" value="${el.h}"></div></div>`);
+    h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
+      <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
+      <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
+      <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
+      ${el.rotation?`<div class="hint">⚠ ${T('Rotatie is alleen voor de preview — ESPHome tekent grafieken altijd recht.','Rotation is preview-only — ESPHome always draws graphs upright.')}</div>`:''}
+      <div class="hint">${T('De golf in de preview is een voorbeeld; op het device tekent ESPHome de echte sensorgeschiedenis. De Y-as-getallen verschijnen pas als je hieronder een vaste Y-min én Y-max invult.','The wave in the preview is a placeholder; on the device ESPHome draws the real sensor history. The Y-axis numbers only appear once you set a fixed Y-min and Y-max below.')}</div>`);
   } else {
     h+=g('Positie & uitlijning',`<div class="row"><div><label class="fld">Anker X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Anker Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <label class="fld">Uitlijning (TextAlign)</label>${anchorGrid(el)}`);
@@ -1252,6 +1246,7 @@ function numFilled(v){ return v!==''&&v!=null&&!isNaN(+v); }
 function graphId(el){ return 'graph_'+el.id.replace(/[^a-z0-9_]/gi,''); }
 function graphDrawCode(el, I){
   let out=`${I}it.graph(${el.x}, ${el.y}, id(${graphId(el)}));`;
+  if(el.rotation){ out=`${I}// note: graph rotation (${el.rotation}°) is preview-only; ESPHome draws graphs upright\n`+out; }
   const gr=el.graph||{}, ax=gr.axes||{};
   if(!ax.show) return out;
   const font=(fontById(ax.fontId)||{id:'font_klein'}).id;

@@ -1,3 +1,9 @@
+## 1.7.1
+- **Rechthoek** heeft nu de rotatie-handle + sleep-handvatten via dezelfde transformer als de driehoek (roteert rond het midden, exporteert correct)
+- **Grafiek** heeft nu ook sleep-handvatten + rotatie-handle. Let op: grafiek-rotatie is **alleen voor de preview** — ESPHome tekent grafieken altijd recht (staat als comment in de YAML)
+- Multi-select-omlijning veel beter zichtbaar (dikker, helderder, lichte vulling + schaduw)
+- Grafiek-uitleg toegevoegd: de golf in de preview is een voorbeeld (echte data verschijnt op het device); Y-as-getallen tonen alleen met een vaste Y-min én Y-max
+
 ## 1.7.0
 - **Multi-select**: Ctrl/Cmd+klik op canvas én in de lagenlijst selecteert meerdere; Shift+klik in lagen selecteert een reeks; sleep op een leeg canvas trekt een selectiekader (rubber-band). Ctrl+A = alles. Sleep een geselecteerd element om de hele selectie te verplaatsen; Delete/Dupliceren werken op de hele selectie
 - **Lagen-rechtermuismenu**: hernoemen, dupliceren, tonen/verbergen, naar voren/achteren, verwijderen
