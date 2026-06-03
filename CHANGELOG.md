@@ -1,3 +1,7 @@
+## 1.9.5
+- **Live-knop** is nu een aan/uit-schakelaar met statusstip: groen = verbonden met Home Assistant, oranje = aan maar geen/onvolledige data (bijv. geen Supervisor-token), rood = verbinding mislukt, grijs ○ = uit
+- **Rechter inspector volledig vertaald** (NL/EN): alle groeptitels, labels, dropdowns, hints en knoppen — inclusief grafiek, wifi, klok, waardebron, format/transform en condities
+
 ## 1.9.4
 - Titelbalk effen gemaakt (geen gradient): #1C1C1C in dark, #FFFFFF in light — consistent met HA. Geldt ook voor de bestandsbeheer-header
 

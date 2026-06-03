@@ -66,6 +66,7 @@ let selectedIds = new Set();       // all selected element ids (multi-select)
 let _layerAnchor = null;           // anchor id for shift-range select in layers
 let zoom = 1;
 let HA_STATES=null, HA_LIVE=false;   // live HA data (add-on build)
+let LIVE_ON=false, LIVE_STATUS='off';  // live toggle + status dot (off|ok|warn|error)
 let shiftDown = false; // hold Shift to constrain line endpoints to 45° steps
 window.addEventListener('keydown', e=>{ if(e.key==='Shift') shiftDown=true; });
 window.addEventListener('keyup',   e=>{ if(e.key==='Shift') shiftDown=false; });
@@ -817,12 +818,12 @@ function renderInspector(){
     return;
   }
   let h='';
-  h+=g('Element',`
-    <div class="row"><div><label class="fld">Naam</label><input data-k="name" type="text" value="${attr(el.name)}"></div></div>`);
+  h+=g(T('Element','Element'),`
+    <div class="row"><div><label class="fld">${T('Naam','Name')}</label><input data-k="name" type="text" value="${attr(el.name)}"></div></div>`);
 
   // geometry
   if(el.type==='line'){
-    h+=g('Positie',`<div class="row"><div><label class="fld">X1</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y1</label><input data-k="y" type="number" value="${el.y}"></div></div>
+    h+=g(T('Positie','Position'),`<div class="row"><div><label class="fld">X1</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y1</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">X2</label><input data-k="x2" type="number" value="${el.x2}"></div><div><label class="fld">Y2</label><input data-k="y2" type="number" value="${el.y2}"></div></div>`);
   } else if(el.type==='rect'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
@@ -848,8 +849,8 @@ function renderInspector(){
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
       <div class="hint">${T('De golf in de preview is een voorbeeld; op het device tekent ESPHome de echte sensorgeschiedenis. De Y-as-getallen verschijnen pas als je hieronder een vaste Y-min én Y-max invult.','The wave in the preview is a placeholder; on the device ESPHome draws the real sensor history. The Y-axis numbers only appear once you set a fixed Y-min and Y-max below.')}</div>`);
   } else {
-    h+=g('Positie & uitlijning',`<div class="row"><div><label class="fld">Anker X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Anker Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
-      <label class="fld">Uitlijning (TextAlign)</label>${anchorGrid(el)}`);
+    h+=g(T('Positie & uitlijning','Position & alignment'),`<div class="row"><div><label class="fld">${T('Anker X','Anchor X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Anker Y','Anchor Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
+      <label class="fld">${T('Uitlijning (TextAlign)','Alignment (TextAlign)')}</label>${anchorGrid(el)}`);
   }
 
   // font + color
@@ -857,96 +858,96 @@ function renderInspector(){
   if(el.type==='text'||el.type==='icon'||el.type==='wifi'||el.type==='clock'){
     style+=`<div class="row"><div><label class="fld">Font</label><select data-k="fontId">${fontOpts(el.fontId)}</select></div></div>`;
     const font=fontById(el.fontId);
-    if(font && !fontLoaded(font)) style+=`<div class="hint">⚠ Font "${font.file}" nog niet geüpload — preview is bij benadering. Upload via “Fonts &amp; kleuren”.</div>`;
+    if(font && !fontLoaded(font)) style+=`<div class="hint">⚠ ${T('Font','Font')} "${font.file}" ${T('nog niet geüpload — preview is bij benadering. Upload via “Fonts & kleuren”.','not uploaded yet — preview is approximate. Upload via “Fonts & colours”.')}</div>`;
   }
-  if(el.type!=='graph') style+=`<div class="row"><div><label class="fld">Kleur</label>${colorSwatches(el.colorId,'colorId')}</div></div>`;
-  h+=g('Stijl',style);
+  if(el.type!=='graph') style+=`<div class="row"><div><label class="fld">${T('Kleur','Colour')}</label>${colorSwatches(el.colorId,'colorId')}</div></div>`;
+  h+=g(T('Stijl','Style'),style);
 
   // icon
   if(el.type==='icon'){
-    h+=g('Icoon',`<div class="row" style="align-items:center">
+    h+=g(T('Icoon','Icon'),`<div class="row" style="align-items:center">
       <div style="flex:none"><span class="mdi mdi-${el.iconName}" style="font-size:34px"></span></div>
       <div><div class="mono" style="margin-bottom:4px">mdi-${el.iconName} · ${el.iconHex}</div>
-      <button class="btn sm" id="pick-icon">Icoon kiezen…</button></div></div>`);
+      <button class="btn sm" id="pick-icon">${T('Icoon kiezen…','Choose icon…')}</button></div></div>`);
   }
 
   // value source + format + transform (text only)
   if(el.type==='text'){
-    h+=g('Waardebron', sourceEditor(el));
-    h+=g('Format & transform', formatEditor(el));
+    h+=g(T('Waardebron','Value source'), sourceEditor(el));
+    h+=g(T('Format & transform','Format & transform'), formatEditor(el));
   }
 
   // wifi smart element
   if(el.type==='wifi'){
     const w=el.wifi||{};
-    h+=g('WiFi-signaal',`
-      <div class="row"><div><label class="fld">Signaalbron (optioneel, voor preview)</label><select data-wifi="sourceId">${srcOpts(w.sourceId,true)}</select></div></div>
-      <div class="hint">Bij export wordt <span class="mono">id(wifisignal)</span> gebruikt (de diagnostische sensor die de editor genereert). De bron hierboven bepaalt alleen welke staaf je nu in de preview ziet.</div>
-      <label class="fld" style="margin-top:8px">Drempels (dBm → icoon)</label>
+    h+=g(T('WiFi-signaal','Wi-Fi signal'),`
+      <div class="row"><div><label class="fld">${T('Signaalbron (optioneel, voor preview)','Signal source (optional, for preview)')}</label><select data-wifi="sourceId">${srcOpts(w.sourceId,true)}</select></div></div>
+      <div class="hint">${T('Bij export wordt','On export')} <span class="mono">id(wifisignal)</span> ${T('gebruikt (de diagnostische sensor die de editor genereert). De bron hierboven bepaalt alleen welke staaf je nu in de preview ziet.','is used (the diagnostic sensor the editor generates). The source above only controls which bar you see in the preview now.')}</div>
+      <label class="fld" style="margin-top:8px">${T('Drempels (dBm → icoon)','Thresholds (dBm → icon)')}</label>
       ${(w.levels||[]).map((lv,i)=>`<div class="row tight" style="align-items:center">
         <div><input data-wifilv="${i}.min" type="number" value="${lv.min}" title="≥ dBm"></div>
         <div style="flex:none"><span class="mdi" style="font-size:22px">${mdiChar(lv.hex)}</span></div>
         <div><input data-wifilv="${i}.hex" type="text" class="mono" value="${attr(lv.hex)}"></div>
       </div>`).join('')}
-      <div class="hint">Sterkste drempel bovenaan. De laatste regel (laagste dBm) is de "geen signaal"-staaf.</div>`);
+      <div class="hint">${T('Sterkste drempel bovenaan. De laatste regel (laagste dBm) is de "geen signaal"-staaf.','Strongest threshold on top. The last row (lowest dBm) is the "no signal" bar.')}</div>`);
   }
 
   // clock smart element
   if(el.type==='clock'){
     const c=el.clock||{};
-    h+=g('Refresh-klok',`
-      <div class="row"><div><label class="fld">Tijdformaat (strftime)</label><input data-clock="strftime" class="mono" type="text" value="${attr(c.strftime||'%H:%M')}"></div></div>
-      <div class="hint">Toont het tijdstip van de laatste schermverversing via <span class="mono">id(homeassistant_time)</span>. Bv. <span class="mono">%H:%M</span> of <span class="mono">%d-%m %H:%M</span>.</div>
-      <label class="toggle" style="margin-top:8px"><input type="checkbox" data-clock="icon" ${c.icon?'checked':''}> Klok-icoon ervoor</label>
+    h+=g(T('Refresh-klok','Refresh clock'),`
+      <div class="row"><div><label class="fld">${T('Tijdformaat (strftime)','Time format (strftime)')}</label><input data-clock="strftime" class="mono" type="text" value="${attr(c.strftime||'%H:%M')}"></div></div>
+      <div class="hint">${T('Toont het tijdstip van de laatste schermverversing via','Shows the time of the last screen refresh via')} <span class="mono">id(homeassistant_time)</span>. ${T('Bv.','E.g.')} <span class="mono">%H:%M</span> ${T('of','or')} <span class="mono">%d-%m %H:%M</span>.</div>
+      <label class="toggle" style="margin-top:8px"><input type="checkbox" data-clock="icon" ${c.icon?'checked':''}> ${T('Klok-icoon ervoor','Clock icon before it')}</label>
       ${c.icon?`<div class="row" style="align-items:center;margin-top:6px">
         <div style="flex:none"><span class="mdi" style="font-size:22px">${mdiChar(c.iconHex)}</span></div>
-        <div><button class="btn sm" id="pick-clock-icon">Icoon…</button></div>
-        <div><label class="fld">Tekst-offset (px)</label><input data-clock="iconGap" type="number" value="${c.iconGap??40}"></div>
+        <div><button class="btn sm" id="pick-clock-icon">${T('Icoon…','Icon…')}</button></div>
+        <div><label class="fld">${T('Tekst-offset (px)','Text offset (px)')}</label><input data-clock="iconGap" type="number" value="${c.iconGap??40}"></div>
       </div>
-      <div class="row"><div><label class="fld">Icoon-font</label><select data-clock="iconFontId">${fontOpts(c.iconFontId)}</select></div></div>`:''}`);
+      <div class="row"><div><label class="fld">${T('Icoon-font','Icon font')}</label><select data-clock="iconFontId">${fontOpts(c.iconFontId)}</select></div></div>`:''}`);
   }
 
   // graph smart element
   if(el.type==='graph'){
     const gr=el.graph||{traces:[]};
     const ax=gr.axes||{};
-    h+=g('Grafiek — algemeen',`
-      <div class="row tight"><div><label class="fld">Duur (X-as)</label><input data-graph="duration" class="mono" type="text" value="${attr(gr.duration||'1h')}"></div>
-        <div><label class="fld">X-raster</label><input data-graph="x_grid" class="mono" type="text" value="${attr(gr.x_grid||'10min')}"></div></div>
-      <div class="row tight"><div><label class="fld">Y-raster</label><input data-graph="y_grid" type="number" step="any" value="${gr.y_grid??5}"></div>
+    h+=g(T('Grafiek — algemeen','Graph — general'),`
+      <div class="row tight"><div><label class="fld">${T('Duur (X-as)','Duration (X-axis)')}</label><input data-graph="duration" class="mono" type="text" value="${attr(gr.duration||'1h')}"></div>
+        <div><label class="fld">${T('X-raster','X grid')}</label><input data-graph="x_grid" class="mono" type="text" value="${attr(gr.x_grid||'10min')}"></div></div>
+      <div class="row tight"><div><label class="fld">${T('Y-raster','Y grid')}</label><input data-graph="y_grid" type="number" step="any" value="${gr.y_grid??5}"></div>
         <div><label class="fld">Y-min</label><input data-graph="min_range" type="number" step="any" value="${attr(gr.min_range)}" placeholder="auto"></div>
         <div><label class="fld">Y-max</label><input data-graph="max_range" type="number" step="any" value="${attr(gr.max_range)}" placeholder="auto"></div></div>
-      <div class="hint">Y-min/Y-max leeg = ESPHome schaalt automatisch. Vul beide voor een vaste Y-schaal.</div>
-      <label class="toggle" style="margin-top:6px"><input type="checkbox" data-graph="border" ${gr.border!==false?'checked':''}> Rand tekenen</label>`);
+      <div class="hint">${T('Y-min/Y-max leeg = ESPHome schaalt automatisch. Vul beide voor een vaste Y-schaal.','Y-min/Y-max empty = ESPHome auto-scales. Fill both for a fixed Y scale.')}</div>
+      <label class="toggle" style="margin-top:6px"><input type="checkbox" data-graph="border" ${gr.border!==false?'checked':''}> ${T('Rand tekenen','Draw border')}</label>`);
 
-    h+=g('Grafiek — traces (stijlen)',`
+    h+=g(T('Grafiek — traces (stijlen)','Graph — traces (styles)'),`
       ${(gr.traces||[]).map((t,i)=>`<div class="cond-box">
         <div class="row"><div><label class="fld">Sensor</label><select data-trace="${i}.sourceId">${srcOpts(t.sourceId,true)}</select></div></div>
-        <div class="row tight"><div><label class="fld">Lijntype</label><select data-trace="${i}.lineType">
+        <div class="row tight"><div><label class="fld">${T('Lijntype','Line type')}</label><select data-trace="${i}.lineType">
           ${['SOLID','DOTTED','DASHED','STEPLINE'].map(o=>`<option ${t.lineType===o?'selected':''}>${o}</option>`).join('')}</select></div>
-          <div><label class="fld">Dikte</label><input data-trace="${i}.thickness" type="number" min="1" max="10" value="${t.thickness??2}"></div></div>
-        <div class="row tight"><div><label class="fld">Kleur</label><select data-trace="${i}.colorId">${profile().colors.map(c=>`<option value="${c.id}" ${t.colorId===c.id?'selected':''}>${c.id}</option>`).join('')}</select></div>
-          <div style="display:flex;align-items:flex-end"><label class="toggle"><input type="checkbox" data-trace="${i}.continuous" ${t.continuous!==false?'checked':''}> Continu</label></div></div>
-        ${(gr.traces.length>1)?`<button class="btn ghost sm danger" data-trace-del="${i}">Trace verwijderen</button>`:''}
+          <div><label class="fld">${T('Dikte','Thickness')}</label><input data-trace="${i}.thickness" type="number" min="1" max="10" value="${t.thickness??2}"></div></div>
+        <div class="row tight"><div><label class="fld">${T('Kleur','Colour')}</label><select data-trace="${i}.colorId">${profile().colors.map(c=>`<option value="${c.id}" ${t.colorId===c.id?'selected':''}>${c.id}</option>`).join('')}</select></div>
+          <div style="display:flex;align-items:flex-end"><label class="toggle"><input type="checkbox" data-trace="${i}.continuous" ${t.continuous!==false?'checked':''}> ${T('Continu','Continuous')}</label></div></div>
+        ${(gr.traces.length>1)?`<button class="btn ghost sm danger" data-trace-del="${i}">${T('Trace verwijderen','Remove trace')}</button>`:''}
       </div>`).join('')}
-      <button class="btn sm" id="trace-add" style="margin-top:8px">+ Trace toevoegen</button>
-      <div class="hint">Elke trace heeft een eigen lijntype, dikte en kleur. Alleen numerieke sensoren zijn zinvol.</div>`);
+      <button class="btn sm" id="trace-add" style="margin-top:8px">+ ${T('Trace toevoegen','Add trace')}</button>
+      <div class="hint">${T('Elke trace heeft een eigen lijntype, dikte en kleur. Alleen numerieke sensoren zijn zinvol.','Each trace has its own line type, thickness and colour. Only numeric sensors make sense.')}</div>`);
 
-    h+=g('Grafiek — assen & labels',`
-      <label class="toggle"><input type="checkbox" data-axes="show" ${ax.show?'checked':''}> As-labels tekenen (via lambda-tekst)</label>
+    h+=g(T('Grafiek — assen & labels','Graph — axes & labels'),`
+      <label class="toggle"><input type="checkbox" data-axes="show" ${ax.show?'checked':''}> ${T('As-labels tekenen (via lambda-tekst)','Draw axis labels (via lambda text)')}</label>
       ${ax.show?`
-      <div class="row"><div><label class="fld">Label-font</label><select data-axes="fontId">${fontOpts(ax.fontId)}</select></div></div>
-      <div class="row tight"><div><label class="fld">Y-as titel</label><input data-axes="yTitle" type="text" value="${attr(ax.yTitle)}" placeholder="bv. °C"></div>
-        <div><label class="fld">X-as titel</label><input data-axes="xTitle" type="text" value="${attr(ax.xTitle)}" placeholder="bv. tijd"></div></div>
-      <label class="toggle"><input type="checkbox" data-axes="showYScale" ${ax.showYScale!==false?'checked':''}> Y-schaal tonen (min/max)</label>
-      <label class="toggle"><input type="checkbox" data-axes="showXScale" ${ax.showXScale!==false?'checked':''}> X-schaal tonen (0 … −duur)</label>
-      <div class="hint">Y-schaalwaarden (min/midden/max) verschijnen alleen als je hierboven bij “Algemeen” een vaste <b>Y-min én Y-max</b> hebt ingevuld. Bij auto-schaal kent de editor de werkelijke grenzen niet.</div>`:`
-      <div class="hint">ESPHome's <span class="mono">graph:</span> tekent zelf geen astitels of schaalwaarden. Zet dit aan om ze als tekst rond de grafiek te genereren.</div>`}`);
+      <div class="row"><div><label class="fld">${T('Label-font','Label font')}</label><select data-axes="fontId">${fontOpts(ax.fontId)}</select></div></div>
+      <div class="row tight"><div><label class="fld">${T('Y-as titel','Y-axis title')}</label><input data-axes="yTitle" type="text" value="${attr(ax.yTitle)}" placeholder="${T('bv. °C','e.g. °C')}"></div>
+        <div><label class="fld">${T('X-as titel','X-axis title')}</label><input data-axes="xTitle" type="text" value="${attr(ax.xTitle)}" placeholder="${T('bv. tijd','e.g. time')}"></div></div>
+      <label class="toggle"><input type="checkbox" data-axes="showYScale" ${ax.showYScale!==false?'checked':''}> ${T('Y-schaal tonen (min/max)','Show Y scale (min/max)')}</label>
+      <label class="toggle"><input type="checkbox" data-axes="showXScale" ${ax.showXScale!==false?'checked':''}> ${T('X-schaal tonen (0 … −duur)','Show X scale (0 … −duration)')}</label>
+      <div class="hint">${T('Y-schaalwaarden (min/midden/max) verschijnen alleen als je hierboven bij “Algemeen” een vaste','Y scale values (min/mid/max) only appear if you set a fixed')} <b>Y-min ${T('én','and')} Y-max</b> ${T('hebt ingevuld. Bij auto-schaal kent de editor de werkelijke grenzen niet.','under “General”. With auto-scale the editor cannot know the real bounds.')}</div>`:`
+      <div class="hint">ESPHome's <span class="mono">graph:</span> ${T('tekent zelf geen astitels of schaalwaarden. Zet dit aan om ze als tekst rond de grafiek te genereren.','does not draw axis titles or scale values itself. Enable this to generate them as text around the graph.')}</div>`}`);
   }
 
   // condition (text + icon)
   if(el.type==='text'||el.type==='icon'){
-    h+=g('Conditie (if / else)', condEditor(el));
+    h+=g(T('Conditie (if / else)','Condition (if / else)'), condEditor(el));
   }
 
   host.innerHTML=h;
@@ -971,15 +972,15 @@ function srcOpts(sel,allowEmpty){
 
 function sourceEditor(el){
   const sc=el.source||{kind:'static'};
-  let h=`<div class="row"><div><label class="fld">Type bron</label>
+  let h=`<div class="row"><div><label class="fld">${T('Type bron','Source type')}</label>
     <select data-src="kind">
-      <option value="static" ${sc.kind==='static'?'selected':''}>Vaste tekst</option>
-      <option value="sensor" ${sc.kind==='sensor'?'selected':''}>Sensorwaarde</option>
-      <option value="expr"   ${sc.kind==='expr'?'selected':''}>Vrije expressie</option>
+      <option value="static" ${sc.kind==='static'?'selected':''}>${T('Vaste tekst','Static text')}</option>
+      <option value="sensor" ${sc.kind==='sensor'?'selected':''}>${T('Sensorwaarde','Sensor value')}</option>
+      <option value="expr"   ${sc.kind==='expr'?'selected':''}>${T('Vrije expressie','Free expression')}</option>
     </select></div></div>`;
-  if(sc.kind==='static') h+=`<div class="row"><div><label class="fld">Tekst</label><input data-src="text" type="text" value="${attr(sc.text)}"></div></div>`;
+  if(sc.kind==='static') h+=`<div class="row"><div><label class="fld">${T('Tekst','Text')}</label><input data-src="text" type="text" value="${attr(sc.text)}"></div></div>`;
   else if(sc.kind==='sensor') h+=`<div class="row"><div><label class="fld">Sensor</label><select data-src="sourceId">${srcOpts(sc.sourceId,true)}</select></div></div>`;
-  else h+=`<div class="row"><div><label class="fld">C++ expressie</label><input data-src="expr" class="mono" type="text" value="${attr(sc.expr)}" placeholder="id(x).state"></div></div><div class="hint">Wordt rauw in printf gezet. Gebruik <span class="mono">%s</span>/<span class="mono">%f</span> in de format.</div>`;
+  else h+=`<div class="row"><div><label class="fld">${T('C++ expressie','C++ expression')}</label><input data-src="expr" class="mono" type="text" value="${attr(sc.expr)}" placeholder="id(x).state"></div></div><div class="hint">${T('Wordt rauw in printf gezet. Gebruik','Inserted raw into printf. Use')} <span class="mono">%s</span>/<span class="mono">%f</span> ${T('in de format.','in the format.')}</div>`;
   return h;
 }
 const SUFFIX_PRESETS=['','°C','°F','%','W','kW','kWh','Wh','V','A','mA','Hz','bar','pH','ppm','L','L/u','mL','m³','g','kg','lux','dB','rpm','x','€','s','min','u'];
@@ -987,73 +988,73 @@ const PREFIX_PRESETS=['','€ ','$ ','~','± ','# '];
 function affixControl(which, val){
   const presets = which==='suffix'?SUFFIX_PRESETS:PREFIX_PRESETS;
   const known = presets.includes(val);
-  const opts = presets.map(p=>`<option value="${attr(p)}" ${known&&p===val?'selected':''}>${p===''?'(geen)':p}</option>`).join('')
-             + `<option value="__custom__" ${!known?'selected':''}>Aangepast…</option>`;
+  const opts = presets.map(p=>`<option value="${attr(p)}" ${known&&p===val?'selected':''}>${p===''?T('(geen)','(none)'):p}</option>`).join('')
+             + `<option value="__custom__" ${!known?'selected':''}>${T('Aangepast…','Custom…')}</option>`;
   let h=`<select data-affix-sel="${which}">${opts}</select>`;
-  h+=`<input data-affix-custom="${which}" type="text" value="${attr(val)}" placeholder="eigen tekst" style="margin-top:5px;${known?'display:none':''}">`;
+  h+=`<input data-affix-custom="${which}" type="text" value="${attr(val)}" placeholder="${T('eigen tekst','custom text')}" style="margin-top:5px;${known?'display:none':''}">`;
   return h;
 }
 function formatEditor(el){
   const fmt=el.format||{mode:'builder'};
   const kind = el.source&&el.source.kind==='sensor' ? (srcById(el.source.sourceId)||{}).kind : el.source&&el.source.kind;
-  let h=`<div class="row"><div><label class="fld">Modus</label><select data-fmt="mode">
+  let h=`<div class="row"><div><label class="fld">${T('Modus','Mode')}</label><select data-fmt="mode">
       <option value="builder" ${fmt.mode!=='raw'?'selected':''}>Builder</option>
-      <option value="raw" ${fmt.mode==='raw'?'selected':''}>Rauwe printf</option></select></div></div>`;
+      <option value="raw" ${fmt.mode==='raw'?'selected':''}>${T('Rauwe printf','Raw printf')}</option></select></div></div>`;
   if(fmt.mode==='raw'){
     h+=`<div class="row"><div><label class="fld">Format string</label><input data-fmt="raw" class="mono" type="text" value="${attr(fmt.raw||'%s')}"></div></div>`;
   } else {
     h+=`<div class="row tight">
       <div><label class="fld">Prefix</label>${affixControl('prefix', fmt.prefix||'')}</div>
       <div><label class="fld">Suffix</label>${affixControl('suffix', fmt.suffix||'')}</div></div>`;
-    if(kind==='number') h+=`<div class="row"><div><label class="fld">Decimalen</label><input data-fmt="decimals" type="number" min="0" max="6" value="${fmt.decimals??1}"></div></div>`;
+    if(kind==='number') h+=`<div class="row"><div><label class="fld">${T('Decimalen','Decimals')}</label><input data-fmt="decimals" type="number" min="0" max="6" value="${fmt.decimals??1}"></div></div>`;
   }
   // transform
   const opts = transformOptions(kind);
   h+=`<div class="row"><div><label class="fld">Transform</label><select data-k2="transform">${opts.map(o=>`<option value="${o[0]}" ${(el.transform||'none')===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div></div>`;
   if(el.transform==='boolLabel'){ const a=el.transformArg||{};
-    h+=`<div class="row tight"><div><label class="fld">Label “aan”</label><input data-ta="trueLabel" type="text" value="${attr(a.trueLabel||'Aan')}"></div><div><label class="fld">Label “uit”</label><input data-ta="falseLabel" type="text" value="${attr(a.falseLabel||'Uit')}"></div></div>`; }
+    h+=`<div class="row tight"><div><label class="fld">${T('Label “aan”','Label “on”')}</label><input data-ta="trueLabel" type="text" value="${attr(a.trueLabel||'Aan')}"></div><div><label class="fld">${T('Label “uit”','Label “off”')}</label><input data-ta="falseLabel" type="text" value="${attr(a.falseLabel||'Uit')}"></div></div>`; }
   if(el.transform==='scale'){ const a=el.transformArg||{};
-    h+=`<div class="row"><div><label class="fld">Factor (×)</label><input data-ta="factor" type="number" step="any" value="${a.factor??1}"></div></div>`; }
+    h+=`<div class="row"><div><label class="fld">${T('Factor (×)','Factor (×)')}</label><input data-ta="factor" type="number" step="any" value="${a.factor??1}"></div></div>`; }
   if(el.transform==='roundN'){ const a=el.transformArg||{};
-    h+=`<div class="row"><div><label class="fld">Decimalen</label><input data-ta="n" type="number" min="0" max="6" value="${a.n??1}"></div></div>`; }
+    h+=`<div class="row"><div><label class="fld">${T('Decimalen','Decimals')}</label><input data-ta="n" type="number" min="0" max="6" value="${a.n??1}"></div></div>`; }
   h+=`<div class="hint">Preview: <span class="mono">${attr(displayText(el))}</span></div>`;
   return h;
 }
 function transformOptions(kind){
-  if(kind==='number') return [['none','Geen'],['roundN','Afronden op N decimalen'],['scale','Schalen (× factor)']];
-  if(kind==='bool')   return [['none','Geen'],['boolLabel','on/off → eigen labels']];
-  if(kind==='time')   return [['none','Geen'],['trimSeconds','Tijd → HH:MM']];
-  if(kind==='string') return [['none','Geen'],['trimSeconds','Laatste 3 tekens weg'],['boolLabel','on/off → eigen labels']];
+  if(kind==='number') return [['none',T('Geen','None')],['roundN',T('Afronden op N decimalen','Round to N decimals')],['scale',T('Schalen (× factor)','Scale (× factor)')]];
+  if(kind==='bool')   return [['none',T('Geen','None')],['boolLabel',T('on/off → eigen labels','on/off → custom labels')]];
+  if(kind==='time')   return [['none',T('Geen','None')],['trimSeconds',T('Tijd → HH:MM','Time → HH:MM')]];
+  if(kind==='string') return [['none',T('Geen','None')],['trimSeconds',T('Laatste 3 tekens weg','Drop last 3 chars')],['boolLabel',T('on/off → eigen labels','on/off → custom labels')]];
   // static
-  return [['none','Geen'],['upper','HOOFDLETTERS'],['capitalize','Eerste letter hoofdletter']];
+  return [['none',T('Geen','None')],['upper',T('HOOFDLETTERS','UPPERCASE')],['capitalize',T('Eerste letter hoofdletter','Capitalize first letter')]];
 }
 function condEditor(el){
   const cd=el.condition||{enabled:false};
-  let h=`<label class="toggle"><input type="checkbox" data-cd="enabled" ${cd.enabled?'checked':''}> Conditie gebruiken</label>`;
+  let h=`<label class="toggle"><input type="checkbox" data-cd="enabled" ${cd.enabled?'checked':''}> ${T('Conditie gebruiken','Use condition')}</label>`;
   if(!cd.enabled) return h;
   h+=`<div class="cond-box">
-    <div class="row"><div><label class="fld">Bron</label><select data-cd="sourceId">${srcOpts(cd.sourceId,true)}</select></div></div>
+    <div class="row"><div><label class="fld">${T('Bron','Source')}</label><select data-cd="sourceId">${srcOpts(cd.sourceId,true)}</select></div></div>
     <div class="row tight"><div><label class="fld">Operator</label><select data-cd="op">
-      <option value="on" ${cd.op==='on'?'selected':''}>is aan (on)</option>
-      <option value="eq" ${cd.op==='eq'?'selected':''}>= gelijk aan</option>
-      <option value="lt" ${cd.op==='lt'?'selected':''}>&lt; kleiner dan</option>
-      <option value="gt" ${cd.op==='gt'?'selected':''}>&gt; groter dan</option>
-      <option value="between" ${cd.op==='between'?'selected':''}>tussen</option>
+      <option value="on" ${cd.op==='on'?'selected':''}>${T('is aan (on)','is on')}</option>
+      <option value="eq" ${cd.op==='eq'?'selected':''}>${T('= gelijk aan','= equals')}</option>
+      <option value="lt" ${cd.op==='lt'?'selected':''}>${T('&lt; kleiner dan','&lt; less than')}</option>
+      <option value="gt" ${cd.op==='gt'?'selected':''}>${T('&gt; groter dan','&gt; greater than')}</option>
+      <option value="between" ${cd.op==='between'?'selected':''}>${T('tussen','between')}</option>
     </select></div>`;
-  if(cd.op!=='on') h+=`<div><label class="fld">Waarde</label><input data-cd="val" type="text" value="${attr(cd.val)}"></div>`;
-  if(cd.op==='between') h+=`<div><label class="fld">… en</label><input data-cd="val2" type="text" value="${attr(cd.val2)}"></div>`;
+  if(cd.op!=='on') h+=`<div><label class="fld">${T('Waarde','Value')}</label><input data-cd="val" type="text" value="${attr(cd.val)}"></div>`;
+  if(cd.op==='between') h+=`<div><label class="fld">${T('… en','… and')}</label><input data-cd="val2" type="text" value="${attr(cd.val2)}"></div>`;
   h+=`</div>`;
-  h+=branchEditor(el,'whenTrue','Als WAAR','t')+branchEditor(el,'whenFalse','Als ONWAAR','f');
+  h+=branchEditor(el,'whenTrue',T('Als WAAR','If TRUE'),'t')+branchEditor(el,'whenFalse',T('Als ONWAAR','If FALSE'),'f');
   h+=`</div>`;
   return h;
 }
 function branchEditor(el,key,title,cls){
   const b=el.condition[key]||{};
   let h=`<div class="branch ${cls}"><h5>${title}</h5>`;
-  if(el.type==='text') h+=`<div class="row"><div><label class="fld">Tekst (override)</label><input data-br="${key}.text" type="text" value="${attr(b.text)}" placeholder="(leeg = waarde uit bron)"></div></div>`;
-  if(el.type==='icon') h+=`<div class="row" style="align-items:center"><div style="flex:none">${b.iconName?`<span class="mdi mdi-${b.iconName}" style="font-size:26px"></span>`:'<span class="hint">geen</span>'}</div><div><button class="btn sm" data-pickbranch="${key}">Icoon…</button></div></div>`;
-  h+=`<div class="row"><div><label class="fld">Kleur (override)</label><select data-br="${key}.colorId"><option value="">— geen —</option>${profile().colors.map(c=>`<option value="${c.id}" ${b.colorId===c.id?'selected':''}>${c.id}</option>`).join('')}</select></div></div>`;
-  h+=`<label class="toggle"><input type="checkbox" data-br="${key}.visible" ${b.visible!==false?'checked':''}> Zichtbaar</label>`;
+  if(el.type==='text') h+=`<div class="row"><div><label class="fld">${T('Tekst (override)','Text (override)')}</label><input data-br="${key}.text" type="text" value="${attr(b.text)}" placeholder="${T('(leeg = waarde uit bron)','(empty = value from source)')}"></div></div>`;
+  if(el.type==='icon') h+=`<div class="row" style="align-items:center"><div style="flex:none">${b.iconName?`<span class="mdi mdi-${b.iconName}" style="font-size:26px"></span>`:`<span class="hint">${T('geen','none')}</span>`}</div><div><button class="btn sm" data-pickbranch="${key}">${T('Icoon…','Icon…')}</button></div></div>`;
+  h+=`<div class="row"><div><label class="fld">${T('Kleur (override)','Colour (override)')}</label><select data-br="${key}.colorId"><option value="">${T('— geen —','— none —')}</option>${profile().colors.map(c=>`<option value="${c.id}" ${b.colorId===c.id?'selected':''}>${c.id}</option>`).join('')}</select></div></div>`;
+  h+=`<label class="toggle"><input type="checkbox" data-br="${key}.visible" ${b.visible!==false?'checked':''}> ${T('Zichtbaar','Visible')}</label>`;
   return h+`</div>`;
 }
 
@@ -1935,7 +1936,8 @@ function download(blob,name){ const a=document.createElement('a'); a.href=URL.cr
    ============================================================ */
 function applyTheme(){
   document.body.classList.toggle('light', state.theme==='light');
-  const btn=$('#btn-theme'); if(btn) btn.textContent = state.theme==='light' ? '◑ Licht' : '◐ Donker';
+  const btn=$('#btn-theme');
+  if(btn) btn.textContent = state.theme==='light' ? ('◑ '+T('Licht','Light')) : ('◐ '+T('Donker','Dark'));
 }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1800); }
 
@@ -2057,7 +2059,7 @@ function wire(){
   $('#btn-scenarios').onclick=openScenarios;
   $('#btn-save').onclick=saveProject;
   $('#btn-theme').onclick=()=>{ if(window.haTheme) window.haTheme.toggle(); };
-  const lb=$('#btn-live'); if(lb) lb.onclick=refreshLive;
+  const lb=$('#btn-live'); if(lb) lb.onclick=toggleLive;
   $('#btn-load').onclick=loadProject;
 
   $('#btn-code').onclick=()=>{ renderCode(); $('#code-drawer').classList.add('open'); };
@@ -2135,25 +2137,53 @@ function applyLiveToSources(){
     } else { delete src.live; }
   });
 }
+/* Toggle live data on/off (button click) */
+function toggleLive(){
+  if(LIVE_ON){
+    LIVE_ON=false; HA_LIVE=false; LIVE_STATUS='off'; HA_STATES=null;
+    if(profile()) profile().sources.forEach(s=>delete s.live);
+    updateLiveBadge(); renderCanvas(); renderInspector();
+    toast(T('Live data uit','Live data off'));
+    return;
+  }
+  refreshLive();
+}
 async function refreshLive(){
+  LIVE_ON=true;
   try{
-    HA_STATES=await fetchHaStates();
-    applyLiveToSources();
-    HA_LIVE=true;
-    updateLiveBadge();
-    renderCanvas(); renderInspector();
-    const n=Object.keys(HA_STATES).length;
+    const r=await fetch('api/states', {headers:{'Accept':'application/json'}});
+    if(r.status===503){   // server up but no Supervisor token / no HA data
+      HA_LIVE=false; LIVE_STATUS='warn'; updateLiveBadge();
+      toast(T('Live data: geen verbinding met Home Assistant (Supervisor-token ontbreekt)',
+              'Live data: no Home Assistant connection (Supervisor token missing)'), true);
+      return;
+    }
+    if(!r.ok) throw new Error('states '+r.status);
+    const arr=await r.json();
+    const map={};
+    arr.forEach(s=>{ map[s.entity_id]={state:s.state, unit:s.unit, name:s.name, device_class:s.device_class}; });
+    HA_STATES=map; applyLiveToSources(); HA_LIVE=true;
+    const n=Object.keys(map).length;
+    LIVE_STATUS = n>0 ? 'ok' : 'warn';
+    updateLiveBadge(); renderCanvas(); renderInspector();
     toast(T('Live data bijgewerkt ('+n+' entiteiten)','Live data updated ('+n+' entities)'));
   }catch(e){
-    HA_LIVE=false; updateLiveBadge();
-    toast(T('Live data niet beschikbaar','Live data unavailable'));
+    HA_LIVE=false; LIVE_STATUS='error'; updateLiveBadge();
+    toast(T('Live data niet beschikbaar','Live data unavailable'), true);
     console.warn('live fetch failed', e);
   }
 }
+/* Status dot: off = grey ○, ok = green ●, warn = orange ●, error = red ● */
 function updateLiveBadge(){
   const b=$('#btn-live'); if(!b) return;
-  b.textContent = HA_LIVE ? '● Live' : '○ Live';
-  b.classList.toggle('primary', HA_LIVE);
+  const col={off:'var(--txt-faint)', ok:'#4caf50', warn:'#ff9800', error:'#f44336'}[LIVE_STATUS] || 'var(--txt-faint)';
+  const dot = LIVE_ON ? '●' : '○';
+  b.innerHTML = `<span style="color:${col};font-size:13px;line-height:1">${dot}</span> Live`;
+  b.classList.toggle('primary', LIVE_ON && LIVE_STATUS==='ok');
+  b.title = {off:T('Live data uit — klik om aan te zetten','Live data off — click to enable'),
+             ok:T('Live verbonden met Home Assistant','Live connected to Home Assistant'),
+             warn:T('Live aan, maar geen/onvolledige data','Live on, but no/incomplete data'),
+             error:T('Live verbinding mislukt','Live connection failed')}[LIVE_STATUS] || 'Live';
 }
 
 async function boot(){
@@ -2166,6 +2196,7 @@ async function boot(){
   selectedId=null;
   fitZoom();
   renderCanvas(); renderLayers(); renderInspector();
+  updateLiveBadge();
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>renderCanvas());
   // Check add-on API + live data (fire-and-forget to keep boot fast)
   fetch('api/info').then(r=>r.json()).then(info=>{
