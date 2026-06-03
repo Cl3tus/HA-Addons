@@ -97,7 +97,7 @@ body.chrome-hidden #topbar { display: none; }
   align-items: center;
   gap: 14px;
   padding: 0 14px;
-  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  background: var(--panel);   /* #1c1c1c dark / #ffffff light — matches HA */
   border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; align-items: center; gap: 9px; }

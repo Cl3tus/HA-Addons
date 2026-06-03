@@ -1,3 +1,6 @@
+## 1.9.4
+- Titelbalk effen gemaakt (geen gradient): #1C1C1C in dark, #FFFFFF in light — consistent met HA. Geldt ook voor de bestandsbeheer-header
+
 ## 1.9.3
 - Linkerpaneel opgesplitst: het palet ("Add elements") en de Lagen-kop blijven nu vast staan; alleen de **lagenlijst scrollt** als er meer lagen zijn dan passen. De element-knoppen scrollen niet meer mee
 
