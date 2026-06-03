@@ -22,6 +22,75 @@ const escFmt = s => esc(s).replace(/%/g,'%%');
 /* i18n helper — delegates to lang.js if present, else returns the Dutch text */
 const T = (nl,en) => (window.t ? window.t(nl,en) : nl);
 
+/* ---------------- ESPHome waveshare_epaper models ----------------
+   colour: 'mono' (B/W) | 'bwr' (black/white/red) | '7c' (7-colour)     */
+const EINK_MODELS = [
+  {v:'1.54in', c:'mono', d:'1.54" B/W'},
+  {v:'1.54inv2', c:'mono', d:'1.54" V2 B/W'},
+  {v:'1.54inv2-b', c:'bwr', d:'1.54" V2 Black/White/Red'},
+  {v:'2.13in', c:'mono', d:'2.13" B/W (not tested)'},
+  {v:'2.13in-ttgo', c:'mono', d:'2.13" TTGO T5 V2.3'},
+  {v:'2.13in-ttgo-b73', c:'mono', d:'2.13" TTGO B73'},
+  {v:'2.13in-ttgo-b74', c:'mono', d:'2.13" TTGO B74'},
+  {v:'2.13in-ttgo-b1', c:'mono', d:'2.13" TTGO B1'},
+  {v:'2.13in-ttgo-dke', c:'mono', d:'2.13" TTGO DKE (DEPG0213BN)'},
+  {v:'2.13inv2', c:'mono', d:'2.13" V2 (Pico 2.13v2)'},
+  {v:'2.13inv3', c:'mono', d:'2.13" V3 (Pico 2.13v3)'},
+  {v:'2.70in', c:'mono', d:'2.70" B/W'},
+  {v:'2.70inv2', c:'mono', d:'2.70" V2 B/W'},
+  {v:'2.70in-b', c:'bwr', d:'2.70" Black/White/Red'},
+  {v:'2.70in-bv2', c:'bwr', d:'2.70" V2 Black/White/Red'},
+  {v:'2.90in', c:'mono', d:'2.90" B/W'},
+  {v:'2.90in-dke', c:'mono', d:'2.90" DKE'},
+  {v:'2.90inv2', c:'mono', d:'2.90" V2'},
+  {v:'2.90inv2-r2', c:'mono', d:'2.90" V2 r2'},
+  {v:'2.90in-b', c:'mono', d:'2.90" B/W only'},
+  {v:'2.90in-bV3', c:'mono', d:'2.90" B/W only (V3)'},
+  {v:'4.20in', c:'mono', d:'4.20" B/W'},
+  {v:'4.20in-bV2', c:'mono', d:'4.20" V2 B/W only'},
+  {v:'gdey042t81', c:'mono', d:'GoodDisplay GDEY042T81 4.2" B/W'},
+  {v:'4.20in-bV2-bwr', c:'bwr', d:'4.20" V2 BWR (double buffer)'},
+  {v:'5.83in', c:'mono', d:'5.83" B/W'},
+  {v:'5.83inv2', c:'mono', d:'5.83" V2 B/W'},
+  {v:'gdey0583t81', c:'mono', d:'GoodDisplay GDEY0583T81 5.83" B/W'},
+  {v:'7.30in-f', c:'7c', d:'7.3" 7-colour (b/w/r/y/blue/green/orange)'},
+  {v:'7.50in', c:'mono', d:'7.50" B/W'},
+  {v:'7.50in-bV2', c:'mono', d:'7.50" B/W only (also V3)'},
+  {v:'7.50in-bV3', c:'mono', d:'7.50" B/W only (V3 sticker)'},
+  {v:'7.50in-bV3-bwr', c:'bwr', d:'7.50" BWR (V3 sticker, double buffer)'},
+  {v:'7.50in-bc', c:'mono', d:'7.50" B/W only (C sticker)'},
+  {v:'7.50inV2', c:'mono', d:'7.50" V2 (not for ESP8266)'},
+  {v:'7.50inV2alt', c:'mono', d:'7.50" V2 (alternative)'},
+  {v:'7.50inV2p', c:'mono', d:'7.50" V2 partial/fast refresh (>= Sep 2023)'},
+  {v:'7.50in-hd-b', c:'mono', d:'7.50" HD (not for ESP8266)'},
+  {v:'gdey029t94', c:'mono', d:'GoodDisplay GDEY029T94 2.9" mono'},
+  {v:'gdew029t5', c:'mono', d:'GoodDisplay GDEW029T5 (MagTag/Badger)'},
+  {v:'1.54in-m5coreink-m09', c:'mono', d:'M5Stack Core Ink (gdew0154m09)'},
+  {v:'13.3in-k', c:'mono', d:'13.3" K model 960×680 B/W only'},
+];
+function modelInfo(v){ return EINK_MODELS.find(m=>m.v===v) || {v, c:'bwr', d:''}; }
+
+/* colour palette for a display colour-type */
+function mkColor(id,r,g,b,w,css){ return {id,r,g,b,w,css}; }
+function colorSetFor(type){
+  const white=mkColor('color_bg',0,0,0,0,'#f4f1e9');
+  const black=mkColor('color_text',0,0,0,100,'#1d1d1b');
+  if(type==='mono') return [white,black];
+  if(type==='7c') return [white,black,
+    mkColor('red',0,0,0,0,'#d6483b'), mkColor('yellow',0,0,0,0,'#e3c81e'),
+    mkColor('blue',0,0,0,0,'#2f5fd0'), mkColor('green',0,0,0,0,'#3a9e4a'),
+    mkColor('orange',0,0,0,0,'#e08a2e')];
+  // bwr (default)
+  return [white,black, mkColor('red',100,0,0,0,'#d6483b')];
+}
+/* derive the colour-type from an existing palette */
+function paletteType(colors){
+  const ids=(colors||[]).map(c=>c.id);
+  if(ids.includes('orange')||ids.includes('yellow')||ids.includes('green')||ids.includes('blue')) return '7c';
+  if(ids.includes('red')) return 'bwr';
+  return 'mono';
+}
+
 /* ---------------- seed profile (clean, empty starting point) ---------------- */
 function seedProfile(name='My display'){
   return {
@@ -29,7 +98,7 @@ function seedProfile(name='My display'){
     name,
     schema_version: 1,
     device: { name:'eink-display', comment:'E-ink Display',
-              model:'7.50in-bv3', rotation:90, w:480, h:800, bg:'#d4d6d7' },
+              model:'7.50in-bV3-bwr', rotation:90, w:480, h:800, bg:'#d4d6d7' },
     // a minimal, generic font set so text/icons render out of the box
     fonts: [
       f('font_klein','gfonts',null,'Roboto',400,25,false),
@@ -39,11 +108,7 @@ function seedProfile(name='My display'){
       f('font_mdi_medium','local','fonts/materialdesignicons-webfont.ttf',null,null,60,false),
       f('font_mdi_small','local','fonts/materialdesignicons-webfont.ttf',null,null,30,false),
     ],
-    colors: [
-      c('color_bg',0,0,0,0,'#f4f1e9'),     // background (paper)
-      c('color_text',0,0,0,100,'#1d1d1b'), // ink black
-      c('red',100,0,0,0,'#d6483b'),        // tri-color red
-    ],
+    colors: colorSetFor('bwr'),   // palette matches the model's colour capability
     sources: [],          // start empty — add via "Value sources → From Home Assistant"
     elements: [],
     scenarios: [],
@@ -358,6 +423,12 @@ function buildNode(el){
       stroke:E.filled?undefined:color.css, strokeWidth:1, hitStrokeWidth:10,
       fill:E.filled?color.css:'rgba(0,0,0,0.001)'});
   }
+  else if(E.type==='polygon'){
+    node = new Konva.RegularPolygon({x:E.x,y:E.y,sides:Math.max(3,E.sides||6),radius:E.r||60,
+      rotation:E.rotation||0,
+      stroke:E.filled?undefined:color.css, strokeWidth:1,
+      fill:E.filled?color.css:'rgba(0,0,0,0.001)'});
+  }
   else if(E.type==='circle'){
     const rx=(E.rx!=null?E.rx:(E.r!=null?E.r:40)), ry=(E.ry!=null?E.ry:(E.r!=null?E.r:40));
     node = new Konva.Ellipse({x:E.x,y:E.y,radiusX:rx,radiusY:ry,
@@ -441,8 +512,8 @@ function buildNode(el){
     } else if(el.type==='rect' || el.type==='graph'){
       // centre-origin nodes: node.x()/y() is the centre
       el.x=Math.round(node.x()-el.w/2); el.y=Math.round(node.y()-el.h/2);
-    } else if(el.type==='triangle' || el.type==='circle'){
-      // triangle/ellipse use node.x()/y() as their centre directly
+    } else if(el.type==='triangle' || el.type==='circle' || el.type==='polygon'){
+      // triangle/ellipse/polygon use node.x()/y() as their centre directly
       el.x=Math.round(node.x()); el.y=Math.round(node.y());
     } else if(el.type==='clock'){
       // group whose children use absolute coords: node.x()/y() is the drag delta
@@ -513,10 +584,10 @@ function attachSelection(el, node){
   if(transformer){ try{transformer.destroy();}catch(e){} transformer=null; }
   if(selectionVisual){ try{selectionVisual.destroy();}catch(e){} selectionVisual=null; }
   if(!node) return;
-  if(el.type==='rect' || el.type==='circle' || el.type==='triangle' || el.type==='graph'){
-    const keepRatio = el.type==='circle' ? (el.lockAspect!==false) : false;
-    // rect/triangle can rotate; circle (ellipse) and graph cannot (graph is axis-aligned in ESPHome)
-    const rotateEnabled = (el.type==='rect' || el.type==='triangle');
+  if(el.type==='rect' || el.type==='circle' || el.type==='triangle' || el.type==='polygon' || el.type==='graph'){
+    const keepRatio = el.type==='circle' ? (el.lockAspect!==false) : (el.type==='polygon');
+    // rect/triangle/polygon can rotate; circle (ellipse) and graph cannot
+    const rotateEnabled = (el.type==='rect' || el.type==='triangle' || el.type==='polygon');
     transformer=new Konva.Transformer({rotateEnabled, keepRatio,
       borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:8,rotateAnchorOffset:24});
     contentLayer.add(transformer); transformer.nodes([node]);
@@ -526,6 +597,7 @@ function attachSelection(el, node){
       else if(el.type==='graph'){ el.w=Math.max(40,Math.round(el.w*sx)); el.h=Math.max(30,Math.round(el.h*sy)); el.x=Math.round(node.x()-el.w/2); el.y=Math.round(node.y()-el.h/2); }
       else if(el.type==='circle'){ el.rx=Math.max(2,Math.round(node.radiusX()*sx)); el.ry=Math.max(2,Math.round(node.radiusY()*sy)); delete el.r; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='triangle'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      else if(el.type==='polygon'){ el.r=Math.max(4,Math.round(node.radius()*((sx+sy)/2))); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       node.scaleX(1); node.scaleY(1); afterChange(); });
   } else if(el.type==='line'){
     // one draggable handle per endpoint -> move endpoints, make vertical, resize
@@ -700,7 +772,7 @@ function startRename(span, el){
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ inp.blur(); } else if(e.key==='Escape'){ inp.value=el.name||el.type; inp.blur(); } });
   inp.addEventListener('blur', commit, {once:true});
 }
-function typeGlyph(t){ return {text:'T',icon:'◈',line:'╱',rect:'▢',circle:'◯',wifi:'⌁',clock:'◔',graph:'⊿'}[t]||'•'; }
+function typeGlyph(t){ return {text:'T',icon:'◈',line:'╱',rect:'▢',circle:'◯',triangle:'△',polygon:'⬡',wifi:'⌁',clock:'◔',graph:'⊿'}[t]||'•'; }
 
 /* ============================================================
    ADD ELEMENTS
@@ -729,16 +801,8 @@ function addElement(type, pos){
     Object.assign(base,{ x:cx,y:cy, r:40, filled:false, colorId:'color_text', anchor:undefined });
   } else if(type==='triangle'){
     Object.assign(base,{ x:cx,y:cy, w:120,h:100, rotation:0, filled:false, colorId:'color_text', anchor:undefined });
-  } else if(type==='widget'){
-    // convenience: stamp an icon + a value pair (two independent elements)
-    const icon={...base, id:uid(), type:'icon', name:'Widget-icoon', fontId:'font_mdi_large',
-                iconName:'thermometer-water', iconHex:'F1A80', x:cx-60, y:cy, anchor:'TOP_CENTER'};
-    const val ={...base, id:uid(), type:'text', name:'Widget-waarde', fontId:'font_medium',
-                x:cx+30, y:cy, anchor:'TOP_CENTER',
-                source:{kind:'static',text:'21.5',sourceId:'',expr:''},
-                format:{mode:'builder',decimals:1,prefix:'',suffix:'°C',raw:'%s'}, transform:'none', transformArg:{},
-                condition:JSON.parse(JSON.stringify(base.condition))};
-    els().push(icon, val); selectedId=val.id; afterChange(); toast(T('Widget toegevoegd (icoon + waarde)','Widget added (icon + value)')); return;
+  } else if(type==='polygon'){
+    Object.assign(base,{ x:cx,y:cy, r:60, sides:6, rotation:0, filled:false, colorId:'color_text', anchor:undefined });
   } else if(type==='wifi'){
     Object.assign(base,{ fontId:'font_mdi_small', anchor:'TOP_CENTER', colorId:'color_text',
       // signal thresholds (dBm) -> MDI hex, strongest first; matches your test code
@@ -759,7 +823,7 @@ function addElement(type, pos){
 }
 function elName(t){ const n=els().filter(e=>e.type===t).length+1;
   const m={text:T('Tekst','Text'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
-           circle:T('Cirkel','Circle'),triangle:T('Driehoek','Triangle'),wifi:'WiFi',clock:T('Klok','Clock'),graph:T('Grafiek','Graph')};
+           circle:T('Cirkel','Circle'),triangle:T('Driehoek','Triangle'),polygon:T('Veelhoek','Polygon'),wifi:'WiFi',clock:T('Klok','Clock'),graph:T('Grafiek','Graph')};
   return (m[t]||'Element')+' '+n; }
 
 function deleteSel(){
@@ -841,6 +905,12 @@ function renderInspector(){
   } else if(el.type==='triangle'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
+      <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
+      <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
+      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
+  } else if(el.type==='polygon'){
+    h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
+      <div class="row"><div><label class="fld">${T('Straal','Radius')}</label><input data-k="r" type="number" value="${el.r||60}"></div><div><label class="fld">${T('Aantal zijden','Sides')}</label><input data-k="sides" type="number" min="3" max="12" value="${el.sides||6}"></div></div>
       <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
       <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
       <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
@@ -1199,6 +1269,10 @@ function drawStmt(el, indent){
     const fn=el.filled?'filled_triangle':'triangle';
     return `${I}it.${fn}(${v.join(', ')}, ${color});`;
   }
+  if(el.type==='polygon'){
+    const fn=el.filled?'filled_regular_polygon':'regular_polygon';
+    return `${I}it.${fn}(${el.x}, ${el.y}, ${el.r||60}, ${Math.max(3,el.sides||6)}, ${el.rotation||0}, ${color});`;
+  }
   if(el.type==='circle'){
     const rx=(el.rx!=null?el.rx:(el.r!=null?el.r:40)), ry=(el.ry!=null?el.ry:(el.r!=null?el.r:40));
     if(rx===ry){ const fn=el.filled?'filled_circle':'circle'; return `${I}it.${fn}(${el.x}, ${el.y}, ${rx}, ${color});`; }
@@ -1462,10 +1536,10 @@ function genYAML(){
   }
 
   // display + lambda
-  out+=`display:\n  - platform: waveshare_epaper\n    id: eink_display\n    model: ${d.model}\n    update_interval: never\n    rotation: ${d.rotation}°\n    # cs/dc/busy/reset pins: behoud je eigen pinconfig\n    lambda: |-\n`;
+  out+=`display:\n  - platform: waveshare_epaper\n    id: eink_display\n    model: ${d.model}\n    update_interval: never\n    rotation: ${d.rotation}°\n    # cs/dc/busy/reset pins: keep your own pin config\n    lambda: |-\n`;
   const L='      ';
   out+=`${L}if (id(initial_data_received) == false) {\n`;
-  out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), color_text, TextAlign::CENTER, "WACHTEN OP DATA...");\n`;
+  out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), color_text, TextAlign::CENTER, "${T('WACHTEN OP DATA...','WAITING FOR DATA...')}");\n`;
   out+=`${L}} else {\n`;
   orderedElements().forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
   out+=`${L}}\n`;
@@ -1520,13 +1594,13 @@ async function loadMdiMeta(){
   return MDI_META;
 }
 async function openIconPicker(cb){
-  openModal('MDI-icoon kiezen', `<input class="icon-search" id="icon-q" type="text" placeholder="Zoek… (bv. thermometer, pump, weather)"><div class="icon-grid" id="icon-grid"><div class="hint">Laden…</div></div>`, []);
+  openModal(T('MDI-icoon kiezen','Choose MDI icon'), `<input class="icon-search" id="icon-q" type="text" placeholder="${T('Zoek… (bv. thermometer, pump, weather)','Search… (e.g. thermometer, pump, weather)')}"><div class="icon-grid" id="icon-grid"><div class="hint">${T('Laden…','Loading…')}</div></div>`, []);
   const meta=await loadMdiMeta();
   const grid=$('#icon-grid'), q=$('#icon-q');
   function render(filter){
     const f=(filter||'').toLowerCase();
     const list=meta.filter(m=>!f || m.name.includes(f) || (m.aliases||[]).some(a=>a.includes(f)) || (m.tags||[]).some(t=>t.toLowerCase().includes(f))).slice(0,300);
-    grid.innerHTML = list.map(m=>`<div class="icon-cell" data-name="${m.name}" data-hex="${m.codepoint.toUpperCase()}"><span class="mdi mdi-${m.name}"></span><small>${m.name}</small></div>`).join('') || '<div class="hint">Niets gevonden.</div>';
+    grid.innerHTML = list.map(m=>`<div class="icon-cell" data-name="${m.name}" data-hex="${m.codepoint.toUpperCase()}"><span class="mdi mdi-${m.name}"></span><small>${m.name}</small></div>`).join('') || `<div class="hint">${T('Niets gevonden.','Nothing found.')}</div>`;
     grid.querySelectorAll('.icon-cell').forEach(c=>c.onclick=()=>{ cb({name:c.dataset.name, hex:c.dataset.hex}); closeModal(); });
   }
   render('thermometer'); q.value=''; q.oninput=()=>render(q.value); q.focus();
@@ -1654,9 +1728,9 @@ function openFonts(){
     <td class="mono">${f.id}</td>
     <td>${f.kind==='gfonts'?`gfonts: ${f.family} ${f.weight}`:f.file}</td>
     <td>${f.size}px</td>
-    <td>${/materialdesignicons/i.test(f.file||'')?'<span class="tag">MDI (CDN)</span>':(f.kind==='gfonts'?'<span class="tag">geladen</span>':(f.dataUrl?'<span class="tag" style="color:var(--ok)">geüpload</span>':'<span class="tag" style="color:var(--red)">upload nodig</span>'))}</td>
+    <td>${/materialdesignicons/i.test(f.file||'')?'<span class="tag">MDI</span>':(f.kind==='gfonts'?`<span class="tag">${T('geladen','loaded')}</span>`:(f.dataUrl?`<span class="tag" style="color:var(--ok)">${T('geüpload','uploaded')}</span>`:`<span class="tag" style="color:var(--red)">${T('upload nodig','upload needed')}</span>`))}</td>
     <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?`<input type="file" accept=".ttf,.otf" data-font="${i}" style="font-size:10px">`:''}</td>
-    <td><button class="btn ghost sm danger" data-delfont="${i}" title="Font verwijderen">✕</button></td>
+    <td><button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">✕</button></td>
   </tr>`).join('');
   const crows=profile().colors.map((c,i)=>`<tr>
     <td class="mono">${c.id}</td>
@@ -1664,32 +1738,32 @@ function openFonts(){
     <td><input type="color" data-color-i="${i}" value="${rgbToHex(c.css)}"></td>
     <td class="mono">r${c.r} g${c.g} b${c.b} w${c.w}</td>
   </tr>`).join('');
-  openModal('Fonts &amp; kleuren',
+  openModal(T('Fonts &amp; kleuren','Fonts &amp; colours'),
     `<h4 style="margin:0 0 8px;color:var(--accent)">Fonts</h4>
-     <table class="tbl"><thead><tr><th>id</th><th>bron</th><th>grootte</th><th>status</th><th>upload</th><th></th></tr></thead><tbody>${frows}</tbody></table>
+     <table class="tbl"><thead><tr><th>id</th><th>${T('bron','source')}</th><th>${T('grootte','size')}</th><th>status</th><th>upload</th><th></th></tr></thead><tbody>${frows}</tbody></table>
      <div class="src-box" style="margin-top:10px">
-       <label class="fld">Nieuw font toevoegen</label>
+       <label class="fld">${T('Nieuw font toevoegen','Add new font')}</label>
        <div class="row tight">
-         <div><input id="nf-id" type="text" class="mono" placeholder="id (bv. font_groot)"></div>
-         <div><input id="nf-size" type="number" placeholder="grootte" value="30" style="width:90px"></div>
-         <div><select id="nf-kind"><option value="gfonts">Google Font</option><option value="local">Lokale TTF</option></select></div>
+         <div><input id="nf-id" type="text" class="mono" placeholder="${T('id (bv. font_groot)','id (e.g. font_large)')}"></div>
+         <div><input id="nf-size" type="number" placeholder="${T('grootte','size')}" value="30" style="width:90px"></div>
+         <div><select id="nf-kind"><option value="gfonts">Google Font</option><option value="local">${T('Lokale TTF','Local TTF')}</option></select></div>
        </div>
        <div class="row tight" id="nf-gfonts">
-         <div><input id="nf-family" type="text" placeholder="family (bv. Roboto)"></div>
+         <div><input id="nf-family" type="text" placeholder="family (${T('bv.','e.g.')} Roboto)"></div>
          <div><input id="nf-weight" type="number" placeholder="weight" value="400" style="width:90px"></div>
        </div>
        <div class="row tight" id="nf-local" style="display:none">
-         <div><input id="nf-file" type="text" placeholder="pad in HA (bv. fonts/mijn.ttf)"></div>
+         <div><input id="nf-file" type="text" placeholder="${T('pad in HA (bv. fonts/mijn.ttf)','path in HA (e.g. fonts/my.ttf)')}"></div>
          <div><input id="nf-upload" type="file" accept=".ttf,.otf" style="font-size:10px"></div>
        </div>
-       <button class="btn sm" id="nf-add" style="margin-top:8px">+ Font toevoegen</button>
-       <div class="hint" style="margin-top:6px">Het <span class="mono">id</span> gebruik je in elementen; het <span class="mono">pad</span> moet kloppen met je ESPHome <span class="mono">fonts/</span>-map. Upload een TTF voor een exacte preview.</div>
+       <button class="btn sm" id="nf-add" style="margin-top:8px">+ ${T('Font toevoegen','Add font')}</button>
+       <div class="hint" style="margin-top:6px">${T('Het','The')} <span class="mono">id</span> ${T('gebruik je in elementen; het','is used in elements; the')} <span class="mono">${T('pad','path')}</span> ${T('moet kloppen met je ESPHome','must match your ESPHome')} <span class="mono">fonts/</span>${T('-map. Upload een TTF voor een exacte preview.',' folder. Upload a TTF for an exact preview.')}</div>
      </div>
-     <div class="hint" style="margin:10px 0 18px">De MDI-iconenfont wordt vanaf het CDN (v${MDI_VERSION}) geladen.</div>
-     <h4 style="margin:0 0 8px;color:var(--accent)">Kleuren (preview)</h4>
-     <table class="tbl"><thead><tr><th>id</th><th></th><th>preview</th><th>e-ink waarde</th></tr></thead><tbody>${crows}</tbody></table>
-     <div class="hint" style="margin-top:6px">De preview-kleur is alleen voor weergave; de e-ink waarde (rgbw%) gaat naar de gegenereerde <span class="mono">color:</span>.</div>`,
-    [{label:'Klaar',cls:'primary',onClick:()=>{ persist(); closeModal(); }}]);
+     <div class="hint" style="margin:10px 0 18px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}).</div>
+     <h4 style="margin:0 0 8px;color:var(--accent)">${T('Kleuren (preview)','Colours (preview)')}</h4>
+     <table class="tbl"><thead><tr><th>id</th><th></th><th>preview</th><th>${T('e-ink waarde','e-ink value')}</th></tr></thead><tbody>${crows}</tbody></table>
+     <div class="hint" style="margin-top:6px">${T('De preview-kleur is alleen voor weergave; de e-ink waarde (rgbw%) gaat naar de gegenereerde','The preview colour is display-only; the e-ink value (rgbw%) goes into the generated')} <span class="mono">color:</span>.</div>`,
+    [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ persist(); closeModal(); }}]);
   // existing uploads
   $$('#modal-body input[type=file][data-font]').forEach(inp=>inp.addEventListener('change',e=>{
     const f=profile().fonts[+inp.dataset.font], file=e.target.files[0]; if(!file) return;
@@ -1699,7 +1773,7 @@ function openFonts(){
   $$('#modal-body [data-delfont]').forEach(b=>b.onclick=()=>{
     const i=+b.dataset.delfont, f=profile().fonts[i];
     const inUse=els().some(e=>e.fontId===f.id);
-    if(inUse && !confirm(`Font "${f.id}" wordt gebruikt door elementen. Toch verwijderen?`)) return;
+    if(inUse && !confirm(T(`Font "${f.id}" wordt gebruikt door elementen. Toch verwijderen?`,`Font "${f.id}" is used by elements. Delete anyway?`))) return;
     profile().fonts.splice(i,1); persist(); afterChange(); openFonts(); toast(T('Font verwijderd','Font deleted'));
   });
   // new-font form: toggle gfonts/local fields
@@ -1737,15 +1811,15 @@ function rgbToHex(css){ if(/^#/.test(css)) return css; return '#1d1d1b'; }
 function openScenarios(){
   const p=profile();
   const list=p.scenarios.map(sc=>`<tr><td><input data-sc="${sc.id}" value="${attr(sc.name)}"></td>
-    <td><button class="btn sm" data-apply="${sc.id}">${p.activeScenario===sc.id?'● actief':'Toepassen'}</button></td>
-    <td><button class="btn sm" data-edit="${sc.id}">Waarden…</button></td>
+    <td><button class="btn sm" data-apply="${sc.id}">${p.activeScenario===sc.id?('● '+T('actief','active')):T('Toepassen','Apply')}</button></td>
+    <td><button class="btn sm" data-edit="${sc.id}">${T('Waarden…','Values…')}</button></td>
     <td><button class="btn ghost sm danger" data-del="${sc.id}">✕</button></td></tr>`).join('');
-  openModal("Scenario's (test-waarden)",
-    `<table class="tbl"><tbody>${list||'<tr><td class="hint">Nog geen scenario’s.</td></tr>'}</tbody></table>
-     <div class="row" style="margin-top:10px"><button class="btn sm" id="sc-add">+ Scenario van huidige waarden</button>
-     <button class="btn ghost sm" id="sc-clear">Live/standaard waarden</button></div>
-     <div class="hint" style="margin-top:8px">Een scenario legt waarden per bron vast, zodat je je condities (Voeren aan/uit, CO₂…) kunt testen zonder te flashen.</div>`,
-    [{label:'Klaar',cls:'primary',onClick:()=>{persist();closeModal();}}]);
+  openModal(T("Scenario's (test-waarden)",'Scenarios (test values)'),
+    `<table class="tbl"><tbody>${list||`<tr><td class="hint">${T('Nog geen scenario’s.','No scenarios yet.')}</td></tr>`}</tbody></table>
+     <div class="row" style="margin-top:10px"><button class="btn sm" id="sc-add">+ ${T('Scenario van huidige waarden','Scenario from current values')}</button>
+     <button class="btn ghost sm" id="sc-clear">${T('Live/standaard waarden','Live/default values')}</button></div>
+     <div class="hint" style="margin-top:8px">${T('Een scenario legt waarden per bron vast, zodat je je condities kunt testen zonder te flashen.','A scenario stores values per source so you can test your conditions without flashing.')}</div>`,
+    [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{persist();closeModal();}}]);
   $('#sc-add').onclick=()=>{ const vals={}; p.sources.forEach(s=>vals[s.id]=s.sample); p.scenarios.push({id:uid('sc'),name:'Scenario '+(p.scenarios.length+1),values:vals}); persist(); openScenarios(); };
   $('#sc-clear').onclick=()=>{ p.activeScenario=null; persist(); afterChange(); openScenarios(); };
   $$('#modal-body [data-sc]').forEach(i=>i.onchange=()=>{ p.scenarios.find(s=>s.id===i.dataset.sc).name=i.value; persist(); });
@@ -1756,45 +1830,57 @@ function openScenarios(){
 function editScenario(id){
   const p=profile(), sc=p.scenarios.find(s=>s.id===id);
   const rows=p.sources.map(s=>`<tr><td class="mono">${s.id}</td><td class="tag">${s.kind}</td><td><input data-v="${s.id}" value="${attr(sc.values[s.id]??s.sample)}"></td></tr>`).join('');
-  openModal('Scenario: '+sc.name, `<table class="tbl"><thead><tr><th>bron</th><th>type</th><th>waarde</th></tr></thead><tbody>${rows}</tbody></table>`,
-    [{label:'Terug',onClick:openScenarios},{label:'Opslaan',cls:'primary',onClick:()=>{ $$('#modal-body [data-v]').forEach(i=>sc.values[i.dataset.v]=i.value); persist(); afterChange(); openScenarios(); }}]);
+  openModal('Scenario: '+sc.name, `<table class="tbl"><thead><tr><th>${T('bron','source')}</th><th>type</th><th>${T('waarde','value')}</th></tr></thead><tbody>${rows}</tbody></table>`,
+    [{label:T('Terug','Back'),onClick:openScenarios},{label:T('Opslaan','Save'),cls:'primary',onClick:()=>{ $$('#modal-body [data-v]').forEach(i=>sc.values[i.dataset.v]=i.value); persist(); afterChange(); openScenarios(); }}]);
 }
 
 /* ---- Profile settings ---- */
 function openProfileSettings(){
   const p=profile(), d=p.device;
-  openModal('Profiel-instellingen',
-    `<div class="row"><div><label class="fld">Profielnaam</label><input id="ps-name" value="${attr(p.name)}"></div></div>
-     <div class="row"><div><label class="fld">Device naam</label><input id="ps-dev" value="${attr(d.name)}"></div><div><label class="fld">Friendly name</label><input id="ps-fn" value="${attr(d.comment)}"></div></div>
-     <div class="row"><div><label class="fld">Model</label><input id="ps-model" value="${attr(d.model)}"></div><div><label class="fld">Rotatie</label><select id="ps-rot">${[0,90,180,270].map(r=>`<option ${d.rotation===r?'selected':''}>${r}</option>`).join('')}</select></div></div>
-     <div class="row"><div><label class="fld">Breedte (px)</label><input id="ps-w" type="number" value="${d.w}"></div><div><label class="fld">Hoogte (px)</label><input id="ps-h" type="number" value="${d.h}"></div></div>
-     <div class="row"><div><label class="fld">Canvas-achtergrond (preview)</label>
+  const colTypeName={mono:T('mono (zwart/wit)','mono (black/white)'),bwr:T('BWR (zwart/wit/rood)','BWR (black/white/red)'),'7c':T('7-kleuren','7-colour')};
+  const modelOpts=EINK_MODELS.map(m=>`<option value="${attr(m.v)}" ${d.model===m.v?'selected':''}>${m.v} — ${m.d}</option>`).join('');
+  openModal(T('Profiel-instellingen','Profile settings'),
+    `<div class="row"><div><label class="fld">${T('Profielnaam','Profile name')}</label><input id="ps-name" value="${attr(p.name)}"></div></div>
+     <div class="row"><div><label class="fld">${T('Device naam','Device name')}</label><input id="ps-dev" value="${attr(d.name)}"></div><div><label class="fld">Friendly name</label><input id="ps-fn" value="${attr(d.comment)}"></div></div>
+     <div class="row"><div><label class="fld">Model</label><select id="ps-model" style="width:100%">${modelOpts}</select></div></div>
+     <div class="hint" id="ps-model-info"></div>
+     <div class="row"><div><label class="fld">${T('Rotatie','Rotation')}</label><select id="ps-rot">${[0,90,180,270].map(r=>`<option ${d.rotation===r?'selected':''}>${r}</option>`).join('')}</select></div>
+       <div><label class="fld">${T('Breedte (px)','Width (px)')}</label><input id="ps-w" type="number" value="${d.w}"></div>
+       <div><label class="fld">${T('Hoogte (px)','Height (px)')}</label><input id="ps-h" type="number" value="${d.h}"></div></div>
+     <div class="row"><div><label class="fld">${T('Canvas-achtergrond (preview)','Canvas background (preview)')}</label>
        <div style="display:flex;gap:8px;align-items:center">
          <input id="ps-bg" type="color" value="${d.bg||'#d4d6d7'}" style="width:48px;padding:2px;height:30px">
-         <button class="btn ghost sm" data-bg="#d4d6d7">E-ink grijs</button>
-         <button class="btn ghost sm" data-bg="#f4f1e9">Papier</button>
-         <button class="btn ghost sm" data-bg="#ffffff">Wit</button>
+         <button class="btn ghost sm" data-bg="#d4d6d7">${T('E-ink grijs','E-ink grey')}</button>
+         <button class="btn ghost sm" data-bg="#f4f1e9">${T('Papier','Paper')}</button>
+         <button class="btn ghost sm" data-bg="#ffffff">${T('Wit','White')}</button>
        </div></div></div>
-     <div class="hint">Beide jouw devices zijn 480×800 (7.5" tri-color, 90°). Breedte/hoogte = de logische ruimte ná rotatie. De achtergrond is alleen voor de preview.</div>
+     <div class="hint">${T('Breedte/hoogte = de logische ruimte ná rotatie. De achtergrond is alleen voor de preview. De kleuren in het palet passen zich aan op het displaytype.','Width/height = the logical space after rotation. The background is preview-only. The palette colours adapt to the display type.')}</div>
      <hr style="border-color:var(--line);margin:14px 0">
-     <button class="btn ghost sm danger" id="ps-delete">Profiel verwijderen</button>`,
-    [{label:'Opslaan',cls:'primary',onClick:()=>{
+     <button class="btn ghost sm danger" id="ps-delete">${T('Profiel verwijderen','Delete profile')}</button>`,
+    [{label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
       p.name=$('#ps-name').value; d.name=$('#ps-dev').value; d.comment=$('#ps-fn').value;
       d.model=$('#ps-model').value; d.rotation=+$('#ps-rot').value; d.w=+$('#ps-w').value; d.h=+$('#ps-h').value;
       d.bg=$('#ps-bg').value;
+      // adapt the colour palette to the model's colour capability (only when it changes)
+      const newType=modelInfo(d.model).c;
+      if(newType!==paletteType(p.colors)) p.colors=colorSetFor(newType);
       persist(); initStage(); renderProfiles(); afterChange(); closeModal();
     }}]);
+  const infoEl=$('#ps-model-info');
+  const showInfo=()=>{ const mi=modelInfo($('#ps-model').value);
+    infoEl.innerHTML=`${mi.d} · ${T('kleuren','colours')}: <b>${colTypeName[mi.c]||mi.c}</b>`; };
+  $('#ps-model').onchange=showInfo; showInfo();
   $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>{ $('#ps-bg').value=b.dataset.bg; });
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
-    if(confirm('Profiel verwijderen?')){ state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist(); boot(); closeModal(); } };
+    if(confirm(T('Profiel verwijderen?','Delete profile?'))){ state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist(); boot(); closeModal(); } };
 }
 
 /* ---- YAML import ---- */
 function openImport(){
-  openModal('YAML importeren',
-    `<div class="hint" style="margin-bottom:8px">Plak je <span class="mono">font:</span>, <span class="mono">color:</span>, <span class="mono">sensor:</span> en/of <span class="mono">text_sensor:</span> blokken. De editor vult fonts, kleuren en waardebronnen van dit profiel.</div>
+  openModal(T('YAML importeren','Import YAML'),
+    `<div class="hint" style="margin-bottom:8px">${T('Plak je','Paste your')} <span class="mono">font:</span>, <span class="mono">color:</span>, <span class="mono">sensor:</span> ${T('en/of','and/or')} <span class="mono">text_sensor:</span> ${T('blokken. De editor vult fonts, kleuren en waardebronnen van dit profiel.','blocks. The editor fills the fonts, colours and value sources of this profile.')}</div>
      <textarea class="import-area" id="imp-area" placeholder="font:\n  - file: ..."></textarea>`,
-    [{label:'Annuleer',onClick:closeModal},{label:'Importeer',cls:'primary',onClick:doImport}]);
+    [{label:T('Annuleer','Cancel'),onClick:closeModal},{label:T('Importeer','Import'),cls:'primary',onClick:doImport}]);
 }
 function doImport(){
   const text=$('#imp-area').value; let doc;
@@ -1896,19 +1982,19 @@ async function serverOpenProject(){
   catch(e){ toast(T('Kon serverlijst niet laden','Could not load server list')); return; }
   const rows = list.length
     ? list.map(n=>`<div class="row" style="align-items:center"><div class="mono" style="flex:1">${n}</div>
-        <button class="btn sm" data-open="${attr(n)}">Openen</button>
+        <button class="btn sm" data-open="${attr(n)}">${T('Openen','Open')}</button>
         <button class="btn ghost sm danger" data-del="${attr(n)}">✕</button></div>`).join('')
-    : '<div class="hint">Nog geen projecten in de add-on opgeslagen.</div>';
-  openModal('Project openen (add-on)', rows + `<div class="hint" style="margin-top:10px">Of laad een bestand:</div>
-    <button class="btn sm" id="open-file" style="margin-top:6px">Bestand kiezen…</button>`,
-    [{label:'Sluiten',onClick:closeModal}]);
+    : `<div class="hint">${T('Nog geen projecten in de add-on opgeslagen.','No projects saved in the add-on yet.')}</div>`;
+  openModal(T('Project openen (add-on)','Open project (add-on)'), rows + `<div class="hint" style="margin-top:10px">${T('Of laad een bestand:','Or load a file:')}</div>
+    <button class="btn sm" id="open-file" style="margin-top:6px">${T('Bestand kiezen…','Choose file…')}</button>`,
+    [{label:T('Sluiten','Close'),onClick:closeModal}]);
   $$('#modal-body [data-open]').forEach(b=>b.onclick=async()=>{
     try{ const r=await fetch('api/projects/'+encodeURIComponent(b.dataset.open));
       const p=await r.json(); p.id=uid('p'); state.profiles.push(p); state.current=p.id; persist(); closeModal(); boot(); toast(T('Geopend: ','Opened: ')+b.dataset.open);
     }catch(e){ toast(T('Openen mislukt','Open failed')); }
   });
   $$('#modal-body [data-del]').forEach(b=>b.onclick=async()=>{
-    if(!confirm('Verwijder serverproject "'+b.dataset.del+'"?')) return;
+    if(!confirm(T('Verwijder serverproject "'+b.dataset.del+'"?','Delete server project "'+b.dataset.del+'"?'))) return;
     await fetch('api/projects/'+encodeURIComponent(b.dataset.del), {method:'DELETE'});
     serverOpenProject();
   });

@@ -1,3 +1,11 @@
+## 2.0.0
+- **Topbalk- en toolbar-knoppen** hebben nu de HA-knopkleur (#242424 dark / #F0F2F6 light)
+- **Model-dropdown** in profiel-instellingen met de volledige ESPHome `waveshare_epaper`-modellijst + beschrijving per model. Het **kleurenpalet past zich aan** het displaytype aan: mono = wit/zwart, BWR = wit/zwart/rood, 7-kleuren = volledige set. Element-kleuren tonen dus alleen wat het display kan
+- Profiel-instellingen: de oude vaste regel vervangen door live model-info (beschrijving + kleurtype)
+- **Veelhoek (polygon)** toegevoegd aan de elementen (schaal/rotatie/zijden/fill) → exporteert als `it.regular_polygon` / `it.filled_regular_polygon`. **Widget** (icoon+waarde) verwijderd
+- Veel meer NL/EN-vertaling: profiel-instellingen, fonts & kleuren, scenario's, YAML-import, icoonkiezer, projectlijst en het "WAITING FOR DATA"-scherm
+- Profielnamen/elementnamen volgen de taal (widget-namen-issue opgelost)
+
 ## 1.9.5
 - **Live-knop** is nu een aan/uit-schakelaar met statusstip: groen = verbonden met Home Assistant, oranje = aan maar geen/onvolledige data (bijv. geen Supervisor-token), rood = verbinding mislukt, grijs ○ = uit
 - **Rechter inspector volledig vertaald** (NL/EN): alle groeptitels, labels, dropdowns, hints en knoppen — inclusief grafiek, wifi, klok, waardebron, format/transform en condities

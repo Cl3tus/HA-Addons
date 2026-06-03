@@ -136,12 +136,14 @@ body.chrome-hidden #topbar { display: none; }
   transition: background .12s, border-color .12s, transform .05s;
   white-space: nowrap;
 }
-.btn:hover { background: var(--panel-2); border-color: var(--line-2); }
+.btn:hover { background: var(--line); border-color: var(--line-2); }
 .btn:active { transform: translateY(1px); }
 .btn.primary { background: var(--accent); color: #1a1407; border-color: #b97e23; font-weight: 600; }
 .btn.primary:hover { background: var(--accent-2); }
-.btn.ghost { background: transparent; border-color: var(--line); color: var(--txt-dim); }
-.btn.ghost:hover { color: var(--txt); border-color: var(--line-2); }
+/* ghost buttons (top bar + canvas toolbar) use the HA button fill:
+   #242424 dark / #f0f2f6 light (= --panel-2) */
+.btn.ghost { background: var(--panel-2); border-color: var(--line); color: var(--txt-dim); }
+.btn.ghost:hover { background: var(--line); color: var(--txt); border-color: var(--line-2); }
 .btn.sm { padding: 4px 8px; font-size: 12px; }
 .btn.danger:hover { border-color: var(--red); color: var(--red); }
 .btn .k { font-family: var(--mono); font-size: 10px; opacity: .6; }
