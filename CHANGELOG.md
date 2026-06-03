@@ -1,3 +1,6 @@
+## 1.9.3
+- Linkerpaneel opgesplitst: het palet ("Add elements") en de Lagen-kop blijven nu vast staan; alleen de **lagenlijst scrollt** als er meer lagen zijn dan passen. De element-knoppen scrollen niet meer mee
+
 ## 1.9.2
 - Topbalk verhoogd naar 56px zodat hij gelijk loopt met de HA-header
 - Scheidingslijn onder "Add elements" 1px gecorrigeerd (39px + rand = exact gelijk aan de toolbar)

@@ -169,11 +169,18 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 /* ---------- Side panels ---------- */
 #left, #right {
   background: var(--panel);
-  overflow-y: auto;
   display: flex; flex-direction: column;
 }
-#left  { grid-area: left;  border-right: 1px solid var(--line); }
-#right { grid-area: right; border-left: 1px solid var(--line); }
+#left  { grid-area: left;  border-right: 1px solid var(--line); overflow: hidden; }
+#right { grid-area: right; border-left: 1px solid var(--line); overflow-y: auto; }
+
+/* Left panel: the "Add elements" palette stays fixed; only the layers list
+   scrolls when there are more layers than fit. */
+#left > .section:first-child,
+#left > .palette { flex: none; }
+#left > .section:last-child { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+#left > .section:last-child > h3 { flex: none; }
+#left .layers { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 .section { border-bottom: 1px solid var(--line); }
 .section > h3 {
