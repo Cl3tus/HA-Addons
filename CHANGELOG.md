@@ -1,3 +1,7 @@
+## 2.4.4
+- **YAML importeren leest nu ook de display-lambda terug naar het canvas** (best-effort). De standaard tekencommando's met letterlijke coördinaten worden teruggezet als bewerkbare elementen: `it.print`/`printf` (tekst + iconen + sensor-binding), `line`, `rectangle`/`filled_rectangle`, `circle`/`filled_circle`, `regular_polygon`, `filled_ring`, `filled_gauge`, `qr_code` (waarde uit het `qr_code:`-blok), `graph` (afmetingen/traces uit het `graph:`-blok) en `strftime` (→ klok). Kleuren en sensor-bindingen worden gekoppeld aan de zojuist geïmporteerde `color:`/`sensor:`-blokken.
+- Regels die de studio niet eenduidig kan terugvertalen worden **overgeslagen** i.p.v. fout te geven: alles met variabelen, lussen, `if/else` of berekende coördinaten, plus `it.triangle`/`filled_triangle` en `it.image` (te dubbelzinnig). Een melding toont hoeveel bronnen + tekenobjecten zijn ingelezen.
+
 ## 2.4.3
 - **YAML importeren herstelt nu je volledige ontwerp** wanneer de geplakte YAML door de studio zelf is gemaakt (de `# eink-editor:v1:`-herstelcode onderaan). Elementen, wachtscherm én displaymodel komen terug op het canvas. Let op: bij een hándgeschreven ESPHome-config blijft het canvas leeg — daar zit geen herstelcode in, dus alleen fonts/kleuren/waardebronnen worden ingelezen (de layout in de display-lambda kan niet worden teruggelezen).
 

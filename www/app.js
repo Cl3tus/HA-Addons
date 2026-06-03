@@ -2059,7 +2059,7 @@ function openProfileSettings(){
 /* ---- YAML import ---- */
 function openImport(){
   openModal(T('YAML importeren','Import YAML'),
-    `<div class="hint" style="margin-bottom:8px">${T('Plak gerust je hele ESPHome-config','Paste your whole ESPHome config if you like')} — ${T('alleen','only')} <span class="mono">font:</span>, <span class="mono">color:</span> ${T('en','and')} <span class="mono">homeassistant</span>-<span class="mono">sensor:</span>/<span class="mono">text_sensor:</span> ${T('worden ingelezen, de rest wordt genegeerd.','are imported, the rest is ignored.')} ${T('Plak je een YAML die de studio zelf maakte (met herstelcode), dan komt je hele ontwerp terug.','Paste a YAML the studio generated itself (with recovery code) to restore your whole design.')}</div>
+    `<div class="hint" style="margin-bottom:8px">${T('Plak gerust je hele ESPHome-config','Paste your whole ESPHome config if you like')} — ${T('alleen','only')} <span class="mono">font:</span>, <span class="mono">color:</span> ${T('en','and')} <span class="mono">homeassistant</span>-<span class="mono">sensor:</span>/<span class="mono">text_sensor:</span> ${T('worden ingelezen.','are imported.')} ${T('De studio probeert ook de tekenregels uit de display-lambda terug te zetten op het canvas (standaard it.print/printf/line/rectangle/circle/polygon/ring/gauge/graph/qr). Regels met variabelen, lussen of berekeningen worden overgeslagen.','The studio also tries to rebuild the drawing lines from the display lambda onto the canvas (standard it.print/printf/line/rectangle/circle/polygon/ring/gauge/graph/qr). Lines with variables, loops or maths are skipped.')} ${T('Een YAML die de studio zelf maakte (met herstelcode) komt 1-op-1 terug.','A YAML the studio generated itself (with recovery code) comes back exactly.')}</div>
      <textarea class="import-area" id="imp-area" placeholder="font:\n  - file: ..."></textarea>`,
     [{label:T('Annuleer','Cancel'),onClick:closeModal},{label:T('Importeer','Import'),cls:'primary',onClick:doImport}]);
 }
@@ -2093,6 +2093,107 @@ function _readSnapshot(text){
   try{ return JSON.parse(decodeURIComponent(escape(atob(m[1])))); }catch(e){ return null; }
 }
 
+/* ---- best-effort lambda parser ------------------------------------------
+   Reverse-engineers the standard it.* drawing calls (the studio's own
+   vocabulary + simple hand-written lines with literal coordinates) back into
+   editable elements. Anything with variables/loops/expressions is skipped. */
+function _splitArgs(s){
+  const out=[]; let d=0,q=null,cur='';
+  for(let i=0;i<s.length;i++){ const c=s[i];
+    if(q){ cur+=c; if(c===q && s[i-1]!=='\\') q=null; continue; }
+    if(c==='"'||c==="'"){ q=c; cur+=c; continue; }
+    if(c==='('){ d++; cur+=c; continue; }
+    if(c===')'){ d--; cur+=c; continue; }
+    if(c===',' && d===0){ out.push(cur.trim()); cur=''; continue; }
+    cur+=c;
+  }
+  if(cur.trim()!=='') out.push(cur.trim());
+  return out;
+}
+function _lnum(a){ a=String(a==null?'':a).trim(); return /^-?\d+(\.\d+)?$/.test(a)?parseFloat(a):null; }
+function _ln0(a,def){ const v=_lnum(a); return v==null?def:v; }
+function _lstr(a){ const m=/^"((?:[^"\\]|\\.)*)"$/.exec(String(a).trim())||/^'((?:[^'\\]|\\.)*)'$/.exec(String(a).trim());
+  return m? m[1].replace(/\\"/g,'"').replace(/\\\\/g,'\\') : null; }
+function _lid(a){ const m=/id\(\s*([A-Za-z_]\w*)\s*\)/.exec(String(a)); return m?m[1]:null; }
+function _lalign(args){ const m=/TextAlign::(\w+)/.exec(args.join(',')); return m?m[1]:'TOP_LEFT'; }
+function _lcolor(args, colors){ for(const a of args){ const id=String(a).trim(); if(colors.some(c=>c.id===id)) return id; } return (colors[0]&&colors[0].id)||'color_text'; }
+function _lblank(type){
+  return { id:uid(), type, name:elName(type), visible:true, x:0,y:0, colorId:'color_text', anchor:'TOP_LEFT',
+    condition:{enabled:false,sourceId:'',op:'on',val:'',val2:'',
+      whenTrue:{text:'',iconName:'',iconHex:'',colorId:'',visible:true},
+      whenFalse:{text:'',iconName:'',iconHex:'',colorId:'',visible:true}} };
+}
+function _componentMap(text, key){
+  const arr=_parseBlock(_extractTopBlock(text,key)); const map={};
+  if(arr && Array.isArray(arr[key])) arr[key].forEach(o=>{ if(o&&o.id) map[o.id]=o; });
+  return map;
+}
+function _elFromCall(method, A, colors, qrMap, grMap, sources){
+  const col=_lcolor(A, colors), n=_lnum;
+  const mk=(type,extra)=>Object.assign(_lblank(type),{colorId:col},extra);
+  switch(method){
+    case 'line':{ const x=n(A[0]),y=n(A[1]),x2=n(A[2]),y2=n(A[3]); if([x,y,x2,y2].some(v=>v==null))return null;
+      return mk('line',{x,y,x2,y2,anchor:undefined}); }
+    case 'rectangle': case 'filled_rectangle':{ const x=n(A[0]),y=n(A[1]),w=n(A[2]),h=n(A[3]); if([x,y,w,h].some(v=>v==null))return null;
+      return mk('rect',{x,y,w,h,filled:method.charAt(0)==='f',anchor:undefined}); }
+    case 'circle': case 'filled_circle':{ const x=n(A[0]),y=n(A[1]),r=n(A[2]); if([x,y,r].some(v=>v==null))return null;
+      return mk('circle',{x,y,r,filled:method.charAt(0)==='f',anchor:undefined}); }
+    case 'regular_polygon': case 'filled_regular_polygon':{ const x=n(A[0]),y=n(A[1]),r=n(A[2]),s=n(A[3]),rot=n(A[4]); if([x,y,r,s].some(v=>v==null))return null;
+      return mk('polygon',{x,y,r,sides:Math.max(3,s),rotation:rot||0,filled:method.charAt(0)==='f',anchor:undefined}); }
+    case 'filled_ring':{ const x=n(A[0]),y=n(A[1]),r=n(A[2]),inner=n(A[3]); if([x,y,r,inner].some(v=>v==null))return null;
+      return mk('ring',{x,y,r,inner,anchor:undefined}); }
+    case 'filled_gauge':{ const x=n(A[0]),y=n(A[1]),r=n(A[2]),inner=n(A[3]),pct=n(A[4]); if([x,y,r,inner].some(v=>v==null))return null;
+      return mk('gauge',{x,y,r,inner,percent:pct==null?75:pct,anchor:undefined}); }
+    case 'qr_code':{ const x=n(A[0]),y=n(A[1]); if(x==null||y==null)return null; const q=qrMap[_lid(A[2])]||{};
+      return mk('qr',{x,y,text:q.value||'',scale:n(A[4])||4,ecc:q.ecc||'LOW',anchor:undefined}); }
+    case 'graph':{ const x=n(A[0]),y=n(A[1]); if(x==null||y==null)return null; const g=grMap[_lid(A[2])]||{};
+      return mk('graph',{x,y,w:_ln0(g.width,300),h:_ln0(g.height,140),anchor:undefined,
+        graph:{duration:g.duration||'1h',x_grid:g.x_grid||'',y_grid:g.y_grid==null?'':g.y_grid,border:g.border!==false,
+          min_range:g.min_range==null?'':g.min_range,max_range:g.max_range==null?'':g.max_range,
+          traces:(g.traces||[]).map(t=>({sourceId:t.sensor||'',lineType:t.line_type||'SOLID',thickness:t.line_thickness==null?2:t.line_thickness,continuous:t.continuous!==false,colorId:_lcolor([String(t.color||'')],colors)})),
+          axes:{show:false,fontId:'font_klein',yTitle:'',xTitle:'',showYScale:true,showXScale:true}} }); }
+    case 'strftime':{ const x=n(A[0]),y=n(A[1]); if(x==null||y==null)return null;
+      const si=A.findIndex(a=>_lstr(a)!=null); if(si<0)return null; const fmt=_lstr(A[si]);
+      const fontId=_lid(A[2])||'font_klein', align=_lalign(A);
+      const el=mk('clock',{x,y,fontId,anchor:align});
+      el.clock={strftime:fmt,icon:false,iconName:'',iconHex:'',iconFontId:fontId,iconGap:40}; return el; }
+    case 'print': case 'printf':{ const x=n(A[0]),y=n(A[1]); if(x==null||y==null)return null;
+      const si=A.findIndex(a=>_lstr(a)!=null); if(si<0)return null;
+      const lit=_lstr(A[si]), rest=A.slice(si+1), fontId=_lid(A[2])||'font_klein', align=_lalign(A);
+      const icon=/^\\U([0-9A-Fa-f]{8})$/.exec(lit);
+      if(icon && rest.length===0) return mk('icon',{x,y,fontId,anchor:align,iconHex:icon[1].toUpperCase(),iconName:''});
+      const el=mk('text',{x,y,fontId,anchor:align}); el.transform='none'; el.transformArg={};
+      const ref=/id\(\s*([A-Za-z_]\w*)\s*\)\s*\.state/.exec(rest.join(','));
+      if(method==='printf' && rest.length && ref && sources.some(s=>s.id===ref[1])){
+        el.source={kind:'sensor',sourceId:ref[1],text:'',expr:''};
+        el.format={mode:'raw',decimals:1,prefix:'',suffix:'',raw:lit};
+      } else {
+        el.source={kind:'static',text:lit,sourceId:'',expr:''};
+        el.format={mode:'builder',decimals:1,prefix:'',suffix:'',raw:'%s'};
+      }
+      return el; }
+  }
+  return null; // triangle/image/etc. — too ambiguous to invert, skipped on purpose
+}
+function _parseLambda(text, p){
+  const block=_extractTopBlock(text,'display'); if(!block) return [];
+  const li=block.search(/lambda:\s*\|/); if(li<0) return [];
+  const lambda=block.slice(block.indexOf('\n', li)+1);
+  const colors=p.colors||[], sources=p.sources||[];
+  const qrMap=_componentMap(text,'qr_code'), grMap=_componentMap(text,'graph');
+  const out=[], seen=new Set(); const re=/it\.([a-z_]+)\s*\(/g; let m;
+  while((m=re.exec(lambda))){
+    let i=m.index+m[0].length, d=1, q=null;
+    for(; i<lambda.length && d>0; i++){ const c=lambda[i];
+      if(q){ if(c===q && lambda[i-1]!=='\\') q=null; }
+      else if(c==='"'||c==="'") q=c; else if(c==='(') d++; else if(c===')') d--; }
+    const el=_elFromCall(m[1], _splitArgs(lambda.slice(m.index+m[0].length, i-1)), colors, qrMap, grMap, sources);
+    if(el){ const key=el.type+'|'+el.x+'|'+el.y+'|'+(el.iconHex||el.text||el.fontId||el.r||el.w||'');
+      if(!seen.has(key)){ seen.add(key); out.push(el); } }
+  }
+  return out;
+}
+
 function doImport(){
   const text=$('#imp-area').value;
   if(!text || !text.trim()){ toast(T('Niets bruikbaars gevonden','Nothing usable found')); return; }
@@ -2103,9 +2204,6 @@ function doImport(){
     if(parsed && Array.isArray(parsed[k])) doc[k]=parsed[k];
   });
   const snap=_readSnapshot(text);   // full layout, only present in studio-generated YAML
-  if(!snap && !doc.font && !doc.color && !doc.sensor && !doc.text_sensor){
-    toast(T('Geen font/color/sensor-blok gevonden','No font/color/sensor block found')); return;
-  }
   const p=profile(); let n=0;
   if(Array.isArray(doc.font)){ p.fonts=doc.font.map(parseFont); n+=p.fonts.length; }
   if(Array.isArray(doc.color)){ p.colors=doc.color.map(parseColor); n+=p.colors.length; }
@@ -2117,17 +2215,30 @@ function doImport(){
       n++;
     }});
   });
-  // full round-trip: restore the editable layout if this YAML came from the studio
+  // best-effort: rebuild canvas elements from the display lambda (fonts/colours/
+  // sources are imported above first, so colour-ids and sensor-bindings resolve)
+  const drawn = snap ? [] : _parseLambda(text, p);
+  if(!snap && !drawn.length && n===0){
+    toast(T('Geen font/color/sensor-blok gevonden','No font/color/sensor block found')); return;
+  }
   if(snap){
+    // full round-trip: restore the editable layout if this YAML came from the studio
     if(snap.device) p.device=snap.device;
     if(Array.isArray(snap.elements)) p.elements=snap.elements;
     if(Array.isArray(snap.waitElements)) p.waitElements=snap.waitElements;
+  } else if(drawn.length){
+    p.elements=(p.elements||[]).concat(drawn);
+  }
+  if(snap || drawn.length){
+    editScreen='main'; { const ss=$('#screen-select'); if(ss) ss.value='main'; }
     selectedIds=new Set(); selectedId=null; applyZoom();   // device may have changed → resize the stage
   }
   persist(); afterChange(); closeModal();
   toast(snap
     ? T('Ontwerp hersteld uit herstelcode','Design restored from recovery code')
-    : T(`Geïmporteerd: ${n} items`,`Imported: ${n} items`));
+    : drawn.length
+      ? T(`Geïmporteerd: ${n} bronnen + ${drawn.length} tekenobjecten`,`Imported: ${n} resources + ${drawn.length} drawing objects`)
+      : T(`Geïmporteerd: ${n} items`,`Imported: ${n} items`));
   function parseFont(o){
     const file = typeof o.file==='string'?o.file:null;
     const g = (o.file&&o.file.type==='gfonts')?o.file:null;
