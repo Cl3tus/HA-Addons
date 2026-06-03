@@ -439,8 +439,19 @@ function buildNode(el){
   }
   else if(E.type==='gauge'){
     const pct=Math.max(0,Math.min(100,E.percent==null?75:E.percent));
-    node = new Konva.Arc({x:E.x,y:E.y,innerRadius:Math.min(E.inner||30,(E.r||50)-1),outerRadius:E.r||50,
-      angle:pct*3.6, rotation:(E.rotation||0)-90, fill:color.css});
+    const ro=E.r||50, ri=Math.min(E.inner||30, ro-1);
+    // custom shape: fill starts at the top (−90°); the node's own rotation stays
+    // equal to el.rotation so the transformer's rotate handle sits on top.
+    node = new Konva.Shape({ x:E.x, y:E.y, width:2*ro, height:2*ro, offsetX:ro, offsetY:ro,
+      rotation:E.rotation||0, fill:color.css,
+      sceneFunc:(ctx,shape)=>{
+        const a0=-Math.PI/2, a1=a0 + (pct/100)*2*Math.PI;
+        ctx.beginPath();
+        ctx.arc(ro, ro, ro, a0, a1, false);
+        ctx.arc(ro, ro, ri, a1, a0, true);
+        ctx.closePath();
+        ctx.fillStrokeShape(shape);
+      }});
   }
   else if(E.type==='qr'){
     node = qrPreviewNode(E, color.css);
@@ -640,7 +651,7 @@ function attachSelection(el, node){
     // aspect-locked (radial / opt-in) shapes keep their ratio AND only expose
     // the corner anchors, so the side anchors can't distort them.
     const locked = (el.type==='circle') ? (el.lockAspect!==false)
-                 : (el.type==='triangle') ? !!el.lockAspect
+                 : (el.type==='triangle'||el.type==='rect') ? !!el.lockAspect
                  : (el.type==='polygon'||el.type==='ring'||el.type==='gauge'||el.type==='qr');
     const rotateEnabled = (el.type==='rect' || el.type==='triangle' || el.type==='polygon' || el.type==='gauge');
     const allAnchors=['top-left','top-center','top-right','middle-right','middle-left','bottom-left','bottom-center','bottom-right'];
@@ -661,7 +672,7 @@ function attachSelection(el, node){
       else if(el.type==='triangle'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='polygon'){ el.r=Math.max(4,Math.round(node.radius()*((sx+sy)/2))); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='ring'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round(node.outerRadius()*f)); el.inner=Math.max(2,Math.round(node.innerRadius()*f)); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
-      else if(el.type==='gauge'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round(node.outerRadius()*f)); el.inner=Math.max(2,Math.round(node.innerRadius()*f)); el.rotation=((Math.round(node.rotation())+90)%360+360)%360; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      else if(el.type==='gauge'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round((el.r||50)*f)); el.inner=Math.max(2,Math.round((el.inner||30)*f)); el.rotation=((Math.round(node.rotation())%360)+360)%360; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='qr'){ el.scale=Math.max(1,Math.round((el.scale||4)*((sx+sy)/2))); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       node.scaleX(1); node.scaleY(1); afterChange(); });
   } else if(el.type==='line'){
@@ -993,6 +1004,7 @@ function renderInspector(){
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
       <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
       <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
+      <label class="toggle"><input type="checkbox" data-k="lockAspect" ${el.lockAspect?'checked':''}> ${T('Verhouding vergrendelen','Lock aspect ratio')}</label>
       <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>
       <div class="hint">${T('Houd Shift ingedrukt tijdens roteren om op 45° te vergrendelen.','Hold Shift while rotating to snap to 45°.')}</div>`);
   } else if(el.type==='circle'){
@@ -1259,13 +1271,17 @@ function bindInspector(host, el){
     const isNum = inp.type==='number'||inp.type==='range';
     inp.addEventListener('change',()=>{ pushUndo(); const k=inp.dataset.k;
       el[k] = inp.type==='checkbox'?inp.checked:(isNum?(+inp.value):inp.value);
-      // re-locking a circle restores a perfect round shape (rx = ry)
-      if(k==='lockAspect' && inp.checked && el.type==='circle'){
-        const r=Math.round(((el.rx!=null?el.rx:(el.r!=null?el.r:40))+(el.ry!=null?el.ry:(el.r!=null?el.r:40)))/2);
-        el.rx=r; el.ry=r; delete el.r;
+      // re-locking restores a clean 1:1 aspect (circle -> round, rect/triangle -> square)
+      if(k==='lockAspect' && inp.checked){
+        if(el.type==='circle'){
+          const r=Math.round(((el.rx!=null?el.rx:(el.r!=null?el.r:40))+(el.ry!=null?el.ry:(el.r!=null?el.r:40)))/2);
+          el.rx=r; el.ry=r; delete el.r;
+        } else if(el.type==='rect' || el.type==='triangle'){
+          const s=Math.round(((el.w||0)+(el.h||0))/2); el.w=s; el.h=s;
+        }
       }
       afterChange();
-      if(k==='lockAspect') renderInspector();   // refresh shown rx/ry values
+      if(k==='lockAspect') renderInspector();   // refresh shown values
     });
     // live preview while dragging a slider (no undo spam, no full inspector rebuild)
     if(inp.type==='range'){
@@ -1889,7 +1905,7 @@ function openFonts(){
     <td class="mono">${f.id}</td>
     <td>${f.kind==='gfonts'?`gfonts: ${f.family} ${f.weight}`:f.file}</td>
     <td>${f.size}px</td>
-    <td>${/materialdesignicons/i.test(f.file||'')?'<span class="tag">MDI</span>':(f.kind==='gfonts'?`<span class="tag">${T('geladen','loaded')}</span>`:(f.dataUrl?`<span class="tag" style="color:var(--ok)">${T('geüpload','uploaded')}</span>`:`<span class="tag" style="color:var(--red)">${T('upload nodig','upload needed')}</span>`))}</td>
+    <td>${/materialdesignicons/i.test(f.file||'')?'<span class="tag">MDI</span>':(f.kind==='gfonts'?`<span class="tag">${T('geladen','loaded')}</span>`:(fontHasBytes(f)?`<span class="tag" style="color:var(--ok)">${T('geüpload','uploaded')}</span>`:`<span class="tag" style="color:var(--red)">${T('upload nodig','upload needed')}</span>`))}</td>
     <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?`<input type="file" accept=".ttf,.otf" data-font="${i}" style="font-size:10px">`:''}</td>
     <td><button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">✕</button></td>
   </tr>`).join('');
@@ -1939,7 +1955,7 @@ function openFonts(){
   // existing uploads
   $$('#modal-body input[type=file][data-font]').forEach(inp=>inp.addEventListener('change',e=>{
     const f=profile().fonts[+inp.dataset.font], file=e.target.files[0]; if(!file) return;
-    const rd=new FileReader(); rd.onload=async()=>{ f.dataUrl=rd.result; await registerUploadedFonts(); await maybeUploadFont(f, file.name); persist(); afterChange(); openFonts(); toast(T('Font geladen','Font loaded')); }; rd.readAsDataURL(file);
+    const rd=new FileReader(); rd.onload=async()=>{ f.dataUrl=rd.result; propagateFontFile(f); await registerUploadedFonts(); await maybeUploadFont(f, file.name); persist(); afterChange(); openFonts(); toast(T('Font geladen','Font loaded')); }; rd.readAsDataURL(file);
   }));
   $$('#modal-body [data-delfont]').forEach(b=>b.onclick=()=>{
     const i=+b.dataset.delfont, f=profile().fonts[i];
@@ -1966,13 +1982,26 @@ function openFonts(){
     persist(); afterChange(); openFonts(); toast(T('Font toegevoegd','Font added'));
   };
 }
-/* dedupe: if another font already uses the same TTF filename + has its bytes,
-   reuse them so the same file isn't requested/uploaded twice (#19) */
+/* fonts that share the same TTF filename share one upload — different sizes of
+   the same file should not be requested/uploaded twice (#19/#7) */
+function _fontFileName(f){ return f.file ? f.file.split('/').pop() : null; }
+function fontHasBytes(f){
+  if(f.dataUrl) return true;
+  const n=_fontFileName(f); if(!n) return false;
+  return profile().fonts.some(o=>o.dataUrl && _fontFileName(o)===n);
+}
+/* pull a twin's bytes into f (when adding a new font with an existing filename) */
 function reuseFontFile(f){
-  if(!f.file) return;
-  const name=f.file.split('/').pop();
-  const twin=profile().fonts.find(o=>o!==f && o.file && o.file.split('/').pop()===name && o.dataUrl);
-  if(twin && !f.dataUrl) f.dataUrl=twin.dataUrl;
+  if(f.dataUrl || !f.file) return;
+  const n=_fontFileName(f);
+  const twin=profile().fonts.find(o=>o!==f && _fontFileName(o)===n && o.dataUrl);
+  if(twin) f.dataUrl=twin.dataUrl;
+}
+/* push f's freshly-uploaded bytes to every other font with the same filename */
+function propagateFontFile(f){
+  if(!f.dataUrl || !f.file) return;
+  const n=_fontFileName(f);
+  profile().fonts.forEach(o=>{ if(o!==f && _fontFileName(o)===n) o.dataUrl=f.dataUrl; });
 }
 /* push an uploaded font's bytes to the add-on /data/fonts (preview persistence) */
 async function maybeUploadFont(f, filename){

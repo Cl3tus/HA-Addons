@@ -1,3 +1,10 @@
+## 2.4.1
+- **Rechthoek**: "verhouding vergrendelen"-optie toegevoegd; bij her-aanvinken reset naar 1:1 (vierkant)
+- **Driehoek**: reset nu ook naar 1:1 bij her-aanvinken van de lock (net als de cirkel)
+- **Gauge**: rotatie-handvat zit nu echt bovenaan (gauge omgebouwd naar een eigen vorm; node-rotatie = de starthoek)
+- **Scherm-dropdown**: Wachtscherm staat nu bovenaan, Hoofdscherm eronder
+- **Fonts**: zelfde TTF-bestand telt nu als één upload — upload je `digital.ttf` op 60px, dan is de 30px-variant ook meteen "geüpload" (status + bytes worden gedeeld)
+
 ## 2.4.0
 - **Rotatie-ankers zijn nu rondjes** (rechthoek, driehoek, veelhoek, gauge); lijn-rotatie-anker zit nu bovenaan
 - **Vaste-verhouding fixes**: cirkel/ring/veelhoek/gauge tonen alleen hoek-handvatten; cirkel wordt weer rond bij opnieuw aanvinken van "rond houden"; driehoek heeft een lock-optie
