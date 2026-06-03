@@ -1,3 +1,12 @@
+## 1.6.0
+- **Driehoek-element** toegevoegd aan het palet: schaalbaar (breedte/hoogte), roteerbaar (0–360° schuifregelaar), omklapbaar (ondersteboven) en vulbaar. Exporteert als `it.triangle` / `it.filled_triangle`
+- **Rechthoek kan nu roteren** (schuifregelaar). Geroteerde rechthoeken exporteren als 4× `it.line` (omtrek) of 2× `it.filled_triangle` (gevuld)
+- **Vullen (fill)** voor cirkel, rechthoek én driehoek via de "Gevuld"-optie
+- **Home Assistant koppeling verbeterd**: in "Waardebronnen" zit nu een knop **"Uit Home Assistant…"** met een doorzoekbare entiteiten-lijst (naam + entity_id + live waarde). Klik een entiteit om hem als bron toe te voegen — type en id worden automatisch geraden. Plus uitleg-blok en een "live" kolom die de actuele waarde toont
+- **Profielen** worden nu bij het opstarten geladen uit de `profiles/`-map op de server (bron van waarheid); bij eerste run wordt de map gevuld vanuit je lokale profielen
+- Verticale/horizontale **scrollbars** verschijnen wanneer het venster kleiner is dan de minimale werkbare grootte
+- Topbalk-ondertitel "v1 · lambda generator" → "lambda generator"
+
 ## 1.5.1
 - De add-on opties **language** en **theme** werken nu écht door in de app: bij het opstarten leest de editor `/api/info` en past taal/thema toe vóórdat er iets gerenderd wordt
 - Alle meldingen (toasts) in de editor zijn nu vertaald — inclusief "Live data bijgewerkt / Live data updated" bij het opstarten

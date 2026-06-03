@@ -34,6 +34,8 @@
     'Lijn': 'Line',
     'Rechthoek': 'Rectangle',
     'Cirkel': 'Circle',
+    'Driehoek': 'Triangle',
+    'kleuren': 'colours',
     'Widget (icoon+waarde)': 'Widget (icon+value)',
     'WiFi-icoon': 'Wi-Fi icon',
     'Refresh-klok': 'Refresh clock',

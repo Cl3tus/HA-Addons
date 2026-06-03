@@ -317,8 +317,19 @@ function buildNode(el){
     node = new Konva.Line({points:[E.x,E.y,E.x2,E.y2], stroke:color.css, strokeWidth:1, hitStrokeWidth:10});
   }
   else if(E.type==='rect'){
-    node = new Konva.Rect({x:E.x,y:E.y,width:E.w,height:E.h,
-      stroke:E.filled?undefined:color.css, strokeWidth:1,
+    if(E.rotation){
+      node = new Konva.Line({points:flatPts(rectCorners(E)), closed:true,
+        stroke:E.filled?undefined:color.css, strokeWidth:1, hitStrokeWidth:10,
+        fill:E.filled?color.css:'rgba(0,0,0,0.001)'});
+    } else {
+      node = new Konva.Rect({x:E.x,y:E.y,width:E.w,height:E.h,
+        stroke:E.filled?undefined:color.css, strokeWidth:1,
+        fill:E.filled?color.css:'rgba(0,0,0,0.001)'});
+    }
+  }
+  else if(E.type==='triangle'){
+    node = new Konva.Line({points:flatPts(triVerts(E)), closed:true,
+      stroke:E.filled?undefined:color.css, strokeWidth:1, hitStrokeWidth:10,
       fill:E.filled?color.css:'rgba(0,0,0,0.001)'});
   }
   else if(E.type==='circle'){
@@ -389,6 +400,10 @@ function buildNode(el){
     if(el.type==='line'){
       const dx=node.x(), dy=node.y();
       el.x+=dx; el.y+=dy; el.x2+=dx; el.y2+=dy; node.position({x:0,y:0});
+    } else if(el.type==='triangle' || (el.type==='rect' && el.rotation)){
+      // closed-line nodes: node.x()/y() is the drag delta
+      const dx=node.x(), dy=node.y();
+      el.x=Math.round(el.x+dx); el.y=Math.round(el.y+dy); node.position({x:0,y:0});
     } else if(el.type==='rect'||el.type==='circle'){
       el.x=Math.round(node.x()); el.y=Math.round(node.y());
     } else if(el.type==='graph' || el.type==='clock'){
@@ -415,13 +430,39 @@ function snapEl(el){
   }
 }
 
+/* ---- shape geometry (triangle verts, rotated-rect corners) ---- */
+function rotPt(cx,cy,px,py,deg){
+  const a=(deg||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a), dx=px-cx, dy=py-cy;
+  return [cx+dx*c-dy*s, cy+dx*s+dy*c];
+}
+// triangle: x,y = centre; w,h = bounding box; rotation deg; flipV points it down
+function triVerts(E){
+  const cx=E.x, cy=E.y, w=E.w, h=E.h, dir=E.flipV?-1:1, r=E.rotation||0;
+  return [
+    rotPt(cx,cy, cx,        cy-dir*h/2, r),  // apex
+    rotPt(cx,cy, cx-w/2,    cy+dir*h/2, r),  // base-left
+    rotPt(cx,cy, cx+w/2,    cy+dir*h/2, r),  // base-right
+  ];
+}
+// rect: x,y = top-left; w,h; rotation deg around centre
+function rectCorners(E){
+  const cx=E.x+E.w/2, cy=E.y+E.h/2, r=E.rotation||0;
+  return [
+    rotPt(cx,cy, E.x,      E.y,      r),
+    rotPt(cx,cy, E.x+E.w,  E.y,      r),
+    rotPt(cx,cy, E.x+E.w,  E.y+E.h,  r),
+    rotPt(cx,cy, E.x,      E.y+E.h,  r),
+  ];
+}
+const flatPts = pts => pts.reduce((a,p)=>{a.push(p[0],p[1]);return a;},[]);
+
 /* attach selection visuals (resize handles for rect/circle, dashed outline otherwise)
    to an existing node WITHOUT rebuilding the layer — keeps an in-progress drag alive */
 function attachSelection(el, node){
   if(transformer){ try{transformer.destroy();}catch(e){} transformer=null; }
   if(selectionVisual){ try{selectionVisual.destroy();}catch(e){} selectionVisual=null; }
   if(!node) return;
-  if(el.type==='rect'||el.type==='circle'){
+  if((el.type==='rect'&&!el.rotation)||el.type==='circle'){
     transformer=new Konva.Transformer({rotateEnabled:false,borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:7});
     contentLayer.add(transformer); transformer.nodes([node]);
     node.off('transformend.sel'); node.on('transformend.sel',()=>{ pushUndo();
@@ -594,6 +635,8 @@ function addElement(type, pos){
     Object.assign(base,{ x:cx-80,y:cy-40, w:160,h:80, filled:false, colorId:'color_text', anchor:undefined });
   } else if(type==='circle'){
     Object.assign(base,{ x:cx,y:cy, r:40, filled:false, colorId:'color_text', anchor:undefined });
+  } else if(type==='triangle'){
+    Object.assign(base,{ x:cx,y:cy, w:120,h:100, rotation:0, flipV:false, filled:false, colorId:'color_text', anchor:undefined });
   } else if(type==='widget'){
     // convenience: stamp an icon + a value pair (two independent elements)
     const icon={...base, id:uid(), type:'icon', name:'Widget-icoon', fontId:'font_mdi_large',
@@ -623,7 +666,7 @@ function addElement(type, pos){
   els().push(base); selectedId=base.id; afterChange();
 }
 function elName(t){ const n=els().filter(e=>e.type===t).length+1;
-  return ({text:'Tekst',icon:'Icoon',line:'Lijn',rect:'Rechthoek',circle:'Cirkel',wifi:'WiFi',clock:'Klok',graph:'Grafiek'}[t]||'Element')+' '+n; }
+  return ({text:'Tekst',icon:'Icoon',line:'Lijn',rect:'Rechthoek',circle:'Cirkel',triangle:'Driehoek',wifi:'WiFi',clock:'Klok',graph:'Grafiek'}[t]||'Element')+' '+n; }
 
 function deleteSel(){ if(!selectedId) return; pushUndo(); profile().elements=els().filter(e=>e.id!==selectedId); selectedId=null; afterChange(); }
 function dupSel(){ const e=selected(); if(!e) return; pushUndo(); const cp=JSON.parse(JSON.stringify(e)); cp.id=uid(); cp.x+=14; cp.y+=14; if(cp.x2!=null){cp.x2+=14;cp.y2+=14;} cp.name=(e.name||e.type)+' kopie'; els().push(cp); selectedId=cp.id; afterChange(); }
@@ -664,13 +707,22 @@ function renderInspector(){
     h+=g('Positie',`<div class="row"><div><label class="fld">X1</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y1</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">X2</label><input data-k="x2" type="number" value="${el.x2}"></div><div><label class="fld">Y2</label><input data-k="y2" type="number" value="${el.y2}"></div></div>`);
   } else if(el.type==='rect'){
-    h+=g('Positie & maat',`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
-      <div class="row"><div><label class="fld">Breedte</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">Hoogte</label><input data-k="h" type="number" value="${el.h}"></div></div>
-      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> Gevuld</label>`);
+    h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
+      <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
+      <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
+      <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
+      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
   } else if(el.type==='circle'){
-    h+=g('Positie & maat',`<div class="row"><div><label class="fld">Midden X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Midden Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
-      <div class="row"><div><label class="fld">Straal</label><input data-k="r" type="number" value="${el.r}"></div></div>
-      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> Gevuld</label>`);
+    h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
+      <div class="row"><div><label class="fld">${T('Straal','Radius')}</label><input data-k="r" type="number" value="${el.r}"></div></div>
+      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
+  } else if(el.type==='triangle'){
+    h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
+      <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
+      <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
+      <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
+      <label class="toggle"><input type="checkbox" data-k="flipV" ${el.flipV?'checked':''}> ${T('Ondersteboven','Upside down')}</label>
+      <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
   } else if(el.type==='graph'){
     h+=g('Positie & maat',`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">Breedte</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">Hoogte</label><input data-k="h" type="number" value="${el.h}"></div></div>`);
@@ -890,8 +942,15 @@ function attr(v){ return v==null?'':String(v).replace(/"/g,'&quot;'); }
 function bindInspector(host, el){
   // generic top-level keys
   host.querySelectorAll('[data-k]').forEach(inp=>{
+    const isNum = inp.type==='number'||inp.type==='range';
     inp.addEventListener('change',()=>{ pushUndo(); const k=inp.dataset.k;
-      el[k] = inp.type==='checkbox'?inp.checked:(inp.type==='number'?(+inp.value):inp.value); afterChange(); });
+      el[k] = inp.type==='checkbox'?inp.checked:(isNum?(+inp.value):inp.value); afterChange(); });
+    // live preview while dragging a slider (no undo spam, no full inspector rebuild)
+    if(inp.type==='range'){
+      inp.addEventListener('input',()=>{ el[inp.dataset.k]=+inp.value;
+        const lbl=inp.parentElement.querySelector('.rot-deg'); if(lbl) lbl.textContent=inp.value;
+        persist(); renderCanvas(); });
+    }
   });
   host.querySelectorAll('[data-k2]').forEach(inp=>{
     inp.addEventListener('change',()=>{ pushUndo(); el[inp.dataset.k2]=inp.value; el.transformArg={}; afterChange(); });
@@ -1001,7 +1060,23 @@ function drawStmt(el, indent){
   const color = cppColor(el.colorId);
   const anchor = el.anchor||'TOP_LEFT';
   if(el.type==='line') return `${I}it.line(${el.x}, ${el.y}, ${el.x2}, ${el.y2}, ${color});`;
-  if(el.type==='rect'){ const fn=el.filled?'filled_rectangle':'rectangle'; return `${I}it.${fn}(${el.x}, ${el.y}, ${el.w}, ${el.h}, ${color});`; }
+  if(el.type==='rect'){
+    if(el.rotation){
+      const c=rectCorners(el).map(p=>[Math.round(p[0]),Math.round(p[1])]);
+      if(el.filled){
+        return `${I}it.filled_triangle(${c[0][0]}, ${c[0][1]}, ${c[1][0]}, ${c[1][1]}, ${c[2][0]}, ${c[2][1]}, ${color});\n`
+             + `${I}it.filled_triangle(${c[0][0]}, ${c[0][1]}, ${c[2][0]}, ${c[2][1]}, ${c[3][0]}, ${c[3][1]}, ${color});`;
+      }
+      return [0,1,2,3].map(i=>{ const a=c[i], b=c[(i+1)%4];
+        return `${I}it.line(${a[0]}, ${a[1]}, ${b[0]}, ${b[1]}, ${color});`; }).join('\n');
+    }
+    const fn=el.filled?'filled_rectangle':'rectangle'; return `${I}it.${fn}(${el.x}, ${el.y}, ${el.w}, ${el.h}, ${color});`;
+  }
+  if(el.type==='triangle'){
+    const v=triVerts(el).map(p=>Math.round(p[0])+', '+Math.round(p[1]));
+    const fn=el.filled?'filled_triangle':'triangle';
+    return `${I}it.${fn}(${v.join(', ')}, ${color});`;
+  }
   if(el.type==='circle'){ const fn=el.filled?'filled_circle':'circle'; return `${I}it.${fn}(${el.x}, ${el.y}, ${el.r}, ${color});`; }
   if(el.type==='graph') return graphDrawCode(el, I);
   if(el.type==='wifi') return wifiCode(el, I, color, anchor);
@@ -1343,23 +1418,100 @@ $('#modal-back').addEventListener('mouseup', e=>{
 
 /* ---- Sources modal ---- */
 function openSources(){
-  const rows=profile().sources.map((s,i)=>`<tr>
+  const liveOn = HA_LIVE && HA_STATES;
+  const rows=profile().sources.map((s,i)=>{
+    const st = HA_STATES && HA_STATES[s.entityId];
+    const liveCell = st
+      ? `<span class="tag" style="color:var(--ok)">${attr(st.state)}${st.unit?(' '+attr(st.unit)):''}</span>`
+      : (liveOn ? `<span class="tag" style="color:var(--red)">—</span>` : '');
+    return `<tr>
     <td><input data-i="${i}" data-f="id" class="mono" value="${attr(s.id)}"></td>
     <td><input data-i="${i}" data-f="entityId" class="mono" value="${attr(s.entityId)}"></td>
     <td><select data-i="${i}" data-f="kind">
       ${['number','string','time','bool'].map(k=>`<option ${s.kind===k?'selected':''}>${k}</option>`).join('')}
     </select></td>
     <td><input data-i="${i}" data-f="sample" value="${attr(s.sample)}"></td>
-    <td><button class="btn ghost sm danger" data-del="${i}">✕</button></td></tr>`).join('');
-  openModal('Waardebronnen (sensor-mapping)',
-    `<table class="tbl"><thead><tr><th>id (lambda)</th><th>entity_id (HA)</th><th>type</th><th>voorbeeld</th><th></th></tr></thead><tbody id="src-body">${rows}</tbody></table>
-     <button class="btn sm" id="src-add" style="margin-top:10px">+ Bron toevoegen</button>
-     <div class="hint" style="margin-top:8px">“type” bepaalt welke transforms/operatoren beschikbaar zijn. Het <span class="mono">id</span> wordt de ESPHome-sensor-id; de <span class="mono">entity_id</span> wordt later gebruikt voor live data (deel 2).</div>`,
-    [{label:'Klaar',cls:'primary',onClick:()=>{ persist(); closeModal(); renderInspector(); }}]);
+    <td>${liveCell}</td>
+    <td><button class="btn ghost sm danger" data-del="${i}">✕</button></td></tr>`;}).join('');
+
+  const help = `<div class="src-box" style="margin-bottom:12px">
+    <b>${T('Live data uit Home Assistant','Live data from Home Assistant')}</b>
+    <div class="hint" style="margin-top:6px;line-height:1.5">
+      ${T('Een <b>waardebron</b> koppelt een ESPHome-naam (<span class="mono">id</span>) aan een Home Assistant <span class="mono">entity_id</span>. Je gebruikt het <span class="mono">id</span> in tekst-elementen; bij export verwijst de YAML naar de bijbehorende sensor.',
+          'A <b>value source</b> links an ESPHome name (<span class="mono">id</span>) to a Home Assistant <span class="mono">entity_id</span>. You use the <span class="mono">id</span> in text elements; on export the YAML references the matching sensor.')}<br><br>
+      ${liveOn
+        ? T('✅ Live data is actief — kies hieronder <b>“Uit Home Assistant”</b> om een echte entiteit te zoeken en toe te voegen. De huidige waarde verschijnt in de kolom “live”.',
+            '✅ Live data is active — use <b>“From Home Assistant”</b> below to search and add a real entity. The current value shows in the “live” column.')
+        : T('⚠ Live data staat uit. Klik eerst op <b>○ Live</b> in de bovenbalk om je echte entiteiten op te halen; daarna kun je ze hier zoeken en toevoegen.',
+            '⚠ Live data is off. Click <b>○ Live</b> in the top bar first to fetch your real entities; then you can search and add them here.')}
+    </div></div>`;
+
+  openModal(T('Waardebronnen (sensor-mapping)','Value sources (sensor mapping)'),
+    `${help}
+     <table class="tbl"><thead><tr><th>id (lambda)</th><th>entity_id (HA)</th><th>${T('type','type')}</th><th>${T('voorbeeld','sample')}</th><th>live</th><th></th></tr></thead><tbody id="src-body">${rows}</tbody></table>
+     <div class="row tight" style="margin-top:10px">
+       <button class="btn sm" id="src-ha">⌂ ${T('Uit Home Assistant…','From Home Assistant…')}</button>
+       <button class="btn ghost sm" id="src-add">+ ${T('Handmatig toevoegen','Add manually')}</button>
+     </div>`,
+    [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ persist(); closeModal(); renderInspector(); }}]);
   const body=$('#src-body');
   body.querySelectorAll('input,select').forEach(inp=>inp.addEventListener('change',()=>{ const i=+inp.dataset.i; profile().sources[i][inp.dataset.f]=inp.value; persist(); }));
   body.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ profile().sources.splice(+b.dataset.del,1); persist(); openSources(); });
-  $('#src-add').onclick=()=>{ profile().sources.push({id:uid('s'),entityId:'sensor.nieuw',kind:'number',sample:0}); persist(); openSources(); };
+  $('#src-add').onclick=()=>{ profile().sources.push({id:uid('s'),entityId:'sensor.new',kind:'number',sample:0}); persist(); openSources(); };
+  $('#src-ha').onclick=openEntityPicker;
+}
+
+/* Searchable Home Assistant entity picker — adds a value source from live data */
+async function openEntityPicker(){
+  if(!HA_STATES){
+    try{ HA_STATES=await fetchHaStates(); HA_LIVE=true; updateLiveBadge(); }
+    catch(e){ toast(T('Live data niet beschikbaar — staat de add-on in Home Assistant?','Live data unavailable — is the add-on running in Home Assistant?'),true); return; }
+  }
+  const entries=Object.keys(HA_STATES).sort().map(eid=>({eid, ...HA_STATES[eid]}));
+  const existing=new Set(profile().sources.map(s=>s.entityId));
+
+  openModal(T('Entiteit kiezen uit Home Assistant','Pick an entity from Home Assistant'),
+    `<input id="ent-search" class="icon-search" type="search" placeholder="${T('Zoek op naam of entity_id…','Search by name or entity_id…')}" autocomplete="off">
+     <div class="hint">${entries.length} ${T('entiteiten','entities')} · ${T('klik om toe te voegen','click to add')}</div>
+     <div id="ent-list" style="max-height:48vh;overflow:auto;margin-top:8px"></div>`,
+    [{label:T('Terug','Back'),cls:'ghost',onClick:openSources}]);
+
+  const list=$('#ent-list'), search=$('#ent-search');
+  function render(q){
+    q=(q||'').toLowerCase().trim();
+    const hit=entries.filter(e=> !q || e.eid.toLowerCase().includes(q) || (e.name||'').toLowerCase().includes(q)).slice(0,300);
+    list.innerHTML = hit.length ? hit.map(e=>`
+      <div class="row" data-eid="${attr(e.eid)}" style="align-items:center;cursor:pointer;padding:6px 8px;border-bottom:1px solid var(--line)">
+        <div style="flex:1;min-width:0">
+          <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.name?attr(e.name):'<span class="mono">'+attr(e.eid)+'</span>'}</div>
+          <div class="mono hint" style="margin:0">${attr(e.eid)}</div>
+        </div>
+        <div class="tag" style="flex:none">${attr(e.state)}${e.unit?(' '+attr(e.unit)):''}</div>
+        ${existing.has(e.eid)?'<span class="tag" style="color:var(--ok);flex:none">✓</span>':''}
+      </div>`).join('')
+      : `<div class="hint" style="padding:20px;text-align:center">${T('Geen resultaten','No results')}</div>`;
+    list.querySelectorAll('[data-eid]').forEach(row=>row.onclick=()=>addSourceFromEntity(row.dataset.eid));
+  }
+  search.oninput=()=>render(search.value);
+  render(''); search.focus();
+}
+
+function addSourceFromEntity(eid){
+  const st=HA_STATES[eid]||{};
+  // guess kind from domain / value
+  let kind='string';
+  if(/^input_datetime\./.test(eid)) kind='time';
+  else if(/^(input_boolean|switch|binary_sensor|light|fan|lock)\./.test(eid)) kind='bool';
+  else if(!isNaN(parseFloat(st.state))) kind='number';
+  // generate a clean lambda id from the object_id
+  let base=(eid.split('.')[1]||eid).replace(/[^A-Za-z0-9_]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase();
+  if(!/^[a-z_]/.test(base)) base='s_'+base;
+  let id=base, n=2; const taken=new Set(profile().sources.map(s=>s.id));
+  while(taken.has(id)){ id=base+'_'+(n++); }
+  profile().sources.push({id, entityId:eid, kind, sample:(st.state!=null?st.state:'')});
+  applyLiveToSources(); persist();
+  toast(T('Bron toegevoegd: ','Source added: ')+id);
+  openSources();
 }
 
 /* ---- Fonts & colors modal ---- */
@@ -1557,15 +1709,42 @@ function pslug(p){ return (p.name||'profiel').replace(/[^A-Za-z0-9._-]+/g,'_'); 
 
 /* ---- server-side profile sync ---- */
 var _profileSyncTimer=null;
+var _knownServerSlugs=new Set();
 
 async function syncProfilesToServer(){
   if(!SERVER_STORAGE) return;
+  const current=new Set(state.profiles.map(pslug));
+  // write every profile
   for(const p of state.profiles){
     const n=pslug(p);
     try{ await fetch('api/profiles/'+encodeURIComponent(n),{
       method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)
     }); }catch(e){}
   }
+  // delete server profiles that no longer exist locally (renamed/removed)
+  for(const n of _knownServerSlugs){
+    if(!current.has(n)){ try{ await fetch('api/profiles/'+encodeURIComponent(n),{method:'DELETE'}); }catch(e){} }
+  }
+  _knownServerSlugs=current;
+}
+
+/* Load profiles from the add-on storage folder (source of truth when present).
+   Runs once at startup. Seeds the server from local profiles on first run. */
+async function loadProfilesFromServer(){
+  try{
+    const r=await fetch('api/profiles'); if(!r.ok) return;
+    const names=(await r.json()).profiles||[];
+    if(!names.length){ await syncProfilesToServer(); return; }   // first run: seed folder
+    const loaded=(await Promise.all(
+      names.map(n=>fetch('api/profiles/'+encodeURIComponent(n)).then(x=>x.ok?x.json():null))
+    )).filter(Boolean);
+    if(loaded.length){
+      state.profiles=loaded;
+      _knownServerSlugs=new Set(names);
+      if(!loaded.some(p=>p.id===state.current)) state.current=loaded[0].id;
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+    }
+  }catch(e){ console.warn('profile load failed',e); }
 }
 
 async function serverSaveProject(){
@@ -1854,5 +2033,21 @@ async function boot(){
   }).catch(()=>{});
 }
 
-try{ loadState(); wire(); boot(); }
+async function startup(){
+  loadState();
+  // One-time: detect add-on, apply language/theme, load profiles from storage
+  try{
+    const info=await fetch('api/info').then(r=>r.json());
+    if(info && info.app){
+      SERVER_STORAGE=true;
+      if(info.language){ window.ADDON_LANGUAGE=info.language; if(window.haRefreshLang) window.haRefreshLang(); }
+      if(info.theme){ window.ADDON_THEME=info.theme; if(window.haTheme) window.haTheme.apply(window.haTheme.detect()); }
+      await loadProfilesFromServer();
+    }
+  }catch(e){ /* standalone / offline — fall back to localStorage */ }
+  wire();
+  boot();
+}
+
+try{ startup(); }
 catch(e){ showFatal('Opstartfout: '+e.message); throw e; }

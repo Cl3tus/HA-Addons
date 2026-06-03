@@ -53,7 +53,9 @@ body {
   background: var(--bg);
   color: var(--txt);
   font-size: 13px;
-  overflow: hidden;
+  /* allow the whole app to scroll when the window is smaller than the
+     minimum usable size (e.g. narrow ingress panel on a phone) */
+  overflow: auto;
   -webkit-font-smoothing: antialiased;
 }
 button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
@@ -67,6 +69,9 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
     "top top top"
     "left center right";
   height: 100vh;
+  /* below this size, body scrollbars appear instead of squashing panels */
+  min-width: 1000px;
+  min-height: 600px;
 }
 body.chrome-hidden #app { grid-template-rows: 0 1fr; }
 body.chrome-hidden #topbar { display: none; }
