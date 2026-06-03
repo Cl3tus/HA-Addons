@@ -1,3 +1,7 @@
+## 1.7.3
+- **Taal-autodetectie gefixt**: de in-app EN/NL-knop (en de localStorage-override) is verwijderd — die bleef je keuze onthouden en blokkeerde `auto`. De add-on-optie **language** is nu de enige taalinstelling; `auto` leest betrouwbaar de taal van Home Assistant (via parent/top-frame), daarna de browser
+- **Mooiere add-on documentatie** (Documentation-tab): logo, functie-overzicht met iconen, quick-start, voorbeeld-YAML, opslag/SAMBA en configuratie
+
 ## 1.7.2
 - Rotatie-handle weggehaald bij de grafiek (rotatie was toch preview-only en niet exporteerbaar). De grafiek houdt zijn resize-handvatten
 

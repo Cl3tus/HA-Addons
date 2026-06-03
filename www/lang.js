@@ -1,11 +1,10 @@
 'use strict';
 /* i18n — E-ink Studio
-   Auto-detects from navigator.language (nl-* → Dutch, else → English).
-   Override: localStorage key 'eink_studio_lang' = 'nl' | 'en'.
+   Language is controlled by the add-on Configuration option:
+     auto (follow Home Assistant / browser) | nl | en
    Usage in JS  : t('Nederlandse tekst', 'English text')
    Usage in HTML: data-i18n="Nederlandse tekst"  (NL text is the key)   */
 (function () {
-  var LS_LANG = 'eink_studio_lang';
 
   /* ---- translations: NL key → EN value ---- */
   var EN = {
@@ -74,25 +73,28 @@
     'Sleep bestanden hierheen of gebruik': 'Drop files here or use',
   };
 
-  /* ---- detect / store ----
-     Priority: addon Configuration option → in-app toggle → HA lang → browser */
+  /* ---- detect ----
+     The add-on Configuration option is the single source of truth:
+       nl | en  → forced
+       auto     → follow Home Assistant's UI language, then the browser
+     (No localStorage override, so "auto" always reflects HA.)            */
   function detectLang() {
-    // Add-on Configuration tab option (auto | nl | en)
     if (window.ADDON_LANGUAGE === 'nl' || window.ADDON_LANGUAGE === 'en') return window.ADDON_LANGUAGE;
 
-    // In-app toggle (localStorage)
-    var stored = localStorage.getItem(LS_LANG);
-    if (stored === 'en' || stored === 'nl') return stored;
+    // auto: read HA's <html lang> from whichever ancestor frame exposes it
+    var frames = [];
+    try { if (window.parent && window.parent !== window) frames.push(window.parent); } catch (_) {}
+    try { if (window.top && window.top !== window && frames.indexOf(window.top) === -1) frames.push(window.top); } catch (_) {}
+    for (var i = 0; i < frames.length; i++) {
+      try {
+        var l = (frames[i].document.documentElement.getAttribute('lang') || '').toLowerCase();
+        if (l) return l.indexOf('nl') === 0 ? 'nl' : 'en';
+      } catch (_) {}
+    }
 
-    // Auto: HA sets lang on <html> ("en", "en-GB", "nl", "nl-NL", …)
-    try {
-      var haLang = (window.parent.document.documentElement.getAttribute('lang') || '').toLowerCase();
-      if (haLang) return haLang.startsWith('nl') ? 'nl' : 'en';
-    } catch (_) {}
-
-    // Browser fallback
+    // browser fallback (standalone / outside ingress)
     var nav = (navigator.language || navigator.userLanguage || '').toLowerCase();
-    return nav.startsWith('nl') ? 'nl' : 'en';
+    return nav.indexOf('nl') === 0 ? 'nl' : 'en';
   }
 
   var _lang = detectLang();
@@ -111,23 +113,7 @@
       var key = el.getAttribute('data-i18n');
       el.textContent = window.t(key);
     });
-    // Update lang-toggle button labels
-    document.querySelectorAll('[data-lang-toggle]').forEach(function (btn) {
-      btn.textContent = _lang === 'nl' ? 'EN' : 'NL';
-      btn.title       = _lang === 'nl' ? 'Switch to English' : 'Schakel naar Nederlands';
-    });
   }
-
-  /* ---- toggle ---- */
-  window.setLang = function (l) {
-    _lang = l;
-    window.APP_LANG = l;
-    localStorage.setItem(LS_LANG, l);
-    applyTranslations();
-  };
-  window.toggleLang = function () {
-    window.setLang(_lang === 'nl' ? 'en' : 'nl');
-  };
 
   /* ---- re-evaluate language once the addon option is known ---- */
   function refresh() {

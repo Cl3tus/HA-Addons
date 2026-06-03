@@ -1,47 +1,109 @@
+<img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/eink_studio/icon.png" width="120" align="right" alt="E-ink Studio">
+
 # E-ink Studio
 
-A WYSIWYG editor for ESPHome e-ink displays, running as a Home Assistant add-on.
-Design your display layout visually and generate the ESPHome `lambda` + matching
-YAML.
+**A WYSIWYG editor for ESPHome e-ink displays — design your layout visually and
+generate the ESPHome `lambda:` + matching YAML. No more hand-counting pixels.**
 
-## Features
-- Full editor in the HA sidebar (Ingress — no separate tab needed).
-- **Live preview**: reads Home Assistant states read-only, so the preview shows
-  real sensor values. Click **○ Live** in the top bar to refresh.
-- Projects, fonts and profiles are stored **inside the add-on** and exposed over
-  SAMBA at `\\<HA-IP>\addon_configs\<slug>_eink_studio\`. Nothing is written to
-  your ESPHome config.
-- Built-in **file manager** (📁 Files) to browse, upload, download, rename, move
-  and delete files/folders.
-- All libraries (Konva, js-yaml, Material Design Icons, IBM Plex, Noto/Roboto)
-  are **bundled** — works without an internet connection.
+Drag elements onto a paper-accurate canvas, bind them to live Home Assistant
+sensor values, preview the 1-bit (or tri-colour red) result, and copy the
+generated code straight into your ESPHome device config.
 
-## Usage
-1. Open **E-ink Studio** in the sidebar.
-2. Design your layout; for each value element pick the right HA sensor.
-3. Click **○ Live** to load real data into the preview (all entities are
-   fetched; you filter/pick them in the UI).
-4. **Generate YAML** → copy or download, then paste into your ESPHome config.
+---
 
-## Configuration
-Two options on the **Configuration** tab:
+## ✨ What you can do
 
-- `language` — `auto` (follow HA / browser), `nl` or `en`.
-- `theme` — `auto` (follow HA light/dark), `light` or `dark`.
+- 🎨 **Drag-and-drop canvas** — text, values, MDI icons, lines, rectangles,
+  circles/ovals, triangles, Wi-Fi icons, refresh clocks, graphs and combined
+  icon+value widgets.
+- 🔄 **Rotate & resize** shapes with on-canvas handles; fill them or keep them
+  outlined.
+- 📡 **Live Home Assistant data** — pick real entities from a searchable list
+  and preview their current values while you design (read-only).
+- 🖤 **1-bit e-ink preview** — see exactly how it renders on a black/white or
+  tri-colour panel.
+- 🔤 **Fonts & colours** — manage Google/local fonts and the tri-colour palette.
+- 🧩 **Value sources & scenarios** — map entities to placeholders, preview
+  different states.
+- 📐 **Multi-select** — Ctrl/Shift-click and rubber-band selection to move,
+  duplicate or delete groups at once.
+- 🗂️ **Built-in file manager** with a text editor (undo/redo) for the add-on
+  storage, reachable over SAMBA.
+- 🌓 **Light / dark** and 🇬🇧 **English / 🇳🇱 Dutch** — follow Home Assistant
+  automatically or fix them in the options.
+- 📴 **Fully offline** — Konva, js-yaml, MDI and all fonts are bundled.
 
-Both can also be toggled from inside the editor; the add-on option is the
-default.
+---
 
-## Storage
-- Projects: `projects/*.json` — **Save** writes here, **Open** lists them.
-- Fonts: `fonts/*` — uploaded TTFs are copied here (persistent).
-- Profiles: `profiles/*.json` — profile settings.
+## 🚀 Quick start
 
-All of these live in the add-on config folder, reachable over SAMBA so you can
-edit/back them up from your computer. They survive add-on restarts and updates.
+1. Open **E-ink Studio** from the sidebar.
+2. Click **○ Live** (top bar) to pull your real Home Assistant entities.
+3. In **Value sources → From Home Assistant**, search and add the sensors you
+   want to show.
+4. Drag elements onto the canvas and bind each value element to a source.
+5. Click **&lt;/&gt; Generate YAML**, then **Copy** or **Download** and paste it
+   into your ESPHome device config.
 
-## Note
-- The add-on does **not** write to your ESPHome config or fonts folder
-  (preview-only by design).
-- For an exact preview of custom fonts (e.g. digital.ttf, GothamRnd-Book.ttf):
-  upload them via **Fonts & colours**. Material Design Icons (v7.4.47) is built in.
+---
+
+## 🧾 Example output
+
+A temperature readout becomes something like:
+
+```yaml
+font:
+  - file: "fonts/Roboto-Regular.ttf"
+    id: font_klein
+    size: 25
+
+display:
+  - platform: waveshare_epaper
+    model: 7.50in-bv3
+    lambda: |-
+      it.printf(120, 60, id(font_klein), color_text, TextAlign::TOP_CENTER,
+                "%.1f °C", id(aquarium_temp).state);
+```
+
+The editor also emits the matching `sensor:`, `color:` and (for graphs)
+`graph:` blocks.
+
+---
+
+## ⚙️ Configuration
+
+| Option | Values | Description |
+|--------|--------|-------------|
+| `language` | `auto` · `nl` · `en` | UI language. `auto` follows Home Assistant. |
+| `theme` | `auto` · `light` · `dark` | Colour theme. `auto` follows Home Assistant. |
+
+---
+
+## 🗄️ Storage & SAMBA
+
+Projects, fonts and profiles live in the add-on config folder, reachable over
+SAMBA at `\\<HA-IP>\addon_configs\<slug>_eink_studio\`:
+
+```
+projects/   ← saved designs (.json)
+fonts/      ← uploaded fonts
+profiles/   ← profile settings (.json)
+```
+
+Edit and back them up from your computer, or use the built-in **📁 Files**
+manager inside the editor.
+
+---
+
+## ⚠️ Good to know
+
+- The add-on **does not** write to your ESPHome config — you copy the generated
+  YAML yourself (preview-only by design).
+- The graph preview shows a sample wave; the **real history is drawn on the
+  device** by ESPHome. Y-axis numbers appear once you set a fixed Y-min/Y-max.
+- For an exact font preview, upload your TTF via **Fonts & colours**. Material
+  Design Icons (v7.4.47) is built in.
+
+---
+
+*Source & issues: [github.com/Cl3tus/HA-Eink-Studio-App](https://github.com/Cl3tus/HA-Eink-Studio-App)*
