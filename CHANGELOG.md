@@ -1,3 +1,6 @@
+## 2.3.1
+- **Scenario's verwijderd** — de losse Scenario's-knop is weg. Test-/voorbeeldwaarden vul je gewoon in via het "voorbeeld"-veld per bron in **Waardebronnen** (zoals het al kon). Conditie-preview volgt nu ook live data wanneer Live aan staat
+
 ## 2.3.0
 - Sleep-selectie (marquee) wordt nu ook afgerond als je de muisknop **buiten** het canvas loslaat
 - **Refresh-klok** verplaatst nu correct (anker-positie i.p.v. een sprong buiten het canvas)

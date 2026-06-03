@@ -111,8 +111,6 @@ function seedProfile(name='My display'){
     colors: colorSetFor('bwr'),   // palette matches the model's colour capability
     sources: [],          // start empty — add via "Value sources → From Home Assistant"
     elements: [],
-    scenarios: [],
-    activeScenario: null,
   };
   function f(id,kind,file,family,weight,size,dynamic,base){
     return {id,kind,file,family,weight,size,dynamic:!!dynamic,
@@ -207,11 +205,6 @@ function rawValue(el){
   if(el.source.kind==='expr')   return '(expr)';
   const src = srcById(el.source.sourceId);
   if(!src) return '?';
-  const p = profile();
-  if(p.activeScenario){
-    const sc = p.scenarios.find(s=>s.id===p.activeScenario);
-    if(sc && sc.values && sc.values[src.id]!=null) return sc.values[src.id];
-  }
   // live HA value (add-on) takes precedence over the static sample when available
   if(typeof HA_LIVE!=='undefined' && HA_LIVE && src.live!=null && src.live!=='') return src.live;
   return src.sample;
@@ -271,8 +264,7 @@ function condResult(el){
   if(!cd || !cd.enabled || !cd.sourceId) return null;
   const src = srcById(cd.sourceId);
   let v = src ? src.sample : null;
-  const p=profile();
-  if(p.activeScenario){ const sc=p.scenarios.find(s=>s.id===p.activeScenario); if(sc&&sc.values&&sc.values[cd.sourceId]!=null) v=sc.values[cd.sourceId]; }
+  if(typeof HA_LIVE!=='undefined' && HA_LIVE && src && src.live!=null && src.live!=='') v=src.live;
   switch(cd.op){
     case 'on': return String(v)==='on';
     case 'eq': return (src&&src.kind==='number')? Number(v)===Number(cd.val) : String(v)===String(cd.val);
@@ -1942,33 +1934,6 @@ async function maybeUploadFont(f, filename){
 }
 function rgbToHex(css){ if(/^#/.test(css)) return css; return '#1d1d1b'; }
 
-/* ---- Scenarios modal ---- */
-function openScenarios(){
-  const p=profile();
-  const list=p.scenarios.map(sc=>`<tr><td><input data-sc="${sc.id}" value="${attr(sc.name)}"></td>
-    <td><button class="btn sm" data-apply="${sc.id}">${p.activeScenario===sc.id?('● '+T('actief','active')):T('Toepassen','Apply')}</button></td>
-    <td><button class="btn sm" data-edit="${sc.id}">${T('Waarden…','Values…')}</button></td>
-    <td><button class="btn ghost sm danger" data-del="${sc.id}">✕</button></td></tr>`).join('');
-  openModal(T("Scenario's (test-waarden)",'Scenarios (test values)'),
-    `<table class="tbl"><tbody>${list||`<tr><td class="hint">${T('Nog geen scenario’s.','No scenarios yet.')}</td></tr>`}</tbody></table>
-     <div class="row" style="margin-top:10px"><button class="btn sm" id="sc-add">+ ${T('Scenario van huidige waarden','Scenario from current values')}</button>
-     <button class="btn ghost sm" id="sc-clear">${T('Live/standaard waarden','Live/default values')}</button></div>
-     <div class="hint" style="margin-top:8px">${T('Een scenario legt waarden per bron vast, zodat je je condities kunt testen zonder te flashen.','A scenario stores values per source so you can test your conditions without flashing.')}</div>`,
-    [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{persist();closeModal();}}]);
-  $('#sc-add').onclick=()=>{ const vals={}; p.sources.forEach(s=>vals[s.id]=s.sample); p.scenarios.push({id:uid('sc'),name:'Scenario '+(p.scenarios.length+1),values:vals}); persist(); openScenarios(); };
-  $('#sc-clear').onclick=()=>{ p.activeScenario=null; persist(); afterChange(); openScenarios(); };
-  $$('#modal-body [data-sc]').forEach(i=>i.onchange=()=>{ p.scenarios.find(s=>s.id===i.dataset.sc).name=i.value; persist(); });
-  $$('#modal-body [data-apply]').forEach(b=>b.onclick=()=>{ p.activeScenario=b.dataset.apply; persist(); afterChange(); openScenarios(); });
-  $$('#modal-body [data-del]').forEach(b=>b.onclick=()=>{ p.scenarios=p.scenarios.filter(s=>s.id!==b.dataset.del); if(p.activeScenario===b.dataset.del)p.activeScenario=null; persist(); openScenarios(); });
-  $$('#modal-body [data-edit]').forEach(b=>b.onclick=()=>editScenario(b.dataset.edit));
-}
-function editScenario(id){
-  const p=profile(), sc=p.scenarios.find(s=>s.id===id);
-  const rows=p.sources.map(s=>`<tr><td class="mono">${s.id}</td><td class="tag">${s.kind}</td><td><input data-v="${s.id}" value="${attr(sc.values[s.id]??s.sample)}"></td></tr>`).join('');
-  openModal('Scenario: '+sc.name, `<table class="tbl"><thead><tr><th>${T('bron','source')}</th><th>type</th><th>${T('waarde','value')}</th></tr></thead><tbody>${rows}</tbody></table>`,
-    [{label:T('Terug','Back'),onClick:openScenarios},{label:T('Opslaan','Save'),cls:'primary',onClick:()=>{ $$('#modal-body [data-v]').forEach(i=>sc.values[i.dataset.v]=i.value); persist(); afterChange(); openScenarios(); }}]);
-}
-
 /* ---- Profile settings ---- */
 function openProfileSettings(){
   const p=profile(), d=p.device;
@@ -2277,7 +2242,6 @@ function wire(){
   $('#btn-import').onclick=openImport;
   $('#btn-sources').onclick=openSources;
   $('#btn-fonts').onclick=openFonts;
-  $('#btn-scenarios').onclick=openScenarios;
   $('#btn-save').onclick=saveProject;
   $('#btn-theme').onclick=()=>{ if(window.haTheme) window.haTheme.toggle(); };
   const lb=$('#btn-live'); if(lb) lb.onclick=toggleLive;
