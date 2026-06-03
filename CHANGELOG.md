@@ -1,3 +1,12 @@
+## 2.3.0
+- Sleep-selectie (marquee) wordt nu ook afgerond als je de muisknop **buiten** het canvas loslaat
+- **Refresh-klok** verplaatst nu correct (anker-positie i.p.v. een sprong buiten het canvas)
+- **Multi-select verplaatsen**: de hele selectie én de selectiekaders bewegen nu live mee als je sleept
+- Topbalk-ondertitel → "Lambda Generator" (hoofdletters)
+- **Fonts**-knop/-venster: de Kleuren-sectie is nu alleen-lezen (kleuren komen automatisch uit het displaytype/model)
+- **Gegenereerde YAML**: koptekst volgt de taal (NL/EN), toont de echte add-on-versie en verwijst niet meer naar oude fontnamen
+- Light-thema: de raster/snap/uitlijn-balk is nu wit, gelijk aan de bovenbalk
+
 ## 2.2.0
 - **Shift = 45°-rotatievergrendeling** voor rechthoek, driehoek, veelhoek én meter (zoals de lijn al had)
 - **Lijn**: vierkante eindpunt-handvatten + een **rotatie-handvat** (draait de lijn om zijn midden; Shift snapt op 45°)

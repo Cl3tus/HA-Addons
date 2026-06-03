@@ -239,7 +239,7 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 #canvas-toolbar {
   height: 40px; display: flex; align-items: center; gap: 10px;
   padding: 0 14px; border-bottom: 1px solid var(--line);
-  background: var(--bg-2); flex: none;
+  background: var(--panel); flex: none;   /* white in light / #1c1c1c dark — matches the top bar */
 }
 #canvas-toolbar .grp { display: flex; align-items: center; gap: 6px; }
 #canvas-toolbar .zoomval { font-family: var(--mono); width: 42px; text-align: center; color: var(--txt-dim); }
