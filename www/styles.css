@@ -182,6 +182,12 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   color: var(--txt-dim); font-weight: 600;
   display: flex; align-items: center; justify-content: space-between;
 }
+/* The first header of each side panel is a 40px-tall bar so its divider
+   lines up exactly with the canvas toolbar (grid/snap bar, also 40px). */
+#left > .section:first-child > h3,
+#right > .section:first-child > h3 {
+  height: 40px; padding-top: 0; padding-bottom: 0;
+}
 .section .body { padding: 0 12px 12px; }
 
 /* palette */

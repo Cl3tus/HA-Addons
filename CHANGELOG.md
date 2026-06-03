@@ -1,3 +1,6 @@
+## 1.9.1
+- De scheidingslijn onder "Elementen toevoegen / Add elements" (links) lijnt nu exact uit met de canvas-toolbar (raster/snap-balk): de eerste sectie-header van de zijpanelen is 40px hoog, gelijk aan de toolbar. Werkt in dark én light
+
 ## 1.9.0
 - **Nieuw HA-stijl dark theme** (standaard): achtergrond #111111, kaarten #1C1C1C, lijnen #343434, HA-achtige tekstkleuren, rondere hoeken (10px), amber/oranje accent. De blauwige tinten zijn eruit. De **vorige (klassieke) dark theme is bewaard** als comment-blok bovenin styles.css voor makkelijke rollback
 - **Thema-knop** toont nu het juiste label in beide talen (Dark/Donker, Light/Licht)
