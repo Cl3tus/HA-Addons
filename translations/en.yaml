@@ -1,0 +1,10 @@
+configuration:
+  language:
+    name: Language
+    description: >-
+      Interface language for the editor and file manager.
+      "Auto" follows your Home Assistant language.
+  theme:
+    name: Theme
+    description: >-
+      Colour theme. "Auto" follows your Home Assistant light/dark setting.

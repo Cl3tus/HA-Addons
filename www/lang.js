@@ -73,12 +73,15 @@
     'Sleep bestanden hierheen of gebruik': 'Drop files here or use',
   };
 
+  var _override = null;   // session-only manual toggle (NOT persisted) — resets on reload
+
   /* ---- detect ----
-     The add-on Configuration option is the single source of truth:
-       nl | en  → forced
-       auto     → follow Home Assistant's UI language, then the browser
-     (No localStorage override, so "auto" always reflects HA.)            */
+     Priority:
+       session toggle (in-app button) → addon option (nl|en) → auto
+     auto = Home Assistant's UI language, then the browser.
+     Nothing is persisted, so after a reload it follows the config again. */
   function detectLang() {
+    if (_override === 'nl' || _override === 'en') return _override;
     if (window.ADDON_LANGUAGE === 'nl' || window.ADDON_LANGUAGE === 'en') return window.ADDON_LANGUAGE;
 
     // auto: read HA's <html lang> from whichever ancestor frame exposes it
@@ -113,6 +116,11 @@
       var key = el.getAttribute('data-i18n');
       el.textContent = window.t(key);
     });
+    // language toggle buttons show the OTHER language as their label
+    document.querySelectorAll('[data-lang-toggle]').forEach(function (btn) {
+      btn.textContent = _lang === 'nl' ? 'EN' : 'NL';
+      btn.title = _lang === 'nl' ? 'Switch to English' : 'Schakel naar Nederlands';
+    });
   }
 
   /* ---- re-evaluate language once the addon option is known ---- */
@@ -122,6 +130,12 @@
     applyTranslations();
   }
   window.haRefreshLang = refresh;
+
+  /* ---- session-only manual toggle (not persisted) ---- */
+  window.toggleLang = function () {
+    _override = (_lang === 'nl') ? 'en' : 'nl';
+    refresh();
+  };
 
   // Fetch the add-on Configuration option (auto/nl/en)
   fetch('api/info').then(function (r) { return r.json(); }).then(function (info) {

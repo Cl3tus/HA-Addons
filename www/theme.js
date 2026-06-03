@@ -7,8 +7,8 @@
    when the OS preference differs (which is why prefers-color-scheme
    was always wrong here).                                            */
 (function () {
-  var LS_MANUAL = 'eink_studio_theme_manual';
   var _current  = null;
+  var _override = null;   // session-only manual override (NOT persisted) — resets on reload
 
   /* ---- ESPHome mechanism: read a system-colour probe ----
      A hidden element with background-color:Canvas + color-scheme:light dark
@@ -60,13 +60,13 @@
     return null;
   }
 
-  /* ---- detect (priority: addon option → manual toggle → Canvas → HA var → OS) ---- */
+  /* ---- detect (priority: session toggle → addon option → Canvas → HA var → OS) ---- */
   function detect() {
+    // Session-only manual override (in-app button). Cleared on reload.
+    if (_override === 'light' || _override === 'dark') return _override;
+
     // Add-on Configuration tab option (auto | light | dark)
     if (window.ADDON_THEME === 'light' || window.ADDON_THEME === 'dark') return window.ADDON_THEME;
-
-    var manual = localStorage.getItem(LS_MANUAL);
-    if (manual === 'dark' || manual === 'light') return manual;
 
     var s = detectFromCanvas();
     if (s) return s;
@@ -88,10 +88,10 @@
     if (btnFe) btnFe.textContent = scheme === 'light' ? '◑ Licht' : '◐ Donker';
   }
 
-  /* ---- manual toggle ---- */
+  /* ---- session-only manual toggle (not persisted) ---- */
   function toggle() {
     var cur = document.body.classList.contains('light') ? 'light' : 'dark';
-    localStorage.setItem(LS_MANUAL, cur === 'light' ? 'dark' : 'light');
+    _override = cur === 'light' ? 'dark' : 'light';
     _current = null;
     apply(detect());
   }
@@ -106,15 +106,13 @@
     }).catch(function () {});
 
     setInterval(function () {
-      // When the addon forces a theme, keep enforcing it; otherwise respect manual toggle
-      if (window.ADDON_THEME !== 'light' && window.ADDON_THEME !== 'dark'
-          && localStorage.getItem(LS_MANUAL)) return;
+      if (_override) return;          // honour the session override until reload
       var s = detect();
       if (s !== _current) apply(s);
     }, 500);
 
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
-      if (!localStorage.getItem(LS_MANUAL)) { _current = null; apply(detect()); }
+      if (!_override) { _current = null; apply(detect()); }
     });
   }
 

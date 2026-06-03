@@ -1,0 +1,10 @@
+configuration:
+  language:
+    name: Taal
+    description: >-
+      Taal van de editor en bestandsbeheerder.
+      "Auto" volgt de taal van Home Assistant.
+  theme:
+    name: Thema
+    description: >-
+      Kleurthema. "Auto" volgt de licht/donker-instelling van Home Assistant.

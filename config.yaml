@@ -1,5 +1,5 @@
 name: E-ink Studio
-version: "1.7.3"
+version: "1.8.0"
 slug: eink_studio
 description: WYSIWYG editor for ESPHome e-ink displays — design your layout and generate the lambda + YAML.
 url: https://github.com/Cl3tus/HA-Eink-Studio-App
@@ -27,12 +27,13 @@ hassio_api: false
 map:
   - addon_config:rw
 
-# --- User options (Configuration tab) ---
-#   language : auto (follow HA / browser) | nl | en
-#   theme    : auto (follow HA) | light | dark
+# --- User options (Configuration tab; rendered as dropdowns) ---
+#   Language : Auto (follow HA) | Nederlands | English
+#   Theme    : Auto (follow HA) | Light | Dark
+# Labels/descriptions are translated per HA language via translations/*.yaml.
 options:
-  language: auto
-  theme: auto
+  language: Auto
+  theme: Auto
 schema:
-  language: list(auto|nl|en)
-  theme: list(auto|light|dark)
+  language: list(Auto|Nederlands|English)
+  theme: list(Auto|Light|Dark)

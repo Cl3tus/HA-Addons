@@ -2075,7 +2075,7 @@ function wire(){
   $('#btn-fonts').onclick=openFonts;
   $('#btn-scenarios').onclick=openScenarios;
   $('#btn-save').onclick=saveProject;
-  $('#btn-theme').onclick=()=>{ state.theme = (state.theme==='light'?'dark':'light'); applyTheme(); persist(); };
+  $('#btn-theme').onclick=()=>{ if(window.haTheme) window.haTheme.toggle(); };
   const lb=$('#btn-live'); if(lb) lb.onclick=refreshLive;
   $('#btn-load').onclick=loadProject;
 

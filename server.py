@@ -45,8 +45,17 @@ try:
     _opts = json.loads(_options_file.read_text("utf-8")) if _options_file.exists() else {}
 except Exception:
     _opts = {}
-LANGUAGE   = _opts.get("language", "auto")   # auto | nl | en
-THEME      = _opts.get("theme", "auto")      # auto | light | dark
+def _norm_lang(v):
+    v = str(v or "auto").strip().lower()
+    return {"nederlands": "nl", "dutch": "nl", "nl": "nl",
+            "english": "en", "engels": "en", "en": "en"}.get(v, "auto")
+
+def _norm_theme(v):
+    v = str(v or "auto").strip().lower()
+    return v if v in ("light", "dark") else "auto"
+
+LANGUAGE   = _norm_lang(_opts.get("language", "auto"))   # auto | nl | en
+THEME      = _norm_theme(_opts.get("theme", "auto"))     # auto | light | dark
 SAMBA_SLUG = os.environ.get("SAMBA_SLUG", "")
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")

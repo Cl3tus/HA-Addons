@@ -1,3 +1,9 @@
+## 1.8.0
+- **Add-on opties als nette dropdowns** met hoofdletters: Language → Auto/Nederlands/English, Theme → Auto/Light/Dark
+- **Optie-labels volgen je HA-taal**: `translations/en.yaml` + `nl.yaml` vertalen de namen/beschrijvingen (Language/Taal, Theme/Thema)
+- **Taal- en thema-knoppen terug** in de editor en bestandsbeheerder — maar **sessie-only**: ze worden niet opgeslagen. Bij de volgende keer openen volgt de app weer de config-instelling (autodetectie als die op Auto staat)
+- Server normaliseert de gekapitaliseerde optiewaarden (Nederlands→nl, English→en, Light/Dark)
+
 ## 1.7.3
 - **Taal-autodetectie gefixt**: de in-app EN/NL-knop (en de localStorage-override) is verwijderd — die bleef je keuze onthouden en blokkeerde `auto`. De add-on-optie **language** is nu de enige taalinstelling; `auto` leest betrouwbaar de taal van Home Assistant (via parent/top-frame), daarna de browser
 - **Mooiere add-on documentatie** (Documentation-tab): logo, functie-overzicht met iconen, quick-start, voorbeeld-YAML, opslag/SAMBA en configuratie
