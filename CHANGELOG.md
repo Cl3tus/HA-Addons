@@ -1,3 +1,6 @@
+## 1.8.1
+- Add-on documentatie (Documentation-tab) herschreven in hassio-addons-stijl met een duidelijke **About**-sectie, architectuur-badges, installatie, gebruik, voorbeeld-YAML, configuratie, opslag en support (screenshots volgen later)
+
 ## 1.8.0
 - **Add-on opties als nette dropdowns** met hoofdletters: Language → Auto/Nederlands/English, Theme → Auto/Light/Dark
 - **Optie-labels volgen je HA-taal**: `translations/en.yaml` + `nl.yaml` vertalen de namen/beschrijvingen (Language/Taal, Theme/Thema)
