@@ -1,3 +1,15 @@
+## 2.4.0
+- **Rotatie-ankers zijn nu rondjes** (rechthoek, driehoek, veelhoek, gauge); lijn-rotatie-anker zit nu bovenaan
+- **Vaste-verhouding fixes**: cirkel/ring/veelhoek/gauge tonen alleen hoek-handvatten; cirkel wordt weer rond bij opnieuw aanvinken van "rond houden"; driehoek heeft een lock-optie
+- **QR-code**: 4 hoek-handvatten (proportioneel schalen) + **ECC-niveau** (LOW/MEDIUM/QUARTILE/HIGH)
+- **Wi-Fi**: standaard-iconen tonen nu correct (icoonnamen) + MDI-kiezer per niveau
+- **Refresh-klok**: standaard-icoon = mdi:recycle; AM/PM-preview werkt nu (12-uurs)
+- **Condities (if/else)** beschikbaar op álle elementen (zichtbaarheid + kleur-override per tak)
+- **Tweede scherm**: ontwerp nu ook het **wachtscherm** ("waiting for data") — schakel bovenaan de canvas tussen Hoofdscherm/Wachtscherm. De YAML zet jouw wachtscherm in de `if (initial_data_received == false)`-tak
+- **Gegenereerde YAML**: glyphs nu als compacte één-regel-array; base64-herstelcode toggle-baar via checkbox; resterende NL-comment vertaald
+- **Fonts**: Kleuren-sectie volledig verwijderd; **"TTF uploaden"**-knop toegevoegd; zelfde TTF-bestand wordt hergebruikt (niet 2× uploaden)
+- **Bestandsbeheer**: dubbelklik op een TTF/OTF/woff opent een **font-preview**
+
 ## 2.3.1
 - **Scenario's verwijderd** — de losse Scenario's-knop is weg. Test-/voorbeeldwaarden vul je gewoon in via het "voorbeeld"-veld per bron in **Waardebronnen** (zoals het al kon). Conditie-preview volgt nu ook live data wanneer Live aan staat
 

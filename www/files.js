@@ -68,6 +68,37 @@ function isTextFile(name) {
   return TEXT_EXT.has(name.split('.').pop().toLowerCase());
 }
 
+const FONT_EXT = new Set(['ttf','otf','woff','woff2']);
+function isFontFile(name) {
+  return name.indexOf('.') !== -1 && FONT_EXT.has(name.split('.').pop().toLowerCase());
+}
+
+let _fontPrevN = 0;
+async function openFontPreview(name) {
+  const path = entryPath(name);
+  try {
+    const r = await fetch(`api/fs/download?path=${enc(path)}`);
+    if (!r.ok) throw new Error(r.status);
+    const buf = await r.arrayBuffer();
+    const fam = 'feprev_' + (++_fontPrevN);
+    const ff = new FontFace(fam, buf);
+    await ff.load();
+    document.fonts.add(ff);
+    const sizes = [14, 20, 28, 40, 56];
+    const sample = 'AaBbCcDd 0123456789 :-/°%';
+    const body = $('#fe-fontprev-body');
+    body.innerHTML =
+      `<div style="font-family:'${fam}';line-height:1.3">` +
+      sizes.map(s => `<div style="font-size:${s}px;margin-bottom:8px">${esc(sample)}</div>`).join('') +
+      `</div><div class="hint" style="margin-top:6px">${esc(name)}</div>`;
+    $('#fe-fontprev-name').textContent = path;
+    $('#fe-fontprev-back').style.display = 'flex';
+  } catch (e) {
+    toast(_t('Kon font niet laden: ', 'Could not load font: ') + e.message, true);
+  }
+}
+function closeFontPreview() { $('#fe-fontprev-back').style.display = 'none'; }
+
 async function apiRead(path) {
   const r = await fetch(`api/fs/read?path=${enc(path)}`);
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
@@ -278,6 +309,7 @@ function makeRow(e, upPath) {
 
   row.ondblclick = () => {
     if (isDir) navigate(currentPath ? currentPath + '/' + e.name : e.name);
+    else if (isFontFile(e.name)) openFontPreview(e.name);
     else if (isTextFile(e.name)) openEditor(e.name);
     else doDownload(e.name);
   };
@@ -515,6 +547,10 @@ function showCtxMenu(x, y, entry) {
     item(_t('Openen', 'Open'), 'mdi-folder-open-outline',
       () => navigate(entryPath(entry.name)));
   } else {
+    if (isFontFile(entry.name)) {
+      item(_t('Voorbeeld', 'Preview'), 'mdi-format-font',
+        () => openFontPreview(entry.name));
+    }
     if (isTextFile(entry.name)) {
       item(_t('Bewerken', 'Edit'), 'mdi-file-edit-outline',
         () => openEditor(entry.name));
@@ -573,6 +609,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Text editor
   $('#fe-editor-save').onclick  = saveEditor;
   $('#fe-editor-close').onclick = closeEditor;
+  $('#fe-fontprev-close').onclick = closeFontPreview;
+  $('#fe-fontprev-back').addEventListener('mousedown', ev => { if (ev.target === $('#fe-fontprev-back')) closeFontPreview(); });
   $('#fe-editor-undo').onclick  = editorUndo;
   $('#fe-editor-redo').onclick  = editorRedo;
   const area = $('#fe-editor-area');

@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
 <link rel="stylesheet" href="vendor/fonts.css">
 <link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
-<link rel="stylesheet" href="styles.css?v=2.3.1">
+<link rel="stylesheet" href="styles.css?v=2.4.0">
 <style>
   body { overflow: hidden; }
 
@@ -344,14 +344,26 @@
   </div>
 </div>
 
+<!-- Font preview -->
+<div id="fe-fontprev-back" style="position:fixed;inset:0;background:rgba(6,7,10,.72);display:none;align-items:center;justify-content:center;z-index:210;backdrop-filter:blur(3px)">
+  <div style="background:var(--panel);border:1px solid var(--line-2);border-radius:10px;width:min(720px,94vw);max-height:84vh;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden">
+    <header style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);flex:none">
+      <span class="mdi mdi-format-font" style="color:var(--accent);font-size:18px"></span>
+      <b id="fe-fontprev-name" style="flex:1;font-family:var(--mono);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
+      <button class="btn ghost sm" id="fe-fontprev-close">✕</button>
+    </header>
+    <div id="fe-fontprev-body" style="padding:18px 18px;overflow:auto"></div>
+  </div>
+</div>
+
 <!-- Context menu -->
 <div id="ctxmenu" class="ctxmenu"></div>
 
 <!-- Toast -->
 <div class="toast" id="fe-toast"></div>
 
-<script src="files.js?v=2.3.1"></script>
-<script src="lang.js?v=2.3.1"></script>
-<script src="theme.js?v=2.3.1"></script>
+<script src="files.js?v=2.4.0"></script>
+<script src="lang.js?v=2.4.0"></script>
+<script src="theme.js?v=2.4.0"></script>
 </body>
 </html>

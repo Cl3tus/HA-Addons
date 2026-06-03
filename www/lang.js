@@ -37,6 +37,8 @@
     'Veelhoek': 'Polygon',
     'Meter': 'Gauge',
     'QR-code': 'QR code',
+    'Hoofdscherm': 'Main screen',
+    'Wachtscherm': 'Waiting screen',
     'kleuren': 'colours',
     'Widget (icoon+waarde)': 'Widget (icon+value)',
     'WiFi-icoon': 'Wi-Fi icon',
@@ -56,6 +58,7 @@
 
     /* --- code drawer --- */
     'Gegenereerde YAML': 'Generated YAML',
+    'base64-herstelcode': 'base64 restore code',
     'Kopieer': 'Copy',
     'Download .yaml': 'Download .yaml',
 

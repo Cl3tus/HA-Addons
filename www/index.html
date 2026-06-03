@@ -16,7 +16,7 @@
 <script src="vendor/konva.min.js"></script>
 <script src="vendor/js-yaml.min.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=2.3.1">
+<link rel="stylesheet" href="styles.css?v=2.4.0">
 </head>
 <body>
 <div id="app">
@@ -81,6 +81,11 @@
   <!-- ============ CENTER: canvas ============ -->
   <section id="center">
     <div id="canvas-toolbar">
+      <select id="screen-select" title="Scherm" style="width:auto;padding:3px 6px">
+        <option value="main" data-i18n="Hoofdscherm">Hoofdscherm</option>
+        <option value="wait" data-i18n="Wachtscherm">Wachtscherm</option>
+      </select>
+      <div class="topbar-sep"></div>
       <div class="grp">
         <button class="btn ghost sm" id="zoom-out">−</button>
         <span class="zoomval" id="zoom-val">100%</span>
@@ -130,6 +135,7 @@
     <div id="code-drawer">
       <header>
         <b data-i18n="Gegenereerde YAML">Gegenereerde YAML</b>
+        <label class="toggle" style="margin-right:auto"><input type="checkbox" id="code-b64" checked> <span data-i18n="base64-herstelcode">base64-herstelcode</span></label>
         <button class="btn sm" id="code-copy" data-i18n="Kopieer">Kopieer</button>
         <button class="btn sm" id="code-download" data-i18n="Download .yaml">Download .yaml</button>
         <button class="btn ghost sm" id="code-close">✕</button>
@@ -158,8 +164,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=2.3.1"></script>
-<script src="lang.js?v=2.3.1"></script>
-<script src="theme.js?v=2.3.1"></script>
+<script src="app.js?v=2.4.0"></script>
+<script src="lang.js?v=2.4.0"></script>
+<script src="theme.js?v=2.4.0"></script>
 </body>
 </html>

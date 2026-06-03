@@ -111,6 +111,7 @@ function seedProfile(name='My display'){
     colors: colorSetFor('bwr'),   // palette matches the model's colour capability
     sources: [],          // start empty — add via "Value sources → From Home Assistant"
     elements: [],
+    waitElements: [],     // the "waiting for data" screen (shown until first data arrives)
   };
   function f(id,kind,file,family,weight,size,dynamic,base){
     return {id,kind,file,family,weight,size,dynamic:!!dynamic,
@@ -136,7 +137,10 @@ window.addEventListener('keyup',   e=>{ if(e.key==='Shift') shiftDown=false; });
 window.addEventListener('blur',    ()=>{ shiftDown=false; });
 
 function profile(){ return state.profiles.find(p=>p.id===state.current); }
-function els(){ return profile().elements; }
+let editScreen='main';   // 'main' | 'wait' — which screen's elements you're editing
+function activeKey(){ return editScreen==='wait' ? 'waitElements' : 'elements'; }
+function els(){ const p=profile(); if(!p[activeKey()]) p[activeKey()]=[]; return p[activeKey()]; }
+function setEls(arr){ profile()[activeKey()]=arr; }
 function selected(){ return els().find(e=>e.id===selectedId) || null; }
 function fontById(id){ return profile().fonts.find(f=>f.id===id); }
 function colorById(id){ return profile().colors.find(c=>c.id===id); }
@@ -159,10 +163,10 @@ function persist(){
 }
 
 /* ---------------- undo / redo ---------------- */
-function snapshot(){ return JSON.stringify(profile().elements); }
+function snapshot(){ return JSON.stringify(els()); }
 function pushUndo(){ undoStack.push(snapshot()); if(undoStack.length>60) undoStack.shift(); redoStack=[]; }
-function undo(){ if(!undoStack.length) return; redoStack.push(snapshot()); profile().elements = JSON.parse(undoStack.pop()); afterChange(); }
-function redo(){ if(!redoStack.length) return; undoStack.push(snapshot()); profile().elements = JSON.parse(redoStack.pop()); afterChange(); }
+function undo(){ if(!undoStack.length) return; redoStack.push(snapshot()); setEls(JSON.parse(undoStack.pop())); afterChange(); }
+function redo(){ if(!redoStack.length) return; undoStack.push(snapshot()); setEls(JSON.parse(redoStack.pop())); afterChange(); }
 
 function afterChange(){ persist(); renderCanvas(); renderLayers(); renderInspector(); if($('#code-drawer').classList.contains('open')) renderCode(); }
 
@@ -252,8 +256,11 @@ function wifiPreviewHex(el){
 function strftimePreview(fmt){
   const d=new Date();
   const p2=n=>String(n).padStart(2,'0');
+  const h24=d.getHours(), h12=((h24+11)%12)+1, ampm=h24<12?'AM':'PM';
   return String(fmt||'%H:%M')
-    .replace(/%H/g,p2(d.getHours())).replace(/%M/g,p2(d.getMinutes())).replace(/%S/g,p2(d.getSeconds()))
+    .replace(/%H/g,p2(h24)).replace(/%I/g,p2(h12)).replace(/%l/g,String(h12))
+    .replace(/%M/g,p2(d.getMinutes())).replace(/%S/g,p2(d.getSeconds()))
+    .replace(/%p/g,ampm).replace(/%P/g,ampm.toLowerCase())
     .replace(/%d/g,p2(d.getDate())).replace(/%m/g,p2(d.getMonth()+1)).replace(/%Y/g,d.getFullYear())
     .replace(/%%/g,'%');
 }
@@ -629,18 +636,19 @@ function attachSelection(el, node){
   if(transformer){ try{transformer.destroy();}catch(e){} transformer=null; }
   if(selectionVisual){ try{selectionVisual.destroy();}catch(e){} selectionVisual=null; }
   if(!node) return;
-  if(el.type==='rect' || el.type==='circle' || el.type==='triangle' || el.type==='polygon' || el.type==='ring' || el.type==='gauge' || el.type==='graph'){
+  if(el.type==='rect' || el.type==='circle' || el.type==='triangle' || el.type==='polygon' || el.type==='ring' || el.type==='gauge' || el.type==='qr' || el.type==='graph'){
     // aspect-locked (radial / opt-in) shapes keep their ratio AND only expose
     // the corner anchors, so the side anchors can't distort them.
     const locked = (el.type==='circle') ? (el.lockAspect!==false)
                  : (el.type==='triangle') ? !!el.lockAspect
-                 : (el.type==='polygon'||el.type==='ring'||el.type==='gauge');
+                 : (el.type==='polygon'||el.type==='ring'||el.type==='gauge'||el.type==='qr');
     const rotateEnabled = (el.type==='rect' || el.type==='triangle' || el.type==='polygon' || el.type==='gauge');
     const allAnchors=['top-left','top-center','top-right','middle-right','middle-left','bottom-left','bottom-center','bottom-right'];
     const corners=['top-left','top-right','bottom-left','bottom-right'];
     transformer=new Konva.Transformer({rotateEnabled, keepRatio:locked,
       enabledAnchors: locked ? corners : allAnchors,
-      borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:8,rotateAnchorOffset:24});
+      borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:8,rotateAnchorOffset:24,
+      anchorStyleFunc:(a)=>{ if(a.hasName('rotater')){ a.cornerRadius(a.width()/2); a.fill('#e8a13a'); a.stroke('#fff'); } }});
     contentLayer.add(transformer); transformer.nodes([node]);
     // hold Shift while rotating to snap to 45°
     if(rotateEnabled){ node.off('transform.snaprot'); node.on('transform.snaprot',()=>{
@@ -654,6 +662,7 @@ function attachSelection(el, node){
       else if(el.type==='polygon'){ el.r=Math.max(4,Math.round(node.radius()*((sx+sy)/2))); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='ring'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round(node.outerRadius()*f)); el.inner=Math.max(2,Math.round(node.innerRadius()*f)); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='gauge'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round(node.outerRadius()*f)); el.inner=Math.max(2,Math.round(node.innerRadius()*f)); el.rotation=((Math.round(node.rotation())+90)%360+360)%360; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      else if(el.type==='qr'){ el.scale=Math.max(1,Math.round((el.scale||4)*((sx+sy)/2))); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       node.scaleX(1); node.scaleY(1); afterChange(); });
   } else if(el.type==='line'){
     // square endpoint handles + a rotation handle that spins the line around its midpoint
@@ -686,10 +695,11 @@ function attachSelection(el, node){
       return h;
     };
     g.add(endpoint(el.x,el.y,'a')); g.add(endpoint(el.x2,el.y2,'b'));
-    // rotation handle: perpendicular offset from the midpoint
+    // rotation handle: perpendicular offset from the midpoint, always on the UPPER side
     const mx=(el.x+el.x2)/2, my=(el.y+el.y2)/2;
     const dx=el.x2-el.x, dy=el.y2-el.y, len=Math.hypot(dx,dy)||1;
-    const nx=-dy/len, ny=dx/len, off=26;
+    let nx=-dy/len, ny=dx/len; if(ny>0){ nx=-nx; ny=-ny; }   // point towards the top
+    const off=26;
     const rh=new Konva.Circle({x:mx+nx*off,y:my+ny*off,radius:6,fill:'#e8a13a',stroke:'#fff',strokeWidth:2,draggable:true});
     g.add(new Konva.Line({points:[mx,my,mx+nx*off,my+ny*off],stroke:'#e8a13a',strokeWidth:1,dash:[3,3],listening:false}));
     rh.on('mousedown touchstart', e=>{ e.cancelBubble=true; });
@@ -890,13 +900,16 @@ function addElement(type, pos){
     Object.assign(base,{ x:cx-50,y:cy-50, text:'https://home-assistant.io', scale:4, ecc:'LOW', colorId:'color_text', anchor:undefined });
   } else if(type==='wifi'){
     Object.assign(base,{ fontId:'font_mdi_small', anchor:'TOP_CENTER', colorId:'color_text',
-      // signal thresholds (dBm) -> MDI hex, strongest first; matches your test code
+      // signal thresholds (dBm) -> MDI icon, strongest first
       wifi:{ sourceId:'', levels:[
-        {min:-50, hex:'F0928'}, {min:-60, hex:'F0925'}, {min:-67, hex:'F0922'},
-        {min:-70, hex:'F091F'}, {min:-999, hex:'F092B'} ] } });
+        {min:-50, icon:'wifi-strength-4', hex:'F0928'},
+        {min:-60, icon:'wifi-strength-3', hex:'F0925'},
+        {min:-67, icon:'wifi-strength-2', hex:'F0922'},
+        {min:-70, icon:'wifi-strength-1', hex:'F091F'},
+        {min:-999, icon:'wifi-strength-alert-outline', hex:'F092B'} ] } });
   } else if(type==='clock'){
-    Object.assign(base,{ fontId:'font_small_book', anchor:'TOP_CENTER', colorId:'color_text',
-      clock:{ strftime:'%H:%M', icon:true, iconName:'refresh', iconHex:'F0450', iconFontId:'font_mdi_small', iconGap:40 } });
+    Object.assign(base,{ fontId:'font_mdi_small', anchor:'TOP_CENTER', colorId:'color_text',
+      clock:{ strftime:'%H:%M', icon:true, iconName:'recycle', iconHex:'F044C', iconFontId:'font_mdi_small', iconGap:40 } });
   } else if(type==='graph'){
     Object.assign(base,{ x:cx-150,y:cy, w:300,h:140, colorId:'color_text', anchor:undefined,
       graph:{ duration:'1h', x_grid:'10min', y_grid:5, border:true,
@@ -915,7 +928,7 @@ function elName(t){ const n=els().filter(e=>e.type===t).length+1;
 function deleteSel(){
   const ids = selectedIds.size ? selectedIds : (selectedId?new Set([selectedId]):null);
   if(!ids||!ids.size) return;
-  pushUndo(); profile().elements=els().filter(e=>!ids.has(e.id));
+  pushUndo(); setEls(els().filter(e=>!ids.has(e.id)));
   selectedIds=new Set(); selectedId=null; afterChange();
 }
 function dupSel(){
@@ -1126,10 +1139,8 @@ function renderInspector(){
       <div class="hint">ESPHome's <span class="mono">graph:</span> ${T('tekent zelf geen astitels of schaalwaarden. Zet dit aan om ze als tekst rond de grafiek te genereren.','does not draw axis titles or scale values itself. Enable this to generate them as text around the graph.')}</div>`}`);
   }
 
-  // condition (text + icon)
-  if(el.type==='text'||el.type==='icon'){
-    h+=g(T('Conditie (if / else)','Condition (if / else)'), condEditor(el));
-  }
+  // condition (if / else) — available on every element
+  h+=g(T('Conditie (if / else)','Condition (if / else)'), condEditor(el));
 
   host.innerHTML=h;
   bindInspector(host, el);
@@ -1247,7 +1258,15 @@ function bindInspector(host, el){
   host.querySelectorAll('[data-k]').forEach(inp=>{
     const isNum = inp.type==='number'||inp.type==='range';
     inp.addEventListener('change',()=>{ pushUndo(); const k=inp.dataset.k;
-      el[k] = inp.type==='checkbox'?inp.checked:(isNum?(+inp.value):inp.value); afterChange(); });
+      el[k] = inp.type==='checkbox'?inp.checked:(isNum?(+inp.value):inp.value);
+      // re-locking a circle restores a perfect round shape (rx = ry)
+      if(k==='lockAspect' && inp.checked && el.type==='circle'){
+        const r=Math.round(((el.rx!=null?el.rx:(el.r!=null?el.r:40))+(el.ry!=null?el.ry:(el.r!=null?el.r:40)))/2);
+        el.rx=r; el.ry=r; delete el.r;
+      }
+      afterChange();
+      if(k==='lockAspect') renderInspector();   // refresh shown rx/ry values
+    });
     // live preview while dragging a slider (no undo spam, no full inspector rebuild)
     if(inp.type==='range'){
       inp.addEventListener('input',()=>{ el[inp.dataset.k]=+inp.value;
@@ -1536,7 +1555,7 @@ function collectGlyphs(){
   profile().fonts.forEach(f=>map[f.id]={chars:new Set(), icons:new Map(), dynamic:f.dynamic});
   const addText=(fontId,str)=>{ if(!map[fontId])return; for(const ch of String(str)) map[fontId].chars.add(ch); };
   const addIcon=(fontId,hex,name)=>{ if(!map[fontId]||!hex)return; map[fontId].icons.set(pad8(hex),name||''); };
-  els().forEach(el=>{
+  const p0=profile(); [].concat(p0.elements||[], p0.waitElements||[]).forEach(el=>{
     const variants=[el];
     if(el.condition&&el.condition.enabled){ variants.push(applyBranch(el,el.condition.whenTrue||{}),applyBranch(el,el.condition.whenFalse||{})); }
     variants.forEach(E=>{
@@ -1576,12 +1595,13 @@ function elementSortKey(el){
   else if(el.type==='circle'){ y=el.y-(el.r||0); x=el.x-(el.r||0); }
   return {y,x};
 }
-function orderedElements(){
-  return els().slice().sort((a,b)=>{
+function orderedFor(list){
+  return (list||[]).slice().sort((a,b)=>{
     const ka=elementSortKey(a), kb=elementSortKey(b);
     return (ka.y-kb.y) || (ka.x-kb.x);
   });
 }
+function orderedElements(){ return orderedFor(els()); }
 
 function genYAML(){
   const p=profile(), d=p.device, gl=collectGlyphs();
@@ -1596,7 +1616,7 @@ function genYAML(){
   out+=`substitutions:\n  device_name: "${d.name}"\n  friendly_name: "${d.comment}"\n  board_type: "ESP32"\n\n`;
 
   // esphome on_boot
-  out+=`# --- vul aan in je bestaande esphome: blok ---\nesphome:\n  on_boot:\n    priority: 600.0\n    then:\n      - delay: 2s\n      - component.update: eink_display\n      - wait_until:\n          condition:\n            lambda: 'return id(data_updated) == true;'\n          timeout: 30s\n      - lambda: 'id(initial_data_received) = true;'\n      - script.execute: update_screen\n\n`;
+  out+=`# ${T('--- vul aan in je bestaande esphome: blok ---','--- add to your existing esphome: block ---')}\nesphome:\n  on_boot:\n    priority: 600.0\n    then:\n      - delay: 2s\n      - component.update: eink_display\n      - wait_until:\n          condition:\n            lambda: 'return id(data_updated) == true;'\n          timeout: 30s\n      - lambda: 'id(initial_data_received) = true;'\n      - script.execute: update_screen\n\n`;
 
   // globals
   out+=`globals:\n  - id: data_updated\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: initial_data_received\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: recorded_display_refresh\n    type: int\n    restore_value: yes\n    initial_value: '0'\n\n`;
@@ -1638,7 +1658,8 @@ function genYAML(){
   if(txt.length){ out+=`text_sensor:\n`; txt.forEach(s=>out+=haSensor(s)); out+='\n'; }
 
   // graph: components (one per graph element)
-  const graphs=els().filter(e=>e.type==='graph');
+  const allEls=[].concat(p.elements||[], p.waitElements||[]);
+  const graphs=allEls.filter(e=>e.type==='graph');
   if(graphs.length){
     out+=`graph:\n`;
     graphs.forEach(el=>{
@@ -1661,7 +1682,7 @@ function genYAML(){
   }
 
   // qr_code: components (one per QR element)
-  const qrs=els().filter(e=>e.type==='qr');
+  const qrs=allEls.filter(e=>e.type==='qr');
   if(qrs.length){
     out+=`qr_code:\n`;
     qrs.forEach(el=>{ out+=`  - id: ${qrId(el)}\n    value: "${esc(el.text||'')}"\n    ecc: ${el.ecc||'LOW'}\n`; });
@@ -1672,16 +1693,23 @@ function genYAML(){
   out+=`display:\n  - platform: waveshare_epaper\n    id: eink_display\n    model: ${d.model}\n    update_interval: never\n    rotation: ${d.rotation}°\n    # cs/dc/busy/reset pins: keep your own pin config\n    lambda: |-\n`;
   const L='      ';
   out+=`${L}if (id(initial_data_received) == false) {\n`;
-  out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), color_text, TextAlign::CENTER, "${T('WACHTEN OP DATA...','WAITING FOR DATA...')}");\n`;
+  const waitEls=p.waitElements||[];
+  if(waitEls.length){
+    orderedFor(waitEls).forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
+  } else {
+    out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), color_text, TextAlign::CENTER, "${T('WACHTEN OP DATA...','WAITING FOR DATA...')}");\n`;
+  }
   out+=`${L}} else {\n`;
-  orderedElements().forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
+  orderedFor(p.elements||[]).forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
   out+=`${L}}\n`;
 
-  // round-trip comment
-  const snap = btoa(unescape(encodeURIComponent(JSON.stringify({
-    device:p.device, elements:p.elements
-  }))));
-  out+=`\n# eink-editor:v1:${snap}\n`;
+  // round-trip comment (optional — toggled by the base64 checkbox)
+  if(window.INCLUDE_SNAPSHOT!==false){
+    const snap = btoa(unescape(encodeURIComponent(JSON.stringify({
+      device:p.device, elements:p.elements, waitElements:p.waitElements||[]
+    }))));
+    out+=`\n# eink-editor:v1:${snap}\n`;
+  }
   return out;
 }
 function glyphEsc(ch){ if(ch==='\\') return '\\\\'; if(ch==='"') return '\\"'; return ch; }
@@ -1692,12 +1720,12 @@ function glyphBlock(f, g){
     if(f.seedGlyphs && f.seedGlyphs.length){ f.seedGlyphs.forEach(c=>chars.add(c)); }
     else return ''; // full font (no glyph restriction)
   }
-  // single, uniform YAML block sequence (icons first, then plain chars)
-  let out=`    glyphs:\n`;
-  if(icons.size) icons.forEach((name,hex)=>{ out+=`      - "\\U${hex}"${name?`  # mdi-${name}`:''}\n`; });
+  // single-line flow array for readability (icons first, then plain chars)
+  const parts=[];
+  if(icons.size) icons.forEach((name,hex)=>parts.push(`"\\U${hex}"`));
   Array.from(chars).filter(c=>c && c.codePointAt(0)<0xF0000).sort()
-    .forEach(ch=>{ out+=`      - "${glyphEsc(ch)}"\n`; });
-  return out;
+    .forEach(ch=>parts.push(`"${glyphEsc(ch)}"`));
+  return `    glyphs: [${parts.join(', ')}]\n`;
 }
 function usedSources(){
   const ids=new Set();
@@ -1865,12 +1893,16 @@ function openFonts(){
     <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?`<input type="file" accept=".ttf,.otf" data-font="${i}" style="font-size:10px">`:''}</td>
     <td><button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">✕</button></td>
   </tr>`).join('');
-  const palette=profile().colors.map(c=>`<span class="tag" title="${c.id}" style="display:inline-flex;align-items:center;gap:5px"><span class="swatch" style="width:14px;height:14px;border-radius:3px;background:${c.css}"></span>${c.id}</span>`).join(' ');
   openModal('Fonts',
     `<h4 style="margin:0 0 8px;color:var(--accent)">Fonts</h4>
      <table class="tbl"><thead><tr><th>id</th><th>${T('bron','source')}</th><th>${T('grootte','size')}</th><th>status</th><th>upload</th><th></th></tr></thead><tbody>${frows}</tbody></table>
      <div class="src-box" style="margin-top:10px">
-       <label class="fld">${T('Nieuw font toevoegen','Add new font')}</label>
+       <div class="row tight" style="align-items:center;margin-bottom:8px">
+         <button class="btn sm" id="nf-quickupload">⬆ ${T('TTF uploaden…','Upload TTF…')}</button>
+         <div class="hint" style="flex:1;margin:0">${T('Kiest een TTF/OTF en voegt het direct toe als lettertype.','Pick a TTF/OTF and adds it as a font right away.')}</div>
+       </div>
+       <input id="nf-quickfile" type="file" accept=".ttf,.otf" style="display:none">
+       <label class="fld">${T('… of handmatig toevoegen','… or add manually')}</label>
        <div class="row tight">
          <div><input id="nf-id" type="text" class="mono" placeholder="${T('id (bv. font_groot)','id (e.g. font_large)')}"></div>
          <div><input id="nf-size" type="number" placeholder="${T('grootte','size')}" value="30" style="width:90px"></div>
@@ -1885,13 +1917,25 @@ function openFonts(){
          <div><input id="nf-upload" type="file" accept=".ttf,.otf" style="font-size:10px"></div>
        </div>
        <button class="btn sm" id="nf-add" style="margin-top:8px">+ ${T('Font toevoegen','Add font')}</button>
-       <div class="hint" style="margin-top:6px">${T('Het','The')} <span class="mono">id</span> ${T('gebruik je in elementen; het','is used in elements; the')} <span class="mono">${T('pad','path')}</span> ${T('moet kloppen met je ESPHome','must match your ESPHome')} <span class="mono">fonts/</span>${T('-map. Upload een TTF voor een exacte preview.',' folder. Upload a TTF for an exact preview.')}</div>
+       <div class="hint" style="margin-top:6px">${T('Het','The')} <span class="mono">id</span> ${T('gebruik je in elementen; het','is used in elements; the')} <span class="mono">${T('pad','path')}</span> ${T('moet kloppen met je ESPHome','must match your ESPHome')} <span class="mono">fonts/</span>${T('-map.',' folder.')}</div>
      </div>
-     <div class="hint" style="margin:10px 0 18px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}).</div>
-     <h4 style="margin:0 0 8px;color:var(--accent)">${T('Kleuren','Colours')}</h4>
-     <div style="display:flex;flex-wrap:wrap;gap:6px">${palette}</div>
-     <div class="hint" style="margin-top:6px">${T('De kleuren worden automatisch bepaald door het displaytype (model) in de profiel-instellingen.','The colours are determined automatically by the display type (model) in the profile settings.')}</div>`,
+     <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')}</div>`,
     [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ persist(); closeModal(); }}]);
+  // quick TTF upload: add a local font straight from a picked file (deduped by filename)
+  const qf=$('#nf-quickfile');
+  $('#nf-quickupload').onclick=()=>qf.click();
+  qf.onchange=async e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const base=(file.name.replace(/\.[^.]+$/,'')||'font').replace(/[^A-Za-z0-9_]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase()||'font';
+    let id=base, n=2; while(fontById(id)) id=base+'_'+(n++);
+    const rd=new FileReader(); rd.onload=async()=>{
+      const f={ id, size:30, kind:'local', file:'fonts/'+file.name, dataUrl:rd.result, dynamic:false, baseCharset:' -.:%/°0123456789', seedGlyphs:[] };
+      reuseFontFile(f);   // dedupe: share dataUrl if this filename already exists
+      profile().fonts.push(f);
+      await registerUploadedFonts(); await maybeUploadFont(f, file.name);
+      persist(); afterChange(); openFonts(); toast(T('Font toegevoegd','Font added'));
+    }; rd.readAsDataURL(file);
+  };
   // existing uploads
   $$('#modal-body input[type=file][data-font]').forEach(inp=>inp.addEventListener('change',e=>{
     const f=profile().fonts[+inp.dataset.font], file=e.target.files[0]; if(!file) return;
@@ -1915,12 +1959,20 @@ function openFonts(){
     const size=+$('#nf-size').value||30;
     const f={ id, size, kind:kindSel.value, dynamic:false, baseCharset:' -.:%/°0123456789', dataUrl:null, seedGlyphs:[] };
     if(kindSel.value==='gfonts'){ f.family=($('#nf-family').value||'Roboto').trim(); f.weight=+$('#nf-weight').value||400; f.file=null; }
-    else { f.family=null; f.weight=null; f.file=($('#nf-file').value||'fonts/font.ttf').trim(); f.dataUrl=pendingUpload; }
+    else { f.family=null; f.weight=null; f.file=($('#nf-file').value||'fonts/font.ttf').trim(); f.dataUrl=pendingUpload; reuseFontFile(f); }
     profile().fonts.push(f);
     injectGoogleFonts(); await registerUploadedFonts();
     if(f.dataUrl) await maybeUploadFont(f, (f.file||'').split('/').pop()||f.id+'.ttf');
     persist(); afterChange(); openFonts(); toast(T('Font toegevoegd','Font added'));
   };
+}
+/* dedupe: if another font already uses the same TTF filename + has its bytes,
+   reuse them so the same file isn't requested/uploaded twice (#19) */
+function reuseFontFile(f){
+  if(!f.file) return;
+  const name=f.file.split('/').pop();
+  const twin=profile().fonts.find(o=>o!==f && o.file && o.file.split('/').pop()===name && o.dataUrl);
+  if(twin && !f.dataUrl) f.dataUrl=twin.dataUrl;
 }
 /* push an uploaded font's bytes to the add-on /data/fonts (preview persistence) */
 async function maybeUploadFont(f, filename){
@@ -2249,6 +2301,8 @@ function wire(){
 
   $('#btn-code').onclick=()=>{ renderCode(); $('#code-drawer').classList.add('open'); };
   $('#code-close').onclick=()=>$('#code-drawer').classList.remove('open');
+  const cb64=$('#code-b64'); if(cb64) cb64.onchange=()=>{ window.INCLUDE_SNAPSHOT=cb64.checked; renderCode(); };
+  const scr=$('#screen-select'); if(scr) scr.onchange=()=>{ editScreen=scr.value; selectedId=null; selectedIds=new Set(); undoStack=[]; redoStack=[]; renderCanvas(); renderLayers(); renderInspector(); };
   $('#code-copy').onclick=()=>{ navigator.clipboard.writeText(genYAML()).then(()=>toast(T('Naar klembord gekopieerd','Copied to clipboard'))); };
   $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), (profile().device.name||'display')+'.yaml'); toast(T('YAML gedownload','YAML downloaded')); };
 
@@ -2374,6 +2428,7 @@ function updateLiveBadge(){
 async function boot(){
   renderProfiles();
   applyTheme();
+  editScreen='main'; { const ss=$('#screen-select'); if(ss) ss.value='main'; }
   const gs=$('#grid-size'); if(gs) gs.value=String(gridStep());
   injectGoogleFonts();
   try{ await registerUploadedFonts(); }catch(e){ console.warn(e); }
