@@ -1,3 +1,8 @@
+## 2.6.3
+- **Bestandsbeheer**: selectievakjes staan nu óók bij **bestanden** (niet alleen mappen), en werken door de hele boomweergave heen — selecteer bestanden uit meerdere (uitgeklapte) mappen tegelijk om te verwijderen/verplaatsen. Selectie werkt nu op volledig pad.
+- **Fonts niet meer in "limbo"**: lokale fonts die al in de **fonts/**-map op de server staan worden nu bij het opstarten automatisch geladen en geregistreerd, zodat ze direct goed renderen op het canvas (niet langer als "upload nodig" terwijl het bestand er al is).
+- **Wachtscherm-instelling verplaatst** van de canvasbalk naar **Profiel-instellingen** (gaf verwarring/issues in de balk). Daar zet je per profiel het wachtscherm aan/uit.
+
 ## 2.6.2
 - **Gauge**: het rotatie-handvat staat nu weer **bovenaan** terwijl de starthoek (270°) behouden blijft — de starthoek wordt nu in de tekening verwerkt i.p.v. de hele vorm te draaien.
 - **Bestandsbeheer**: per regel een **selectievakje** + een "alles selecteren" in de kop, zodat je makkelijk meerdere bestanden tegelijk kunt selecteren (bv. om te verwijderen).

@@ -187,9 +187,10 @@ function afterChange(){ persist(); renderCanvas(); renderLayers(); renderInspect
 /* ============================================================
    FONT LOADING (preview)
    ============================================================ */
+var LOADED_FONT_IDS=new Set();   // font ids with a registered FontFace (uploaded OR loaded from fonts/)
 function previewFamily(font){
   if(/materialdesignicons/i.test(font.file||'')) return 'Material Design Icons';
-  if(font.dataUrl) return 'pf_'+font.id;
+  if(font.dataUrl || LOADED_FONT_IDS.has(font.id)) return 'pf_'+font.id;
   if(font.kind==='gfonts') return font.family;
   // local font not uploaded yet -> fallback
   if(/digital/i.test(font.file||'')) return 'IBM Plex Mono';
@@ -221,7 +222,7 @@ async function previewFontInline(f){
 }
 var _previewLoaded=new Set();
 function fontLoaded(font){
-  return /materialdesignicons/i.test(font.file||'') || !!font.dataUrl || font.kind==='gfonts';
+  return /materialdesignicons/i.test(font.file||'') || !!font.dataUrl || font.kind==='gfonts' || LOADED_FONT_IDS.has(font.id);
 }
 function injectGoogleFonts(){
   /* Add-on build: preview display fonts (Noto/Roboto) and IBM Plex are bundled
@@ -229,12 +230,22 @@ function injectGoogleFonts(){
   return;
 }
 async function registerUploadedFonts(){
+  await refreshServerFonts();
   for(const font of profile().fonts){
+    const fam='pf_'+font.id;
     if(font.dataUrl){
-      try{
-        const ff = new FontFace('pf_'+font.id, `url(${font.dataUrl})`);
-        await ff.load(); document.fonts.add(ff);
-      }catch(e){ console.warn('font load',font.id,e); }
+      try{ const ff=new FontFace(fam, `url(${font.dataUrl})`); await ff.load(); document.fonts.add(ff); LOADED_FONT_IDS.add(font.id); }
+      catch(e){ console.warn('font load',font.id,e); }
+      continue;
+    }
+    // local font that already lives in the server fonts/ folder → load it so it
+    // renders on the canvas instead of hanging in "upload needed" limbo
+    if(font.kind==='local' && !/materialdesignicons/i.test(font.file||'') && !LOADED_FONT_IDS.has(font.id)){
+      const fname=_fontFileName(font);
+      if(fname && SERVER_FONTS.has(fname)){
+        try{ const r=await fetch('api/fonts/'+encodeURIComponent(fname));
+          if(r.ok){ const buf=await r.arrayBuffer(); const ff=new FontFace(fam,buf); await ff.load(); document.fonts.add(ff); LOADED_FONT_IDS.add(font.id); } }catch(e){}
+      }
     }
   }
 }
@@ -2125,11 +2136,17 @@ function openProfileSettings(){
        </div></div></div>
      <div class="hint">${T('Breedte/hoogte = de logische ruimte ná rotatie. De achtergrond is alleen voor de preview. De kleuren in het palet passen zich aan op het displaytype.','Width/height = the logical space after rotation. The background is preview-only. The palette colours adapt to the display type.')}</div>
      <hr style="border-color:var(--line);margin:14px 0">
+     <label class="toggle"><input type="checkbox" id="ps-wait" ${p.waitEnabled!==false?'checked':''}> ${T('Wachtscherm gebruiken','Use waiting screen')}</label>
+     <div class="hint" style="margin:4px 0 0">${T('Genereert de “waiting for data”-tak (if initial_data_received == false). Het wachtscherm ontwerp je via de scherm-keuze boven het canvas.','Generates the “waiting for data” branch (if initial_data_received == false). Design the waiting screen via the screen selector above the canvas.')}</div>
+     <hr style="border-color:var(--line);margin:14px 0">
      <button class="btn ghost sm danger" id="ps-delete">${T('Profiel verwijderen','Delete profile')}</button>`,
     [{label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
       p.name=$('#ps-name').value; d.name=$('#ps-dev').value; d.comment=$('#ps-fn').value;
       d.model=$('#ps-model').value; d.rotation=+$('#ps-rot').value; d.w=+$('#ps-w').value; d.h=+$('#ps-h').value;
       d.bg=$('#ps-bg').value;
+      p.waitEnabled=$('#ps-wait').checked;
+      if(!p.waitEnabled && editScreen==='wait'){ editScreen='main'; const ss=$('#screen-select'); if(ss) ss.value='main'; }
+      { const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!p.waitEnabled; }
       // adapt the colour palette to the model's colour capability (only when it changes)
       const newType=modelInfo(d.model).c;
       if(newType!==paletteType(p.colors)) p.colors=colorSetFor(newType);
@@ -2641,13 +2658,6 @@ function wire(){
       localStorage.setItem('einkLiveIntervalMin', String(liveIntervalMin())); startLiveTimer();
     };
   }
-  const tw=$('#tg-wait'); if(tw) tw.onchange=()=>{
-    const p=profile(); p.waitEnabled=tw.checked; persist();
-    const wopt=$('#screen-select') && $('#screen-select').querySelector('option[value="wait"]');
-    if(wopt) wopt.disabled=!tw.checked;
-    if(!tw.checked && editScreen==='wait'){ editScreen='main'; $('#screen-select').value='main';
-      selectedId=null; selectedIds=new Set(); renderCanvas(); renderLayers(); renderInspector(); }
-  };
   $('#btn-load').onclick=loadProject;
 
   $('#btn-code').onclick=()=>{ renderCode(); $('#code-drawer').classList.add('open'); };
@@ -2811,8 +2821,7 @@ async function boot(){
         p._waitSeeded=true; persist();
       }
   } }
-  { const tw=$('#tg-wait'); const we=profile()?profile().waitEnabled!==false:true;
-    if(tw) tw.checked=we;
+  { const we=profile()?profile().waitEnabled!==false:true;
     const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!we; }
   const gs=$('#grid-size'); if(gs) gs.value=String(gridStep());
   injectGoogleFonts();

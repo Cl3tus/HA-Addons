@@ -5,7 +5,8 @@ const $$ = s => Array.from(document.querySelectorAll(s));
 
 let currentPath = '';
 let entries     = [];
-let selected    = new Set();
+let selected    = new Set();   // full paths of selected entries (works across the tree)
+let rowIndex    = new Map();   // fullPath -> entry (for all rendered rows)
 
 // ---------------------------------------------------------------- API  (relative URLs – required for HA Ingress)
 
@@ -252,6 +253,7 @@ function renderTable(ents) {
   const tbody = $('#fe-tbody');
   const empty = $('#fe-empty');
   tbody.innerHTML = '';
+  rowIndex = new Map();
 
   if (currentPath) {
     const parent = currentPath.includes('/')
@@ -299,11 +301,10 @@ function makeRow(e, opts) {
   const isDir  = e.type === 'dir';
   const isFile = e.type === 'file';
   const fullPath = isUp ? '' : fullPathOf(parentPath, e.name);
-  const topLevel = !isUp && parentPath === currentPath;   // only top level is selectable
 
   const row = document.createElement('tr');
   row._depth = depth;
-  if (topLevel) row.dataset.name = e.name;
+  if (!isUp) { row.dataset.path = fullPath; rowIndex.set(fullPath, e); }
 
   const chevron = isDir
     ? '<span class="fe-chev mdi mdi-chevron-right" style="cursor:pointer;color:var(--txt-faint)"></span>'
@@ -321,7 +322,7 @@ function makeRow(e, opts) {
       })
     : '';
 
-  const checkCell = topLevel ? `<input type="checkbox" class="fe-cb">` : '';
+  const checkCell = isUp ? '' : `<input type="checkbox" class="fe-cb">`;
   row.innerHTML = `
     <td class="fe-check">${checkCell}</td>
     <td class="fe-icon" style="padding-left:${depth * 18}px;white-space:nowrap">${isUp ? '' : chevron}${icon}</td>
@@ -339,25 +340,21 @@ function makeRow(e, opts) {
     chev.onclick = ev => { ev.stopPropagation(); toggleExpand(row, chev, fullPath, depth); };
   }
 
-  // multi-select checkbox (top-level rows only)
+  // multi-select checkbox (every file/folder, including ones inside the tree)
   const cb = row.querySelector('.fe-cb');
   if (cb) {
-    cb.checked = selected.has(e.name);
+    cb.checked = selected.has(fullPath);
     cb.onclick = ev => {
       ev.stopPropagation();
-      if (cb.checked) selected.add(e.name); else selected.delete(e.name);
+      if (cb.checked) selected.add(fullPath); else selected.delete(fullPath);
       renderSelection(); updateToolbar(); updateStatus();
     };
   }
 
   row.onclick = ev => {
-    if (!topLevel) {                       // nested rows: click toggles folders, no selection
-      if (isDir) { const chev = row.querySelector('.fe-chev'); toggleExpand(row, chev, fullPath, depth); }
-      return;
-    }
     if (!ev.ctrlKey && !ev.metaKey && !ev.shiftKey) selected.clear();
-    if (selected.has(e.name)) selected.delete(e.name);
-    else selected.add(e.name);
+    if (selected.has(fullPath)) selected.delete(fullPath);
+    else selected.add(fullPath);
     renderSelection();
     updateToolbar();
     updateStatus();
@@ -370,35 +367,35 @@ function makeRow(e, opts) {
     else doDownload(e.name, fullPath);
   };
 
-  if (topLevel) row.oncontextmenu = ev => {
+  row.oncontextmenu = ev => {
     ev.preventDefault();
-    if (!selected.has(e.name)) {
+    if (!selected.has(fullPath)) {
       selected.clear();
-      selected.add(e.name);
+      selected.add(fullPath);
       renderSelection();
       updateToolbar();
       updateStatus();
     }
-    showCtxMenu(ev.clientX, ev.clientY, e);
+    showCtxMenu(ev.clientX, ev.clientY, e, fullPath);
   };
 
   return row;
 }
 
 function renderSelection() {
-  const rows = $$('#fe-tbody tr[data-name]');
+  const rows = $$('#fe-tbody tr[data-path]');
   rows.forEach(row => {
-    const on = selected.has(row.dataset.name);
+    const on = selected.has(row.dataset.path);
     row.classList.toggle('sel', on);
     const cb = row.querySelector('.fe-cb'); if (cb) cb.checked = on;
   });
   const all = $('#fe-selall');
-  if (all) all.checked = rows.length > 0 && rows.every(r => selected.has(r.dataset.name));
+  if (all) all.checked = rows.length > 0 && rows.every(r => selected.has(r.dataset.path));
 }
 
 function updateToolbar() {
   const n       = selected.size;
-  const selEnts = [...selected].map(name => entries.find(e => e.name === name)).filter(Boolean);
+  const selEnts = [...selected].map(p => rowIndex.get(p)).filter(Boolean);
   const hasFile = selEnts.some(e => e.type === 'file');
 
   $('#btn-rename').disabled   = n !== 1;
@@ -451,16 +448,18 @@ function entryPath(name) {
   return currentPath ? currentPath + '/' + name : name;
 }
 
+function baseName(p) { return p.split('/').pop(); }
+
 async function doDelete() {
-  const names = [...selected];
-  const label = names.length === 1 ? `"${names[0]}"` : `${names.length} items`;
+  const paths = [...selected];
+  const label = paths.length === 1 ? `"${baseName(paths[0])}"` : `${paths.length} items`;
   if (!confirm(_t(`Verwijder ${label}? Dit kan niet ongedaan worden gemaakt.`,
                    `Delete ${label}? This cannot be undone.`))) return;
   try {
-    for (const name of names) await apiDelete(entryPath(name));
-    toast(names.length === 1
-      ? _t(`"${names[0]}" verwijderd`, `"${names[0]}" deleted`)
-      : _t(`${names.length} items verwijderd`, `${names.length} items deleted`));
+    for (const path of paths) await apiDelete(path);
+    toast(paths.length === 1
+      ? _t(`"${baseName(paths[0])}" verwijderd`, `"${baseName(paths[0])}" deleted`)
+      : _t(`${paths.length} items verwijderd`, `${paths.length} items deleted`));
     await navigate(currentPath);
   } catch (e) {
     toast(_t('Verwijderen mislukt: ', 'Delete failed: ') + e.message, true);
@@ -477,8 +476,10 @@ function doDownload(name, fullPath) {
 }
 
 async function doRename() {
-  const [name] = [...selected];
-  const entry  = entries.find(e => e.name === name);
+  const [path] = [...selected];
+  const name   = baseName(path);
+  const parent = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+  const entry  = rowIndex.get(path);
   const newName = await showDialog(
     _t(`Hernoemen: "${name}"`, `Rename: "${name}"`),
     name,
@@ -487,9 +488,9 @@ async function doRename() {
       : _t('Voer de nieuwe mapnaam in.', 'Enter the new folder name.')
   );
   if (!newName || newName === name) return;
-  const dst = currentPath ? currentPath + '/' + newName : newName;
+  const dst = parent ? parent + '/' + newName : newName;
   try {
-    await apiMove(entryPath(name), dst);
+    await apiMove(path, dst);
     toast(_t(`Hernoemd naar "${newName}"`, `Renamed to "${newName}"`));
     await navigate(currentPath);
   } catch (e) {
@@ -498,8 +499,8 @@ async function doRename() {
 }
 
 async function doMove() {
-  const names = [...selected];
-  const label = names.length === 1 ? `"${names[0]}"` : `${names.length} items`;
+  const paths = [...selected];
+  const label = paths.length === 1 ? `"${baseName(paths[0])}"` : `${paths.length} items`;
   const dest  = await showDialog(
     _t(`Verplaatsen: ${label}`, `Move: ${label}`),
     currentPath,
@@ -508,13 +509,14 @@ async function doMove() {
   );
   if (dest === null) return;
   try {
-    for (const name of names) {
+    for (const path of paths) {
+      const name = baseName(path);
       const dst = dest ? dest.replace(/\/$/, '') + '/' + name : name;
-      await apiMove(entryPath(name), dst);
+      await apiMove(path, dst);
     }
-    toast(names.length === 1
-      ? _t(`"${names[0]}" verplaatst`, `"${names[0]}" moved`)
-      : _t(`${names.length} items verplaatst`, `${names.length} items moved`));
+    toast(paths.length === 1
+      ? _t(`"${baseName(paths[0])}" verplaatst`, `"${baseName(paths[0])}" moved`)
+      : _t(`${paths.length} items verplaatst`, `${paths.length} items moved`));
     await navigate(currentPath);
   } catch (e) {
     toast(_t('Verplaatsen mislukt: ', 'Move failed: ') + e.message, true);
@@ -587,7 +589,8 @@ function showDialog(title, value, hint = '') {
 
 // ---------------------------------------------------------------- Context menu
 
-function showCtxMenu(x, y, entry) {
+function showCtxMenu(x, y, entry, fullPath) {
+  const path = fullPath || entryPath(entry.name);
   const menu = $('#ctxmenu');
   menu.innerHTML = '';
 
@@ -606,18 +609,18 @@ function showCtxMenu(x, y, entry) {
 
   if (entry.type === 'dir') {
     item(_t('Openen', 'Open'), 'mdi-folder-open-outline',
-      () => navigate(entryPath(entry.name)));
+      () => navigate(path));
   } else {
     if (isFontFile(entry.name)) {
       item(_t('Voorbeeld', 'Preview'), 'mdi-format-font',
-        () => openFontPreview(entry.name));
+        () => openFontPreview(entry.name, path));
     }
     if (isTextFile(entry.name)) {
       item(_t('Bewerken', 'Edit'), 'mdi-file-edit-outline',
-        () => openEditor(entry.name));
+        () => openEditor(entry.name, path));
     }
     item(_t('Downloaden', 'Download'), 'mdi-download-outline',
-      () => doDownload(entry.name));
+      () => doDownload(entry.name, path));
   }
   sep();
   item(_t('Hernoemen', 'Rename'), 'mdi-pencil-outline', doRename);
@@ -670,9 +673,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // select-all checkbox in the table header
   const selAll = $('#fe-selall');
   if (selAll) selAll.onclick = () => {
-    const rows = $$('#fe-tbody tr[data-name]');
-    if (selAll.checked) rows.forEach(r => selected.add(r.dataset.name));
-    else rows.forEach(r => selected.delete(r.dataset.name));
+    const rows = $$('#fe-tbody tr[data-path]');
+    if (selAll.checked) rows.forEach(r => selected.add(r.dataset.path));
+    else rows.forEach(r => selected.delete(r.dataset.path));
     renderSelection(); updateToolbar(); updateStatus();
   };
 
@@ -709,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#btn-mkdir').onclick    = doMkdir;
   $('#btn-rename').onclick   = doRename;
   $('#btn-move').onclick     = doMove;
-  $('#btn-download').onclick = () => { const [n] = [...selected]; doDownload(n); };
+  $('#btn-download').onclick = () => { const [p] = [...selected]; if (p) doDownload(baseName(p), p); };
   $('#btn-delete').onclick   = doDelete;
   $('#btn-refresh').onclick  = () => navigate(currentPath);
 
