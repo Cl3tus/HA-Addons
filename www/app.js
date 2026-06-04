@@ -267,6 +267,7 @@ function rawValue(el){
 function transformPreview(el, val){
   const t = el.transform||'none', a = el.transformArg||{};
   if(STRTRANSFORMS[t] && STRTRANSFORMS[t].prev) return STRTRANSFORMS[t].prev(String(val));
+  if(NAMETRANSFORMS[t]) return nameTransformPreview(NAMETRANSFORMS[t], val);
   switch(t){
     case 'trimSeconds': { const sv=String(val); return sv.length>3?sv.slice(0,-3):sv; }
     case 'upper': return String(val).toUpperCase();
@@ -1386,6 +1387,25 @@ var STRTRANSFORMS = {
                  expr:s=>`${s}.substr(8,2) + "/" + ${s}.substr(5,2)`,
                  prev:s=>_iso(s)?`${s.substr(8,2)}/${s.substr(5,2)}`:s },
 };
+/* weekday / month NAME transforms. These need a tiny helper block in the lambda
+   (a names[] array + index), so they're emitted via textNameBlock() rather than a
+   single printf. Index source: month = substr(5,2); weekday = mktime(YYYY-MM-DD). */
+var NAMETRANSFORMS = {
+  wday_nl_s: {nl:'Weekdag kort NL (zo/ma/di…)', en:'Weekday short, Dutch (zo/ma…)', from:'wday', arr:['zo','ma','di','wo','do','vr','za']},
+  wday_nl_l: {nl:'Weekdag lang NL (zondag…)',  en:'Weekday long, Dutch (zondag…)', from:'wday', arr:['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag']},
+  wday_en_s: {nl:'Weekdag kort EN (Sun/Mon…)', en:'Weekday short (Sun/Mon…)',      from:'wday', arr:['Sun','Mon','Tue','Wed','Thu','Fri','Sat']},
+  wday_en_l: {nl:'Weekdag lang EN (Sunday…)',  en:'Weekday long (Sunday…)',        from:'wday', arr:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']},
+  mon_nl_s:  {nl:'Maand kort NL (jan/feb…)',   en:'Month short, Dutch (jan/feb…)', from:'month', arr:['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']},
+  mon_nl_l:  {nl:'Maand lang NL (januari…)',   en:'Month long, Dutch (januari…)',  from:'month', arr:['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december']},
+  mon_en_s:  {nl:'Maand kort EN (Jan/Feb…)',   en:'Month short (Jan/Feb…)',        from:'month', arr:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']},
+  mon_en_l:  {nl:'Maand lang EN (January…)',   en:'Month long (January…)',         from:'month', arr:['January','February','March','April','May','June','July','August','September','October','November','December']},
+};
+function nameTransformPreview(nt, val){
+  const s=String(val); if(!_iso(s)) return s;
+  if(nt.from==='month'){ const mi=parseInt(s.substr(5,2),10)-1; return (mi>=0&&mi<12)?nt.arr[mi]:s; }
+  const wd=new Date(Date.UTC(+s.substr(0,4), +s.substr(5,2)-1, +s.substr(8,2))).getUTCDay();
+  return nt.arr[wd]||s;
+}
 function transformOptions(kind){
   if(kind==='number') return [['none',T('Geen','None')],['roundN',T('Afronden op N decimalen','Round to N decimals')],['scale',T('Schalen (× factor)','Scale (× factor)')]];
   if(kind==='bool')   return [['none',T('Geen','None')],['boolLabel',T('on/off → eigen labels','on/off → custom labels')]];
@@ -1393,6 +1413,7 @@ function transformOptions(kind){
     const base = [['none',T('Geen','None')], ['trimSeconds',T('Laatste 3 tekens weg (…:SS → UU:MM)','Drop last 3 chars (…:SS → HH:MM)')]];
     if(kind==='string') base.push(['boolLabel',T('on/off → eigen labels','on/off → custom labels')]);
     Object.keys(STRTRANSFORMS).forEach(id=>base.push([id, T(STRTRANSFORMS[id].nl, STRTRANSFORMS[id].en)]));
+    Object.keys(NAMETRANSFORMS).forEach(id=>base.push([id, T(NAMETRANSFORMS[id].nl, NAMETRANSFORMS[id].en)]));
     return base;
   }
   // static
@@ -1619,10 +1640,37 @@ function drawStmt(el, indent){
   if(el.type==='clock') return clockCode(el, I, color, anchor);
   const font=fontById(el.fontId)||{id:'font_klein'};
   if(el.type==='icon') return `${I}it.printf(${el.x}, ${el.y}, id(${font.id}), ${color}, TextAlign::${anchor}, "\\U${pad8(el.iconHex||'')}");`;
-  // text
+  // text — weekday/month NAME transforms need a small helper block
+  if(NAMETRANSFORMS[el.transform] && el.source && el.source.kind==='sensor' && el.source.sourceId)
+    return textNameBlock(el, I, font.id, color, anchor);
   const v=valueExpr(el);
   if(v.mode==='print') return `${I}it.print(${el.x}, ${el.y}, id(${font.id}), ${color}, TextAlign::${anchor}, "${esc(v.literal)}");`;
   return `${I}it.printf(${el.x}, ${el.y}, id(${font.id}), ${color}, TextAlign::${anchor}, "${v.fmt}", ${v.args.join(', ')});`;
+}
+/* emit a names[] lookup block for a weekday/month name transform */
+function textNameBlock(el, I, fontId, color, anchor){
+  const nt=NAMETRANSFORMS[el.transform];
+  const src=srcById(el.source.sourceId)||{id:el.source.sourceId};
+  const sid=shortId(el), st=`id(${src.id}).state`;
+  const arr=nt.arr.map(s=>`"${esc(s)}"`).join(', ');
+  const fmt=el.format||{};
+  const f = (fmt.prefix||fmt.suffix) ? `${escFmt(fmt.prefix||'')}%s${escFmt(fmt.suffix||'')}` : '%s';
+  let out=`${I}{\n`;
+  out+=`${I}  static const char* names_${sid}[] = {${arr}};\n`;
+  if(nt.from==='month'){
+    out+=`${I}  int idx_${sid} = ${st}.length() >= 7 ? atoi(${st}.substr(5,2).c_str()) - 1 : -1;\n`;
+  } else {
+    out+=`${I}  struct tm tmv_${sid} = {};\n`;
+    out+=`${I}  tmv_${sid}.tm_year = atoi(${st}.substr(0,4).c_str()) - 1900;\n`;
+    out+=`${I}  tmv_${sid}.tm_mon  = atoi(${st}.substr(5,2).c_str()) - 1;\n`;
+    out+=`${I}  tmv_${sid}.tm_mday = atoi(${st}.substr(8,2).c_str());\n`;
+    out+=`${I}  mktime(&tmv_${sid});\n`;
+    out+=`${I}  int idx_${sid} = (${st}.length() >= 10) ? tmv_${sid}.tm_wday : -1;\n`;
+  }
+  out+=`${I}  const char* val_${sid} = (idx_${sid} >= 0 && idx_${sid} < ${nt.arr.length}) ? names_${sid}[idx_${sid}] : "";\n`;
+  out+=`${I}  it.printf(${el.x}, ${el.y}, id(${fontId}), ${color}, TextAlign::${anchor}, "${f}", val_${sid});\n`;
+  out+=`${I}}`;
+  return out;
 }
 function numFilled(v){ return v!==''&&v!=null&&!isNaN(+v); }
 function graphId(el){ return 'graph_'+el.id.replace(/[^a-z0-9_]/gi,''); }
@@ -1753,6 +1801,7 @@ function collectGlyphs(){
         else { map[E.fontId] && (map[E.fontId].dynamic=true);
           addText(E.fontId,(E.format&&E.format.prefix)||''); addText(E.fontId,(E.format&&E.format.suffix)||'');
           if(E.transform==='boolLabel'){ const a=E.transformArg||{}; addText(E.fontId,a.trueLabel||'Aan'); addText(E.fontId,a.falseLabel||'Uit'); }
+          if(NAMETRANSFORMS[E.transform]) NAMETRANSFORMS[E.transform].arr.forEach(nm=>addText(E.fontId, nm));   // weekday/month letters
         }
       }
       else if(E.type==='wifi'){ (E.wifi&&E.wifi.levels||[]).forEach(lv=>addIcon(E.fontId, lv.hex, lv.icon||'wifi')); }
@@ -2490,9 +2539,11 @@ function _elFromCall(method, A, colors, qrMap, grMap, sources){
       if(method==='printf' && rest.length && ref && sources.some(s=>s.id===ref[1])){
         el.source={kind:'sensor',sourceId:ref[1],text:'',expr:''};
         el.format={mode:'raw',decimals:1,prefix:'',suffix:'',raw:lit};
+        el.role='value';     // bound to a source → it's a value element
       } else {
         el.source={kind:'static',text:lit,sourceId:'',expr:''};
         el.format={mode:'builder',decimals:1,prefix:'',suffix:'',raw:'%s'};
+        el.role='text';      // plain literal → pure text element
       }
       return el; }
   }
@@ -2530,12 +2581,13 @@ function _parseLambda(text, p){
   }
   // give imported elements running names per type (Text 1, Text 2, Icon 1, Icon 2, …),
   // continuing past whatever is already on the screen
-  const labels={text:T('Tekst','Text'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
+  const labels={text:T('Tekst','Text'),value:T('Waarde','Value'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
     circle:T('Cirkel','Circle'),polygon:T('Veelhoek','Polygon'),ring:'Ring',gauge:T('Meter','Gauge'),
     qr:'QR',clock:T('Klok','Clock'),graph:T('Grafiek','Graph')};
-  const baseCount={}; (p.elements||[]).forEach(e=>{ baseCount[e.type]=(baseCount[e.type]||0)+1; });
+  const nk=e=> e.type==='text' ? (e.role==='value'?'value':'text') : e.type;   // name key (text vs value)
+  const baseCount={}; (p.elements||[]).forEach(e=>{ const k=nk(e); baseCount[k]=(baseCount[k]||0)+1; });
   const seq={};
-  out.forEach(e=>{ seq[e.type]=(seq[e.type]||0)+1; e.name=(labels[e.type]||'Element')+' '+((baseCount[e.type]||0)+seq[e.type]); });
+  out.forEach(e=>{ const k=nk(e); seq[k]=(seq[k]||0)+1; e.name=(labels[k]||'Element')+' '+((baseCount[k]||0)+seq[k]); });
   return {els:out, skipped};
 }
 var _ELTYPE_LABEL={ text:()=>T('tekst','text'), icon:()=>T('icoon','icon'), line:()=>T('lijn','line'),
@@ -3017,6 +3069,19 @@ function startLiveTimer(){
   if(LIVE_ON && m>=1) LIVE_TIMER=setInterval(()=>refreshLive(true), m*60000);
 }
 function stopLiveTimer(){ if(LIVE_TIMER){ clearInterval(LIVE_TIMER); LIVE_TIMER=null; } }
+/* one-time: give every text element a role (text = static, value = source/expr) */
+function migrateTextRoles(){
+  let changed=false;
+  (state.profiles||[]).forEach(p=>{
+    [].concat(p.elements||[], p.waitElements||[]).forEach(el=>{
+      if(el.type==='text' && !el.role){
+        el.role = (el.source && el.source.kind!=='static') ? 'value' : 'text';
+        changed=true;
+      }
+    });
+  });
+  if(changed) persist();
+}
 /* Fetch HA states now. silent=true suppresses the success toast (auto-refresh). */
 async function refreshLive(silent){
   LIVE_ON=true;
@@ -3068,6 +3133,8 @@ async function boot(){
         p._waitSeeded=true; persist();
       }
   } }
+  // migrate existing text elements: infer text vs value role from their source
+  migrateTextRoles();
   { const we=profile()?profile().waitEnabled!==false:true;
     const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!we; }
   const gs=$('#grid-size'); if(gs) gs.value=String(gridStep());

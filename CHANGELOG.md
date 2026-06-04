@@ -1,3 +1,8 @@
+## 2.9.1
+- **Import herkent nu tekst vs. waarde**: regels gebonden aan een bron worden als **Waarde** ingelezen, losse letterlijke tekst als **Tekst**.
+- **Bestaande profielen automatisch bijgewerkt**: tekst-elementen krijgen bij het opstarten de juiste rol (statisch → Tekst, bron/expressie → Waarde), zodat de lagen en de inspector meteen kloppen.
+- **Weekdag- en maandnamen als transform** (NL én EN, kort én lang): bv. `do`/`donderdag`/`Thu`/`Thursday` en `mei`/`May`/`januari`/`January`. Deze gebruiken een klein hulpblok met variabelen in de lambda (weekdag via `mktime`, maand via de maand-index). Gaat uit van ISO-datums.
+
 ## 2.9.0
 - **Shift + slepen laat nu écht los van het raster** — ook bij het loslaten wordt niet meer teruggesnapt zolang je Shift vasthoudt.
 - **Lagen herordenen**: elke laag heeft nu een sleep-handvat (⣿) naast het oog; sleep om de volgorde (z-volgorde) te veranderen.
