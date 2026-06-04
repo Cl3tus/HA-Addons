@@ -1387,24 +1387,27 @@ function _iso(s){ return /^\d{4}-\d{2}-\d{2}/.test(String(s)); }
 // finds the time portion whether the value is "HH:MM:SS" or "YYYY-MM-DD HH:MM:SS"
 function _timeAt(s,len){ const c=String(s).indexOf(':'); const o=c>=2?c-2:0; return String(s).substr(o,len); }
 function _timeCpp(s,len){ return `(${s}.find(':') != std::string::npos && ${s}.find(':') >= 2 ? ${s}.substr(${s}.find(':') - 2, ${len}) : ${s}.substr(0, ${len}))`; }
+/* guard a substr-expression so an empty/short HA state (at boot, unknown, …)
+   yields "" instead of throwing std::out_of_range (which caused a boot loop). */
+function _dtGuard(s, minLen, expr){ return `(${s}.length() >= ${minLen} ? (${expr}) : std::string(""))`; }
 var STRTRANSFORMS = {
   time_hm:     { nl:'Tijd → UU:MM', en:'Time → HH:MM',
                  expr:s=>_timeCpp(s,5), prev:s=>_timeAt(s,5) },
   time_hms:    { nl:'Tijd → UU:MM:SS', en:'Time → HH:MM:SS',
                  expr:s=>_timeCpp(s,8), prev:s=>_timeAt(s,8) },
   date_ymd:    { nl:'Datum → JJJJ-MM-DD', en:'Date → YYYY-MM-DD',
-                 expr:s=>`${s}.substr(0,10)`, prev:s=>String(s).substr(0,10) },
+                 expr:s=>_dtGuard(s,10,`${s}.substr(0,10)`), prev:s=>String(s).substr(0,10) },
   date_dmy:    { nl:'Datum → DD-MM-JJJJ', en:'Date → DD-MM-YYYY',
-                 expr:s=>`${s}.substr(8,2) + "-" + ${s}.substr(5,2) + "-" + ${s}.substr(0,4)`,
+                 expr:s=>_dtGuard(s,10,`${s}.substr(8,2) + "-" + ${s}.substr(5,2) + "-" + ${s}.substr(0,4)`),
                  prev:s=>_iso(s)?`${s.substr(8,2)}-${s.substr(5,2)}-${s.substr(0,4)}`:s },
   date_dmy_sl: { nl:'Datum → DD/MM/JJJJ', en:'Date → DD/MM/YYYY',
-                 expr:s=>`${s}.substr(8,2) + "/" + ${s}.substr(5,2) + "/" + ${s}.substr(0,4)`,
+                 expr:s=>_dtGuard(s,10,`${s}.substr(8,2) + "/" + ${s}.substr(5,2) + "/" + ${s}.substr(0,4)`),
                  prev:s=>_iso(s)?`${s.substr(8,2)}/${s.substr(5,2)}/${s.substr(0,4)}`:s },
   date_dm:     { nl:'Datum → DD-MM', en:'Date → DD-MM',
-                 expr:s=>`${s}.substr(8,2) + "-" + ${s}.substr(5,2)`,
+                 expr:s=>_dtGuard(s,10,`${s}.substr(8,2) + "-" + ${s}.substr(5,2)`),
                  prev:s=>_iso(s)?`${s.substr(8,2)}-${s.substr(5,2)}`:s },
   date_dm_sl:  { nl:'Datum → DD/MM', en:'Date → DD/MM',
-                 expr:s=>`${s}.substr(8,2) + "/" + ${s}.substr(5,2)`,
+                 expr:s=>_dtGuard(s,10,`${s}.substr(8,2) + "/" + ${s}.substr(5,2)`),
                  prev:s=>_iso(s)?`${s.substr(8,2)}/${s.substr(5,2)}`:s },
 };
 /* weekday / month NAME transforms. These need a tiny helper block in the lambda
@@ -1445,35 +1448,46 @@ function customFmtPreview(el, val){
     .replace(/\{mm\}/g,s.substr(5,2)).replace(/\{dd\}/g,s.substr(8,2))
     .replace(/\{hh\}/g,s.length>=13?s.substr(11,2):'').replace(/\{min\}/g,s.length>=16?s.substr(14,2):'').replace(/\{ss\}/g,s.length>=19?s.substr(17,2):'');
 }
+/* minimum state length needed for the tokens used (so substr never overruns) */
+function _customMinLen(pat){
+  const need={ '{yyyy}':4,'{yy}':4,'{mm}':7,'{dd}':10,'{hh}':13,'{min}':16,'{ss}':19,'{wd}':10,'{wday}':10,'{mon}':7,'{month}':7 };
+  let m=1; Object.keys(need).forEach(tok=>{ if(pat.indexOf(tok)>=0) m=Math.max(m,need[tok]); });
+  return m;
+}
 function textCustomBlock(el, I, fontId, color, anchor){
   const src=srcById(el.source.sourceId)||{id:el.source.sourceId};
-  const sid=shortId(el), st=`id(${src.id}).state`, a=el.transformArg||{}, N=DTNAMES[a.lang==='en'?'en':'nl'];
+  const sid=shortId(el), s=`s_${sid}`, a=el.transformArg||{}, N=DTNAMES[a.lang==='en'?'en':'nl'];
   const pat=String(a.fmt||''); const usesWd=/\{wd\}|\{wday\}/.test(pat), usesMo=/\{mon\}|\{month\}/.test(pat);
+  const minLen=_customMinLen(pat);
   const segs=pat.split(DT_TOKEN_RE).filter(x=>x!=='');
   const cpp=seg=>{ switch(seg){
-    case '{yyyy}':return `${st}.substr(0,4)`; case '{yy}':return `${st}.substr(2,2)`;
-    case '{mm}':return `${st}.substr(5,2)`; case '{dd}':return `${st}.substr(8,2)`;
-    case '{hh}':return `${st}.substr(11,2)`; case '{min}':return `${st}.substr(14,2)`; case '{ss}':return `${st}.substr(17,2)`;
+    case '{yyyy}':return `${s}.substr(0,4)`; case '{yy}':return `${s}.substr(2,2)`;
+    case '{mm}':return `${s}.substr(5,2)`; case '{dd}':return `${s}.substr(8,2)`;
+    case '{hh}':return `${s}.substr(11,2)`; case '{min}':return `${s}.substr(14,2)`; case '{ss}':return `${s}.substr(17,2)`;
     case '{wd}':return `std::string(wd_${sid}[tmv_${sid}.tm_wday])`; case '{wday}':return `std::string(wdl_${sid}[tmv_${sid}.tm_wday])`;
     case '{mon}':return `std::string(mo_${sid}[mi_${sid}])`; case '{month}':return `std::string(mol_${sid}[mi_${sid}])`;
     default:return `std::string("${esc(seg)}")`; } };
   const concat = segs.length ? segs.map(cpp).join(' + ') : 'std::string("")';
   let out=`${I}{\n`;
+  out+=`${I}  std::string ${s} = id(${src.id}).state;\n`;
+  out+=`${I}  std::string out_${sid};\n`;
+  out+=`${I}  if (${s}.length() >= ${minLen}) {\n`;   // guard: empty/short state at boot -> no substr crash
   if(usesWd){
-    out+=`${I}  struct tm tmv_${sid} = {};\n`;
-    out+=`${I}  tmv_${sid}.tm_year = atoi(${st}.substr(0,4).c_str()) - 1900;\n`;
-    out+=`${I}  tmv_${sid}.tm_mon  = atoi(${st}.substr(5,2).c_str()) - 1;\n`;
-    out+=`${I}  tmv_${sid}.tm_mday = atoi(${st}.substr(8,2).c_str());\n`;
-    out+=`${I}  mktime(&tmv_${sid});\n`;
-    out+=`${I}  static const char* wd_${sid}[] = {${N.wd_s.map(s=>`"${esc(s)}"`).join(', ')}};\n`;
-    out+=`${I}  static const char* wdl_${sid}[] = {${N.wd_l.map(s=>`"${esc(s)}"`).join(', ')}};\n`;
+    out+=`${I}    struct tm tmv_${sid} = {};\n`;
+    out+=`${I}    tmv_${sid}.tm_year = atoi(${s}.substr(0,4).c_str()) - 1900;\n`;
+    out+=`${I}    tmv_${sid}.tm_mon  = atoi(${s}.substr(5,2).c_str()) - 1;\n`;
+    out+=`${I}    tmv_${sid}.tm_mday = atoi(${s}.substr(8,2).c_str());\n`;
+    out+=`${I}    mktime(&tmv_${sid});\n`;
+    out+=`${I}    static const char* wd_${sid}[] = {${N.wd_s.map(x=>`"${esc(x)}"`).join(', ')}};\n`;
+    out+=`${I}    static const char* wdl_${sid}[] = {${N.wd_l.map(x=>`"${esc(x)}"`).join(', ')}};\n`;
   }
   if(usesMo){
-    out+=`${I}  int mi_${sid} = atoi(${st}.substr(5,2).c_str()) - 1; if(mi_${sid}<0||mi_${sid}>11) mi_${sid}=0;\n`;
-    out+=`${I}  static const char* mo_${sid}[] = {${N.mo_s.map(s=>`"${esc(s)}"`).join(', ')}};\n`;
-    out+=`${I}  static const char* mol_${sid}[] = {${N.mo_l.map(s=>`"${esc(s)}"`).join(', ')}};\n`;
+    out+=`${I}    int mi_${sid} = atoi(${s}.substr(5,2).c_str()) - 1; if(mi_${sid}<0||mi_${sid}>11) mi_${sid}=0;\n`;
+    out+=`${I}    static const char* mo_${sid}[] = {${N.mo_s.map(x=>`"${esc(x)}"`).join(', ')}};\n`;
+    out+=`${I}    static const char* mol_${sid}[] = {${N.mo_l.map(x=>`"${esc(x)}"`).join(', ')}};\n`;
   }
-  out+=`${I}  std::string out_${sid} = ${concat};\n`;
+  out+=`${I}    out_${sid} = ${concat};\n`;
+  out+=`${I}  }\n`;
   out+=`${I}  it.printf(${el.x}, ${el.y}, id(${fontId}), ${color}, TextAlign::${anchor}, "%s", out_${sid}.c_str());\n`;
   out+=`${I}}`;
   return out;
@@ -1730,18 +1744,21 @@ function textNameBlock(el, I, fontId, color, anchor){
   const sid=shortId(el), st=`id(${src.id}).state`;
   const arr=nt.arr.map(s=>`"${esc(s)}"`).join(', ');
   const fmt=el.format||{};
-  const f = (fmt.prefix||fmt.suffix) ? `${escFmt(fmt.prefix||'')}%s${escFmt(fmt.suffix||'')}` : '%s';
+  const f = (fmt.prefix||fmt.suffix) ? `${escFmt(fmt.prefix||'')}%s${escFmt(_suffixOut(fmt.suffix))}` : '%s';
   let out=`${I}{\n`;
   out+=`${I}  static const char* names_${sid}[] = {${arr}};\n`;
+  out+=`${I}  int idx_${sid} = -1;\n`;
   if(nt.from==='month'){
-    out+=`${I}  int idx_${sid} = ${st}.length() >= 7 ? atoi(${st}.substr(5,2).c_str()) - 1 : -1;\n`;
+    out+=`${I}  if (${st}.length() >= 7) idx_${sid} = atoi(${st}.substr(5,2).c_str()) - 1;\n`;
   } else {
-    out+=`${I}  struct tm tmv_${sid} = {};\n`;
-    out+=`${I}  tmv_${sid}.tm_year = atoi(${st}.substr(0,4).c_str()) - 1900;\n`;
-    out+=`${I}  tmv_${sid}.tm_mon  = atoi(${st}.substr(5,2).c_str()) - 1;\n`;
-    out+=`${I}  tmv_${sid}.tm_mday = atoi(${st}.substr(8,2).c_str());\n`;
-    out+=`${I}  mktime(&tmv_${sid});\n`;
-    out+=`${I}  int idx_${sid} = (${st}.length() >= 10) ? tmv_${sid}.tm_wday : -1;\n`;
+    out+=`${I}  if (${st}.length() >= 10) {\n`;   // guard: short/empty state at boot must not throw
+    out+=`${I}    struct tm tmv_${sid} = {};\n`;
+    out+=`${I}    tmv_${sid}.tm_year = atoi(${st}.substr(0,4).c_str()) - 1900;\n`;
+    out+=`${I}    tmv_${sid}.tm_mon  = atoi(${st}.substr(5,2).c_str()) - 1;\n`;
+    out+=`${I}    tmv_${sid}.tm_mday = atoi(${st}.substr(8,2).c_str());\n`;
+    out+=`${I}    mktime(&tmv_${sid});\n`;
+    out+=`${I}    idx_${sid} = tmv_${sid}.tm_wday;\n`;
+    out+=`${I}  }\n`;
   }
   out+=`${I}  const char* val_${sid} = (idx_${sid} >= 0 && idx_${sid} < ${nt.arr.length}) ? names_${sid}[idx_${sid}] : "";\n`;
   out+=`${I}  it.printf(${el.x}, ${el.y}, id(${fontId}), ${color}, TextAlign::${anchor}, "${f}", val_${sid});\n`;

@@ -1,3 +1,6 @@
+## 2.9.5
+- **Kritieke fix: bootloop door `std::out_of_range`**. De gegenereerde datum-transformaties (Aangepast format, weekdag/maand, DD-MM-… etc.) deden `substr()` zonder lengte-check. Bij het opstarten — als een datum-/tekst-sensor nog leeg of "unknown" is — gooide dat een exception op het device → eindeloze herstart. Alle substr-aanroepen hebben nu een lengte-guard: bij een te korte/lege waarde wordt het veld leeg gelaten i.p.v. te crashen. **Genereer je YAML opnieuw en flash het device** (via OTA zodra safe mode actief is, of via USB).
+
 ## 2.9.4
 - **Automatische spatie vóór de suffix** in builder-modus: `1065` + `L/u` → `1065 L/u`, en `uur` → ` uur` (je hoeft de spatie niet meer zelf te typen). Een bestaande handmatige spatie wordt eerst getrimd, dus geen dubbele spatie. Uitzondering: `°`, `%` en `‰` blijven vastzitten (`21°C`, `50%`).
 
