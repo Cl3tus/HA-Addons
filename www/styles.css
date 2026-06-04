@@ -135,6 +135,7 @@ body.chrome-hidden #topbar { display: none; }
   display: inline-flex; align-items: center; gap: 6px;
   transition: background .12s, border-color .12s, transform .05s;
   white-space: nowrap;
+  text-decoration: none;   /* a.btn (e.g. the Files link) must not be underlined */
 }
 .btn:hover { background: var(--line); border-color: var(--line-2); }
 .btn:active { transform: translateY(1px); }

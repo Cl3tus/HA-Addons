@@ -39,6 +39,7 @@
     'QR-code': 'QR code',
     'Hoofdscherm': 'Main screen',
     'Wachtscherm': 'Waiting screen',
+    'Wachtscherm aan': 'Waiting screen on',
     'kleuren': 'colours',
     'Widget (icoon+waarde)': 'Widget (icon+value)',
     'WiFi-icoon': 'Wi-Fi icon',

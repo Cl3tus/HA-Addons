@@ -1,3 +1,14 @@
+## 2.5.0
+- **Live data: aparte ↻-vernieuwknop + instelbaar interval**. Aan/uit blijft de Live-knop; vernieuwen doe je nu met de losse ↻-knop (niet meer uit-en-aan klikken). Daarnaast een keuze voor automatisch vernieuwen (1 / 2 / 5 / 10 / 15 / 30 min, standaard 1 min), die ook wordt onthouden.
+- **Snap volgt nu live het raster** tijdens het slepen, voor elke rastergrootte (8/10/16/20/25/40 px). Houd **Shift** ingedrukt om tijdelijk vrij te bewegen.
+- **Import**: tekst- en icoon-elementen krijgen nu oplopende namen (Tekst 1, Tekst 2, Icoon 1, Icoon 2 …) i.p.v. allemaal "1".
+- **Knoppen**: Fonts en Waardebronnen hebben nu een icoontje; de Bestanden-knop is niet meer onderstreept.
+- **Selectie**: een enkel geselecteerd element krijgt nu hetzelfde duidelijke oranje kader (dikker, gestippeld, licht gevuld) als bij meervoudige selectie.
+- **Standaard tekstuitlijning** is nu **CENTER**.
+- **Wachtscherm**: nieuwe profielen krijgen standaard een zichtbaar "WAITING FOR DATA..."-tekstelement op het wachtscherm (i.p.v. een leeg canvas). Met de nieuwe **"Wachtscherm aan"**-checkbox kun je het wachtscherm volledig aan/uit zetten — uit betekent dat de `if (initial_data_received == false)`-tak niet meer wordt gegenereerd.
+- **Gauge**: standaardvulling is nu 50%; de vulling start bovenaan (270°) en het rotatie-handvat blijft bovenaan.
+- **Herstelcode**: tooltip toegevoegd die uitlegt dat je de base64-herstelcode terugzet via **YAML importeren** (plak de gegenereerde YAML met de `# eink-editor:v1:`-regel).
+
 ## 2.4.6
 - **Documentatie + screenshots**: de Documentation-tab en de About/Info-omschrijving tonen nu screenshots van de editor (light/dark) en de bestandsbeheerder (overzicht, teksteditor, font-viewer). Versie-bump zodat HA de bijgewerkte documentatie ophaalt.
 

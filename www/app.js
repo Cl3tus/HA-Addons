@@ -91,6 +91,18 @@ function paletteType(colors){
   return 'mono';
 }
 
+/* default "WAITING FOR DATA..." element, centred on the profile's device */
+function makeWaitText(p){
+  const d=(p&&p.device)||{w:480,h:800};
+  const fid=(p&&p.fonts&&p.fonts[0]&&p.fonts[0].id)||'font_klein';
+  return { id:uid(), type:'text', name:T('Tekst','Text')+' 1', visible:true,
+    x:Math.round(d.w/2), y:Math.round(d.h/2), colorId:'color_text', anchor:'CENTER', fontId:fid,
+    source:{kind:'static',text:'WAITING FOR DATA...',sourceId:'',expr:''},
+    format:{mode:'builder',decimals:1,prefix:'',suffix:'',raw:'%s'}, transform:'none', transformArg:{},
+    condition:{enabled:false,sourceId:'',op:'on',val:'',val2:'',
+      whenTrue:{text:'',iconName:'',iconHex:'',colorId:'',visible:true},
+      whenFalse:{text:'',iconName:'',iconHex:'',colorId:'',visible:true}} };
+}
 /* ---------------- seed profile (clean, empty starting point) ---------------- */
 function seedProfile(name='My display'){
   return {
@@ -111,7 +123,8 @@ function seedProfile(name='My display'){
     colors: colorSetFor('bwr'),   // palette matches the model's colour capability
     sources: [],          // start empty — add via "Value sources → From Home Assistant"
     elements: [],
-    waitElements: [],     // the "waiting for data" screen (shown until first data arrives)
+    waitEnabled: true,    // whether to emit the "waiting for data" branch at all
+    waitElements: [],     // seeded with a default WAITING FOR DATA text on first boot
   };
   function f(id,kind,file,family,weight,size,dynamic,base){
     return {id,kind,file,family,weight,size,dynamic:!!dynamic,
@@ -131,6 +144,7 @@ let _layerAnchor = null;           // anchor id for shift-range select in layers
 let zoom = 1;
 let HA_STATES=null, HA_LIVE=false;   // live HA data (add-on build)
 let LIVE_ON=false, LIVE_STATUS='off';  // live toggle + status dot (off|ok|warn|error)
+let LIVE_TIMER=null;                    // auto-refresh interval handle
 let shiftDown = false; // hold Shift to constrain line endpoints to 45° steps
 window.addEventListener('keydown', e=>{ if(e.key==='Shift') shiftDown=true; });
 window.addEventListener('keyup',   e=>{ if(e.key==='Shift') shiftDown=false; });
@@ -438,7 +452,7 @@ function buildNode(el){
       fill:color.css});
   }
   else if(E.type==='gauge'){
-    const pct=Math.max(0,Math.min(100,E.percent==null?75:E.percent));
+    const pct=Math.max(0,Math.min(100,E.percent==null?50:E.percent));
     const ro=E.r||50, ri=Math.min(E.inner||30, ro-1);
     // custom shape: fill starts at the top (−90°); the node's own rotation stays
     // equal to el.rotation so the transformer's rotate handle sits on top.
@@ -521,6 +535,12 @@ function buildNode(el){
   if(!node) return null;
   node._elId = el.id;
   node.draggable(true);
+  // live snap-to-grid while dragging (uses the selected grid size; hold Shift to bypass)
+  node.dragBoundFunc(function(pos){
+    const sn=$('#tg-snap'); if(!sn || !sn.checked || shiftDown) return pos;
+    const g=gridStep();
+    return { x: Math.round(pos.x/g)*g, y: Math.round(pos.y/g)*g };
+  });
   node.on('mousedown touchstart', (ev)=>{
     const e=ev && ev.evt;
     if(e && (e.ctrlKey||e.metaKey)){ ev.cancelBubble=true; toggleSelect(el.id); return; }
@@ -729,8 +749,11 @@ function attachSelection(el, node){
     contentLayer.add(g); selectionVisual=g;
   } else {
     const b=node.getClientRect({relativeTo:contentLayer});
-    selectionVisual=new Konva.Rect({x:b.x-3,y:b.y-3,width:b.width+6,height:b.height+6,
-      stroke:'#e8a13a',strokeWidth:1,dash:[4,3],listening:false});
+    // same bright, slightly-filled box as the multi-select outline so a single
+    // selected text/icon stands out just as clearly
+    selectionVisual=new Konva.Rect({x:b.x-4,y:b.y-4,width:b.width+8,height:b.height+8,
+      stroke:'#ffb43a',strokeWidth:2.5,dash:[8,4],fill:'rgba(232,161,58,0.14)',
+      shadowColor:'#000',shadowBlur:2,shadowOpacity:.4,listening:false});
     contentLayer.add(selectionVisual);
   }
 }
@@ -883,7 +906,7 @@ function addElement(type, pos){
   const cx = pos ? clamp(Math.round(pos.x),0,p.device.w) : Math.round(p.device.w/2);
   const cy = pos ? clamp(Math.round(pos.y),0,p.device.h) : 120;
   const base={ id:uid(), type, name:elName(type), visible:true,
-    x:cx, y:cy, colorId:'color_text', anchor:'TOP_CENTER',
+    x:cx, y:cy, colorId:'color_text', anchor:'CENTER',
     condition:{enabled:false,sourceId:'',op:'on',val:'',val2:'',
                whenTrue:{text:'',iconName:'',iconHex:'',colorId:'',visible:true},
                whenFalse:{text:'',iconName:'',iconHex:'',colorId:'',visible:true}} };
@@ -906,7 +929,7 @@ function addElement(type, pos){
   } else if(type==='ring'){
     Object.assign(base,{ x:cx,y:cy, r:50, inner:30, colorId:'color_text', anchor:undefined });
   } else if(type==='gauge'){
-    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, percent:75, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, percent:50, colorId:'color_text', anchor:undefined });
   } else if(type==='qr'){
     Object.assign(base,{ x:cx-50,y:cy-50, text:'https://home-assistant.io', scale:4, ecc:'LOW', colorId:'color_text', anchor:undefined });
   } else if(type==='wifi'){
@@ -1035,8 +1058,8 @@ function renderInspector(){
   } else if(el.type==='gauge'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">${T('Buitenstraal','Outer radius')}</label><input data-k="r" type="number" value="${el.r||50}"></div><div><label class="fld">${T('Binnenstraal','Inner radius')}</label><input data-k="inner" type="number" value="${el.inner||30}"></div></div>
-      <label class="fld">${T('Vulling','Fill')} (<span class="rot-deg">${el.percent==null?75:el.percent}</span>%)</label>
-      <input data-k="percent" type="range" min="0" max="100" step="1" value="${el.percent==null?75:el.percent}">
+      <label class="fld">${T('Vulling','Fill')} (<span class="rot-deg">${el.percent==null?50:el.percent}</span>%)</label>
+      <input data-k="percent" type="range" min="0" max="100" step="1" value="${el.percent==null?50:el.percent}">
       <label class="fld">${T('Starthoek','Start angle')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
       <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
       <div class="hint"><span class="mono">it.filled_gauge</span> — ${T('cirkelvormige voortgang. Houd Shift ingedrukt tijdens roteren om op 45° te vergrendelen.','circular progress. Hold Shift while rotating to snap to 45°.')}</div>`);
@@ -1428,7 +1451,7 @@ function drawStmt(el, indent){
     return `${I}it.filled_ring(${el.x}, ${el.y}, ${el.r||50}, ${el.inner||30}, ${color});`;
   }
   if(el.type==='gauge'){
-    const pct=Math.max(0,Math.min(100,el.percent==null?75:el.percent));
+    const pct=Math.max(0,Math.min(100,el.percent==null?50:el.percent));
     return `${I}it.filled_gauge(${el.x}, ${el.y}, ${el.r||50}, ${el.inner||30}, ${pct}, ${color});`;
   }
   if(el.type==='qr'){
@@ -1708,16 +1731,21 @@ function genYAML(){
   // display + lambda
   out+=`display:\n  - platform: waveshare_epaper\n    id: eink_display\n    model: ${d.model}\n    update_interval: never\n    rotation: ${d.rotation}°\n    # cs/dc/busy/reset pins: keep your own pin config\n    lambda: |-\n`;
   const L='      ';
-  out+=`${L}if (id(initial_data_received) == false) {\n`;
-  const waitEls=p.waitElements||[];
-  if(waitEls.length){
-    orderedFor(waitEls).forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
+  if(p.waitEnabled===false){
+    // waiting screen disabled — draw the main screen unconditionally
+    orderedFor(p.elements||[]).forEach(el=>{ const code=elementCode(el, L); if(code) out+=code+'\n'; });
   } else {
-    out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), color_text, TextAlign::CENTER, "${T('WACHTEN OP DATA...','WAITING FOR DATA...')}");\n`;
+    out+=`${L}if (id(initial_data_received) == false) {\n`;
+    const waitEls=p.waitElements||[];
+    if(waitEls.length){
+      orderedFor(waitEls).forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
+    } else {
+      out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), color_text, TextAlign::CENTER, "${T('WACHTEN OP DATA...','WAITING FOR DATA...')}");\n`;
+    }
+    out+=`${L}} else {\n`;
+    orderedFor(p.elements||[]).forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
+    out+=`${L}}\n`;
   }
-  out+=`${L}} else {\n`;
-  orderedFor(p.elements||[]).forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
-  out+=`${L}}\n`;
 
   // round-trip comment (optional — toggled by the base64 checkbox)
   if(window.INCLUDE_SNAPSHOT!==false){
@@ -2205,6 +2233,14 @@ function _parseLambda(text, p){
     else { skipped.push({ method:m[1], reason:_skipReason(m[1]),
       snippet:callTxt.replace(/\s+/g,' ').trim().slice(0,90) }); }
   }
+  // give imported elements running names per type (Text 1, Text 2, Icon 1, Icon 2, …),
+  // continuing past whatever is already on the screen
+  const labels={text:T('Tekst','Text'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
+    circle:T('Cirkel','Circle'),polygon:T('Veelhoek','Polygon'),ring:'Ring',gauge:T('Meter','Gauge'),
+    qr:'QR',clock:T('Klok','Clock'),graph:T('Grafiek','Graph')};
+  const baseCount={}; (p.elements||[]).forEach(e=>{ baseCount[e.type]=(baseCount[e.type]||0)+1; });
+  const seq={};
+  out.forEach(e=>{ seq[e.type]=(seq[e.type]||0)+1; e.name=(labels[e.type]||'Element')+' '+((baseCount[e.type]||0)+seq[e.type]); });
   return {els:out, skipped};
 }
 var _ELTYPE_LABEL={ text:()=>T('tekst','text'), icon:()=>T('icoon','icon'), line:()=>T('lijn','line'),
@@ -2531,6 +2567,18 @@ function wire(){
   $('#btn-save').onclick=saveProject;
   $('#btn-theme').onclick=()=>{ if(window.haTheme) window.haTheme.toggle(); };
   const lb=$('#btn-live'); if(lb) lb.onclick=toggleLive;
+  const rb=$('#btn-refresh'); if(rb) rb.onclick=()=>refreshLive();
+  const li=$('#live-interval'); if(li){
+    li.value=String(parseInt(localStorage.getItem('einkLiveIntervalMin')||'1',10)||1);
+    li.onchange=()=>{ localStorage.setItem('einkLiveIntervalMin', String(liveIntervalMin())); startLiveTimer(); };
+  }
+  const tw=$('#tg-wait'); if(tw) tw.onchange=()=>{
+    const p=profile(); p.waitEnabled=tw.checked; persist();
+    const wopt=$('#screen-select') && $('#screen-select').querySelector('option[value="wait"]');
+    if(wopt) wopt.disabled=!tw.checked;
+    if(!tw.checked && editScreen==='wait'){ editScreen='main'; $('#screen-select').value='main';
+      selectedId=null; selectedIds=new Set(); renderCanvas(); renderLayers(); renderInspector(); }
+  };
   $('#btn-load').onclick=loadProject;
 
   $('#btn-code').onclick=()=>{ renderCode(); $('#code-drawer').classList.add('open'); };
@@ -2610,23 +2658,37 @@ function applyLiveToSources(){
     } else { delete src.live; }
   });
 }
-/* Toggle live data on/off (button click) */
+/* Toggle live data on/off (button click). Enabling fetches once and starts the
+   auto-refresh timer; disabling stops it. Re-fetching is done with ↻ Refresh. */
 function toggleLive(){
   if(LIVE_ON){
     LIVE_ON=false; HA_LIVE=false; LIVE_STATUS='off'; HA_STATES=null;
+    stopLiveTimer();
     if(profile()) profile().sources.forEach(s=>delete s.live);
     updateLiveBadge(); renderCanvas(); renderInspector();
     toast(T('Live data uit','Live data off'));
     return;
   }
-  refreshLive();
+  refreshLive();        // turns live on, fetches, and (re)starts the timer
 }
-async function refreshLive(){
+/* Auto-refresh interval in minutes (1..n), from the toolbar select; persisted */
+function liveIntervalMin(){
+  const sel=$('#live-interval'); let v=sel?parseInt(sel.value,10):0;
+  if(!v||v<1) v=parseInt(localStorage.getItem('einkLiveIntervalMin')||'1',10)||1;
+  return Math.max(1,v);
+}
+function startLiveTimer(){
+  stopLiveTimer();
+  if(LIVE_ON) LIVE_TIMER=setInterval(()=>refreshLive(true), liveIntervalMin()*60000);
+}
+function stopLiveTimer(){ if(LIVE_TIMER){ clearInterval(LIVE_TIMER); LIVE_TIMER=null; } }
+/* Fetch HA states now. silent=true suppresses the success toast (auto-refresh). */
+async function refreshLive(silent){
   LIVE_ON=true;
   try{
     const r=await fetch('api/states', {headers:{'Accept':'application/json'}});
     if(r.status===503){   // server up but no Supervisor token / no HA data
-      HA_LIVE=false; LIVE_STATUS='warn'; updateLiveBadge();
+      HA_LIVE=false; LIVE_STATUS='warn'; updateLiveBadge(); startLiveTimer();
       toast(T('Live data: geen verbinding met Home Assistant (Supervisor-token ontbreekt)',
               'Live data: no Home Assistant connection (Supervisor token missing)'), true);
       return;
@@ -2638,11 +2700,11 @@ async function refreshLive(){
     HA_STATES=map; applyLiveToSources(); HA_LIVE=true;
     const n=Object.keys(map).length;
     LIVE_STATUS = n>0 ? 'ok' : 'warn';
-    updateLiveBadge(); renderCanvas(); renderInspector();
-    toast(T('Live data bijgewerkt ('+n+' entiteiten)','Live data updated ('+n+' entities)'));
+    updateLiveBadge(); renderCanvas(); renderInspector(); startLiveTimer();
+    if(!silent) toast(T('Live data bijgewerkt ('+n+' entiteiten)','Live data updated ('+n+' entities)'));
   }catch(e){
-    HA_LIVE=false; LIVE_STATUS='error'; updateLiveBadge();
-    toast(T('Live data niet beschikbaar','Live data unavailable'), true);
+    HA_LIVE=false; LIVE_STATUS='error'; updateLiveBadge(); startLiveTimer();
+    if(!silent) toast(T('Live data niet beschikbaar','Live data unavailable'), true);
     console.warn('live fetch failed', e);
   }
 }
@@ -2663,6 +2725,17 @@ async function boot(){
   renderProfiles();
   applyTheme();
   editScreen='main'; { const ss=$('#screen-select'); if(ss) ss.value='main'; }
+  // one-time: give every profile a visible default waiting screen + waitEnabled flag
+  { const p=profile(); if(p){
+      if(p.waitEnabled===undefined) p.waitEnabled=true;
+      if(!p._waitSeeded){
+        if(p.waitEnabled!==false && (!p.waitElements || !p.waitElements.length)) p.waitElements=[makeWaitText(p)];
+        p._waitSeeded=true; persist();
+      }
+  } }
+  { const tw=$('#tg-wait'); const we=profile()?profile().waitEnabled!==false:true;
+    if(tw) tw.checked=we;
+    const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!we; }
   const gs=$('#grid-size'); if(gs) gs.value=String(gridStep());
   injectGoogleFonts();
   try{ await registerUploadedFonts(); }catch(e){ console.warn(e); }
