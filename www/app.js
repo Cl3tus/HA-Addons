@@ -19,6 +19,9 @@ const $$ = sel => Array.from(document.querySelectorAll(sel));
 const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
 const esc = s => String(s).replace(/\\/g,'\\\\').replace(/"/g,'\\"');
 const escFmt = s => esc(s).replace(/%/g,'%%');
+/* auto-space a suffix in builder mode: "L/u" -> " L/u", " uur" -> " uur"
+   (trimmed first, so no double space), but ° / % / ‰ stay attached: "21°C", "50%". */
+const _suffixOut = s => { s=String(s||'').trim(); return s ? (/^[°%‰]/.test(s) ? s : ' '+s) : ''; };
 /* i18n helper — delegates to lang.js if present, else returns the Dutch text */
 const T = (nl,en) => (window.t ? window.t(nl,en) : nl);
 
@@ -294,7 +297,7 @@ function formatPreview(el, val){
     if(numeric){ const d = el.transform==='roundN'?(el.transformArg.n??1):(fmt.decimals??1); body = Number(val).toFixed(d); }
     else body = String(val);
   }
-  return (fmt.prefix||'') + body + (fmt.suffix||'');
+  return (fmt.prefix||'') + body + _suffixOut(fmt.suffix);
 }
 function displayText(el){ return formatPreview(el, transformPreview(el, rawValue(el))); }
 
@@ -1623,7 +1626,7 @@ function valueExpr(el){
   const fmt=el.format||{};
   if(sc.kind==='static'){
     let t = transformPreview(el, sc.text||''); // upper/capitalize fold in here
-    t = (fmt.prefix||'')+t+(fmt.suffix||'');
+    t = (fmt.prefix||'')+t+_suffixOut(fmt.suffix);
     return {mode:'print', literal:t};
   }
   if(sc.kind==='expr'){
@@ -1652,7 +1655,7 @@ function valueExpr(el){
   function wrapFmt(){
     let f;
     if(fmt.mode==='raw' && fmt.raw) f=fmt.raw;
-    else f=escFmt(fmt.prefix||'')+token+escFmt(fmt.suffix||'');
+    else f=escFmt(fmt.prefix||'')+token+escFmt(_suffixOut(fmt.suffix));
     return {mode:'printf', fmt:f, args:[arg]};
   }
 }

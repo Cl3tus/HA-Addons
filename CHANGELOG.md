@@ -1,3 +1,6 @@
+## 2.9.4
+- **Automatische spatie vóór de suffix** in builder-modus: `1065` + `L/u` → `1065 L/u`, en `uur` → ` uur` (je hoeft de spatie niet meer zelf te typen). Een bestaande handmatige spatie wordt eerst getrimd, dus geen dubbele spatie. Uitzondering: `°`, `%` en `‰` blijven vastzitten (`21°C`, `50%`).
+
 ## 2.9.3
 - **Tijd → UU:MM en UU:MM:SS werken nu ook bij tijd-alleen sensoren** (zonder datum). De transform zoekt nu zelf het tijd-gedeelte op, of de waarde nu `18:30:00` of `2026-04-19 18:30:00` is.
 - **"Laatste 3 tekens weg" (drop last 3 chars) verwijderd** uit de transform-lijst.
