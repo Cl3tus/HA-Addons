@@ -32,6 +32,9 @@
     /* --- index.html left panel --- */
     'Elementen toevoegen': 'Add elements',
     'Tekst / waarde': 'Text / value',
+    'Tekst': 'Text',
+    'Waarde': 'Value',
+    'Sleep om te verplaatsen': 'Drag to reorder',
     'MDI-icoon': 'MDI icon',
     'Lijn': 'Line',
     'Rechthoek': 'Rectangle',

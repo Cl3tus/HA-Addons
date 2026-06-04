@@ -1,3 +1,10 @@
+## 2.9.0
+- **Shift + slepen laat nu écht los van het raster** — ook bij het loslaten wordt niet meer teruggesnapt zolang je Shift vasthoudt.
+- **Lagen herordenen**: elke laag heeft nu een sleep-handvat (⣿) naast het oog; sleep om de volgorde (z-volgorde) te veranderen.
+- **Datum/tijd-transformaties** toegevoegd bij **Format & transform** (voor tekst/tijd-bronnen): UU:MM en UU:MM:SS uit een datum-tijd, en datums als JJJJ-MM-DD, DD-MM-JJJJ, DD/MM/JJJJ, DD-MM en DD/MM. (Gaat uit van ISO-invoer zoals Home Assistant levert.)
+- **Aparte knoppen "Tekst" en "Waarde"** in het elementenpaneel: *Tekst* is puur statische tekst (alleen een tekstveld), *Waarde* heeft de volledige bron/format/transform-opties. In de lagenlijst zie je nu visueel verschil: **T** voor tekst, **#** voor een waarde.
+- **Checkbox-geglitch** in Profiel-instellingen verder aangepakt: dialoog met vaste pixel-positie, eigen compositielaag en een altijd-zichtbare scrollbar (geen sub-pixel-sprong meer bij hover).
+
 ## 2.8.4
 - **Linkerpaneel**: elementen-palet mag nu tot **60%** van het paneel beslaan, lagenlijst houdt minstens **40%**.
 - **Canvas opent nu standaard op 100%** (gebruik "Passend" om in te passen).

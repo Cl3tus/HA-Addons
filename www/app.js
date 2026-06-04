@@ -266,6 +266,7 @@ function rawValue(el){
 }
 function transformPreview(el, val){
   const t = el.transform||'none', a = el.transformArg||{};
+  if(STRTRANSFORMS[t] && STRTRANSFORMS[t].prev) return STRTRANSFORMS[t].prev(String(val));
   switch(t){
     case 'trimSeconds': { const sv=String(val); return sv.length>3?sv.slice(0,-3):sv; }
     case 'upper': return String(val).toUpperCase();
@@ -660,7 +661,7 @@ function buildNode(el){
       const {ox,oy}=anchorOffset(el.anchor||'TOP_LEFT', w, h);
       el.x=Math.round(node.x()-ox); el.y=Math.round(node.y()-oy);
     }
-    if($('#tg-snap').checked) snapEl(el);
+    if($('#tg-snap').checked && !shiftDown) snapEl(el);   // hold Shift to drop off-grid
     // group move: shift the other selected elements by the same delta
     if(_groupDrag){
       const dx=el.x-_groupDrag.ox, dy=el.y-_groupDrag.oy; _groupDrag=null;
@@ -940,6 +941,18 @@ function layerClick(id, e){
   select(id);
 }
 
+let _dragLayerId=null;
+/* move element src so it renders just above target in the layer list */
+function moveLayerBefore(srcId, targetId){
+  if(srcId===targetId) return;
+  const arr=els();
+  const from=arr.findIndex(e=>e.id===srcId); if(from<0) return;
+  pushUndo();
+  const [it]=arr.splice(from,1);
+  const to=arr.findIndex(e=>e.id===targetId); if(to<0){ arr.push(it); }
+  else arr.splice(to,0,it);   // visual list is reversed → lands just below the target row
+  afterChange();
+}
 function renderLayers(){
   const box=$('#layers'); box.innerHTML='';
   $('#layer-count').textContent = els().length;
@@ -948,9 +961,17 @@ function renderLayers(){
     const row=document.createElement('div');
     row._elId=el.id;
     row.className='layer'+(isSelected(el.id)?' sel':'')+(el.visible===false?' hidden':'');
-    row.innerHTML=`<span class="ltype">${typeGlyph(el.type)}</span>
+    row.innerHTML=`<span class="lmove mdi mdi-drag-vertical" title="${T('Sleep om te verplaatsen','Drag to reorder')}"></span>
+      <span class="ltype">${typeGlyph(el)}</span>
       <span class="lname" title="${T('Dubbelklik om te hernoemen','Double-click to rename')}">${el.name||el.type}</span>
       <span class="lvis" title="${T('Zichtbaarheid','Visibility')}">${el.visible===false?'🚫':'👁'}</span>`;
+    // drag-to-reorder via the handle
+    const handle=row.querySelector('.lmove'); handle.draggable=true;
+    handle.ondragstart=e=>{ _dragLayerId=el.id; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',el.id);}catch(_){} };
+    handle.ondragend=()=>{ _dragLayerId=null; $$('.layer.drop-over').forEach(r=>r.classList.remove('drop-over')); };
+    row.ondragover=e=>{ if(_dragLayerId && _dragLayerId!==el.id){ e.preventDefault(); row.classList.add('drop-over'); } };
+    row.ondragleave=()=>row.classList.remove('drop-over');
+    row.ondrop=e=>{ e.preventDefault(); row.classList.remove('drop-over'); if(_dragLayerId) moveLayerBefore(_dragLayerId, el.id); _dragLayerId=null; };
     const nameEl=row.querySelector('.lname');
     let clickTimer=null;
     nameEl.onclick=(e)=>{ if(clickTimer) return; clickTimer=setTimeout(()=>{ clickTimer=null; layerClick(el.id, e); }, 220); };
@@ -969,7 +990,13 @@ function startRename(span, el){
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ inp.blur(); } else if(e.key==='Escape'){ inp.value=el.name||el.type; inp.blur(); } });
   inp.addEventListener('blur', commit, {once:true});
 }
-function typeGlyph(t){ return {text:'T',icon:'◈',line:'╱',rect:'▢',circle:'◯',triangle:'△',polygon:'⬡',ring:'◎',gauge:'◴',qr:'▦',wifi:'⌁',clock:'◔',graph:'⊿'}[t]||'•'; }
+function typeGlyph(el){
+  const t = (el && typeof el==='object') ? el.type : el;
+  // text vs value get a different glyph so layers are visually distinguishable
+  if(t==='text'){ const sc=(el&&typeof el==='object')?el.source:null;
+    return (sc && sc.kind!=='static') ? '#' : 'T'; }
+  return {icon:'◈',line:'╱',rect:'▢',circle:'◯',triangle:'△',polygon:'⬡',ring:'◎',gauge:'◴',qr:'▦',wifi:'⌁',clock:'◔',graph:'⊿'}[t]||'•';
+}
 
 /* ============================================================
    ADD ELEMENTS
@@ -977,16 +1004,23 @@ function typeGlyph(t){ return {text:'T',icon:'◈',line:'╱',rect:'▢',circle:
 function addElement(type, pos){
   pushUndo();
   const p=profile();
+  // "value" and "text" are both the it.print(f) text element, only the inspector
+  // (and the layer icon) differ: text = static only, value = source/transform
+  let role=null, nameType=type;
+  if(type==='value'){ role='value'; type='text'; }
+  else if(type==='text'){ role='text'; }
   const cx = pos ? clamp(Math.round(pos.x),0,p.device.w) : Math.round(p.device.w/2);
   const cy = pos ? clamp(Math.round(pos.y),0,p.device.h) : 120;
-  const base={ id:uid(), type, name:elName(type), visible:true,
+  const base={ id:uid(), type, name:elName(nameType), visible:true,
     x:cx, y:cy, colorId:'color_text', anchor:'CENTER',
     condition:{enabled:false,sourceId:'',op:'on',val:'',val2:'',
                whenTrue:{text:'',iconName:'',iconHex:'',colorId:'',visible:true},
                whenFalse:{text:'',iconName:'',iconHex:'',colorId:'',visible:true}} };
   if(type==='text'){
-    Object.assign(base,{ fontId:'font_klein',
-      source:{kind:'static',text:'Tekst',sourceId:'',expr:''},
+    Object.assign(base,{ fontId:'font_klein', role,
+      source: role==='value'
+        ? {kind:'sensor',sourceId:(p.sources[0]?p.sources[0].id:''),text:'',expr:''}
+        : {kind:'static',text:'Tekst',sourceId:'',expr:''},
       format:{mode:'builder',decimals:1,prefix:'',suffix:'',raw:'%s'}, transform:'none', transformArg:{} });
   } else if(type==='icon'){
     Object.assign(base,{ fontId:'font_mdi_large', iconName:'thermometer-water', iconHex:'F1A80' });
@@ -1027,8 +1061,11 @@ function addElement(type, pos){
   }
   els().push(base); selectedId=base.id; afterChange();
 }
-function elName(t){ const n=els().filter(e=>e.type===t).length+1;
-  const m={text:T('Tekst','Text'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
+function elName(t){
+  const isVal=t==='value';
+  const n=els().filter(e=> isVal ? (e.type==='text'&&e.role==='value')
+                                 : (e.type===t && !(t==='text'&&e.role==='value'))).length+1;
+  const m={text:T('Tekst','Text'),value:T('Waarde','Value'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
            circle:T('Cirkel','Circle'),triangle:T('Driehoek','Triangle'),polygon:T('Veelhoek','Polygon'),
            ring:'Ring',gauge:T('Meter','Gauge'),qr:'QR',wifi:'WiFi',clock:T('Klok','Clock'),graph:T('Grafiek','Graph')};
   return (m[t]||'Element')+' '+n; }
@@ -1174,8 +1211,13 @@ function renderInspector(){
 
   // value source + format + transform (text only)
   if(el.type==='text'){
-    h+=g(T('Bron','Source'), sourceEditor(el));
-    h+=g(T('Format & transform','Format & transform'), formatEditor(el));
+    if(el.role==='text'){
+      // pure text element: just the static text, no source/transform
+      h+=g(T('Tekst','Text'), `<div class="row"><div><input data-src="text" type="text" value="${attr((el.source&&el.source.text)||'')}"></div></div>`);
+    } else {
+      h+=g(T('Bron','Source'), sourceEditor(el));
+      h+=g(T('Format & transform','Format & transform'), formatEditor(el));
+    }
   }
 
   // wifi smart element
@@ -1321,11 +1363,38 @@ function formatEditor(el){
   h+=`<div class="hint">Preview: <span class="mono">${attr(displayText(el))}</span></div>`;
   return h;
 }
+/* substr-based date/time reformatting for HA string/time values. Assumes an
+   ISO-ish input: "HH:MM:SS", "YYYY-MM-DD", or "YYYY-MM-DD HH:MM:SS". */
+function _iso(s){ return /^\d{4}-\d{2}-\d{2}/.test(String(s)); }
+var STRTRANSFORMS = {
+  time_hm:     { nl:'Tijd → UU:MM (uit datum-tijd)', en:'Time → HH:MM (from datetime)',
+                 expr:s=>`${s}.substr(11,5)`, prev:s=>s.length>=16?s.substr(11,5):s },
+  time_hms:    { nl:'Tijd → UU:MM:SS (uit datum-tijd)', en:'Time → HH:MM:SS (from datetime)',
+                 expr:s=>`${s}.substr(11,8)`, prev:s=>s.length>=19?s.substr(11,8):s },
+  date_ymd:    { nl:'Datum → JJJJ-MM-DD', en:'Date → YYYY-MM-DD',
+                 expr:s=>`${s}.substr(0,10)`, prev:s=>String(s).substr(0,10) },
+  date_dmy:    { nl:'Datum → DD-MM-JJJJ', en:'Date → DD-MM-YYYY',
+                 expr:s=>`${s}.substr(8,2) + "-" + ${s}.substr(5,2) + "-" + ${s}.substr(0,4)`,
+                 prev:s=>_iso(s)?`${s.substr(8,2)}-${s.substr(5,2)}-${s.substr(0,4)}`:s },
+  date_dmy_sl: { nl:'Datum → DD/MM/JJJJ', en:'Date → DD/MM/YYYY',
+                 expr:s=>`${s}.substr(8,2) + "/" + ${s}.substr(5,2) + "/" + ${s}.substr(0,4)`,
+                 prev:s=>_iso(s)?`${s.substr(8,2)}/${s.substr(5,2)}/${s.substr(0,4)}`:s },
+  date_dm:     { nl:'Datum → DD-MM', en:'Date → DD-MM',
+                 expr:s=>`${s}.substr(8,2) + "-" + ${s}.substr(5,2)`,
+                 prev:s=>_iso(s)?`${s.substr(8,2)}-${s.substr(5,2)}`:s },
+  date_dm_sl:  { nl:'Datum → DD/MM', en:'Date → DD/MM',
+                 expr:s=>`${s}.substr(8,2) + "/" + ${s}.substr(5,2)`,
+                 prev:s=>_iso(s)?`${s.substr(8,2)}/${s.substr(5,2)}`:s },
+};
 function transformOptions(kind){
   if(kind==='number') return [['none',T('Geen','None')],['roundN',T('Afronden op N decimalen','Round to N decimals')],['scale',T('Schalen (× factor)','Scale (× factor)')]];
   if(kind==='bool')   return [['none',T('Geen','None')],['boolLabel',T('on/off → eigen labels','on/off → custom labels')]];
-  if(kind==='time')   return [['none',T('Geen','None')],['trimSeconds',T('Tijd → HH:MM','Time → HH:MM')]];
-  if(kind==='string') return [['none',T('Geen','None')],['trimSeconds',T('Laatste 3 tekens weg','Drop last 3 chars')],['boolLabel',T('on/off → eigen labels','on/off → custom labels')]];
+  if(kind==='time' || kind==='string'){
+    const base = [['none',T('Geen','None')], ['trimSeconds',T('Laatste 3 tekens weg (…:SS → UU:MM)','Drop last 3 chars (…:SS → HH:MM)')]];
+    if(kind==='string') base.push(['boolLabel',T('on/off → eigen labels','on/off → custom labels')]);
+    Object.keys(STRTRANSFORMS).forEach(id=>base.push([id, T(STRTRANSFORMS[id].nl, STRTRANSFORMS[id].en)]));
+    return base;
+  }
   // static
   return [['none',T('Geen','None')],['upper',T('HOOFDLETTERS','UPPERCASE')],['capitalize',T('Eerste letter hoofdletter','Capitalize first letter')]];
 }
@@ -1480,11 +1549,12 @@ function valueExpr(el){
   } else {
     let expr=`id(${src.id}).state`;
     if(el.transform==='trimSeconds') expr=`id(${src.id}).state.substr(0, id(${src.id}).state.length() - 3)`;
+    else if(STRTRANSFORMS[el.transform] && STRTRANSFORMS[el.transform].expr) expr=STRTRANSFORMS[el.transform].expr(`id(${src.id}).state`);
     if(el.transform==='boolLabel'){ const a=el.transformArg||{};
       arg=`(id(${src.id}).state == "on" ? "${esc(a.trueLabel||'Aan')}" : "${esc(a.falseLabel||'Uit')}")`; token='%s';
       return wrapFmt();
     }
-    arg=expr+'.c_str()'; token='%s';
+    arg='('+expr+').c_str()'; token='%s';
   }
   return wrapFmt();
   function wrapFmt(){
