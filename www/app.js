@@ -266,6 +266,7 @@ function rawValue(el){
 }
 function transformPreview(el, val){
   const t = el.transform||'none', a = el.transformArg||{};
+  if(t==='custom') return customFmtPreview(el, val);
   if(STRTRANSFORMS[t] && STRTRANSFORMS[t].prev) return STRTRANSFORMS[t].prev(String(val));
   if(NAMETRANSFORMS[t]) return nameTransformPreview(NAMETRANSFORMS[t], val);
   switch(t){
@@ -965,6 +966,7 @@ function renderLayers(){
     row.innerHTML=`<span class="lmove mdi mdi-drag-vertical" title="${T('Sleep om te verplaatsen','Drag to reorder')}"></span>
       <span class="ltype">${typeGlyph(el)}</span>
       <span class="lname" title="${T('Dubbelklik om te hernoemen','Double-click to rename')}">${el.name||el.type}</span>
+      <span class="ldel" title="${T('Verwijderen','Delete')}">🗑</span>
       <span class="lvis" title="${T('Zichtbaarheid','Visibility')}">${el.visible===false?'🚫':'👁'}</span>`;
     // drag-to-reorder via the handle
     const handle=row.querySelector('.lmove'); handle.draggable=true;
@@ -979,6 +981,9 @@ function renderLayers(){
     nameEl.ondblclick=(e)=>{ e.stopPropagation(); if(clickTimer){ clearTimeout(clickTimer); clickTimer=null; } startRename(nameEl, el); };
     row.querySelector('.ltype').onclick=(e)=>layerClick(el.id, e);
     row.querySelector('.lvis').onclick=(e)=>{e.stopPropagation(); pushUndo(); el.visible=el.visible===false?true:false; afterChange();};
+    row.querySelector('.ldel').onclick=(e)=>{e.stopPropagation(); pushUndo();
+      const arr=els(); const i=arr.findIndex(x=>x.id===el.id); if(i>=0) arr.splice(i,1);
+      selectedIds.delete(el.id); if(selectedId===el.id) selectedId=null; afterChange();};
     row.oncontextmenu=(e)=>{ e.preventDefault(); if(!isSelected(el.id)) select(el.id); showMenu(e.clientX,e.clientY, elItems(el)); };
     box.appendChild(row);
   });
@@ -1216,6 +1221,7 @@ function renderInspector(){
       // pure text element: just the static text, no source/transform
       h+=g(T('Tekst','Text'), `<div class="row"><div><input data-src="text" type="text" value="${attr((el.source&&el.source.text)||'')}"></div></div>`);
     } else {
+      if(el.role==='value' && el.source && el.source.kind!=='sensor') el.source.kind='sensor';   // value = sensor only
       h+=g(T('Bron','Source'), sourceEditor(el));
       h+=g(T('Format & transform','Format & transform'), formatEditor(el));
     }
@@ -1316,6 +1322,10 @@ function srcOpts(sel,allowEmpty){
 
 function sourceEditor(el){
   const sc=el.source||{kind:'static'};
+  // value elements are always a sensor — no static/expression choice
+  if(el.role==='value'){
+    return `<div class="row"><div><label class="fld">Sensor</label><select data-src="sourceId">${srcOpts(sc.sourceId,true)}</select></div></div>`;
+  }
   let h=`<div class="row"><div><label class="fld">${T('Type bron','Source type')}</label>
     <select data-src="kind">
       <option value="static" ${sc.kind==='static'?'selected':''}>${T('Vaste tekst','Static text')}</option>
@@ -1361,6 +1371,10 @@ function formatEditor(el){
     h+=`<div class="row"><div><label class="fld">${T('Factor (×)','Factor (×)')}</label><input data-ta="factor" type="number" step="any" value="${a.factor??1}"></div></div>`; }
   if(el.transform==='roundN'){ const a=el.transformArg||{};
     h+=`<div class="row"><div><label class="fld">${T('Decimalen','Decimals')}</label><input data-ta="n" type="number" min="0" max="6" value="${a.n??1}"></div></div>`; }
+  if(el.transform==='custom'){ const a=el.transformArg||{};
+    h+=`<div class="row tight"><div style="flex:2"><label class="fld">Format</label><input data-ta="fmt" type="text" value="${attr(a.fmt||'{wd} {dd} {mon}')}" placeholder="{wd} {dd} {mon}"></div>
+        <div><label class="fld">${T('Namen','Names')}</label><select data-ta="lang"><option value="nl" ${a.lang!=='en'?'selected':''}>NL</option><option value="en" ${a.lang==='en'?'selected':''}>EN</option></select></div></div>
+      <div class="hint">${T('Tokens','Tokens')}: <span class="mono">{wd} {wday} {mon} {month} {dd} {mm} {yyyy} {yy} {hh} {min} {ss}</span> — ${T('bv.','e.g.')} <span class="mono">{wd} {dd} {mon}</span> → <span class="mono">Zo 19 apr</span>. ${T('Gaat uit van een ISO-datum (JJJJ-MM-DD …).','Assumes an ISO date (YYYY-MM-DD …).')}</div>`; }
   h+=`<div class="hint">Preview: <span class="mono">${attr(displayText(el))}</span></div>`;
   return h;
 }
@@ -1406,6 +1420,58 @@ function nameTransformPreview(nt, val){
   const wd=new Date(Date.UTC(+s.substr(0,4), +s.substr(5,2)-1, +s.substr(8,2))).getUTCDay();
   return nt.arr[wd]||s;
 }
+/* weekday/month names per language, for the custom date/time format */
+var DTNAMES = {
+  nl: { wd_s:['zo','ma','di','wo','do','vr','za'], wd_l:['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'],
+        mo_s:['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'], mo_l:['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'] },
+  en: { wd_s:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], wd_l:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+        mo_s:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], mo_l:['January','February','March','April','May','June','July','August','September','October','November','December'] },
+};
+var DT_TOKEN_RE = /(\{wday\}|\{wd\}|\{month\}|\{mon\}|\{yyyy\}|\{yy\}|\{mm\}|\{dd\}|\{hh\}|\{min\}|\{ss\})/;
+function customFmtPreview(el, val){
+  const s=String(val); const a=el.transformArg||{}; const N=DTNAMES[a.lang==='en'?'en':'nl'];
+  const wd=_iso(s)?new Date(Date.UTC(+s.substr(0,4),+s.substr(5,2)-1,+s.substr(8,2))).getUTCDay():0;
+  const mo=_iso(s)?(parseInt(s.substr(5,2),10)-1):0;
+  return String(a.fmt||'')
+    .replace(/\{wday\}/g,N.wd_l[wd]||'').replace(/\{wd\}/g,N.wd_s[wd]||'')
+    .replace(/\{month\}/g,N.mo_l[mo]||'').replace(/\{mon\}/g,N.mo_s[mo]||'')
+    .replace(/\{yyyy\}/g,s.substr(0,4)).replace(/\{yy\}/g,s.substr(2,2))
+    .replace(/\{mm\}/g,s.substr(5,2)).replace(/\{dd\}/g,s.substr(8,2))
+    .replace(/\{hh\}/g,s.length>=13?s.substr(11,2):'').replace(/\{min\}/g,s.length>=16?s.substr(14,2):'').replace(/\{ss\}/g,s.length>=19?s.substr(17,2):'');
+}
+function textCustomBlock(el, I, fontId, color, anchor){
+  const src=srcById(el.source.sourceId)||{id:el.source.sourceId};
+  const sid=shortId(el), st=`id(${src.id}).state`, a=el.transformArg||{}, N=DTNAMES[a.lang==='en'?'en':'nl'];
+  const pat=String(a.fmt||''); const usesWd=/\{wd\}|\{wday\}/.test(pat), usesMo=/\{mon\}|\{month\}/.test(pat);
+  const segs=pat.split(DT_TOKEN_RE).filter(x=>x!=='');
+  const cpp=seg=>{ switch(seg){
+    case '{yyyy}':return `${st}.substr(0,4)`; case '{yy}':return `${st}.substr(2,2)`;
+    case '{mm}':return `${st}.substr(5,2)`; case '{dd}':return `${st}.substr(8,2)`;
+    case '{hh}':return `${st}.substr(11,2)`; case '{min}':return `${st}.substr(14,2)`; case '{ss}':return `${st}.substr(17,2)`;
+    case '{wd}':return `std::string(wd_${sid}[tmv_${sid}.tm_wday])`; case '{wday}':return `std::string(wdl_${sid}[tmv_${sid}.tm_wday])`;
+    case '{mon}':return `std::string(mo_${sid}[mi_${sid}])`; case '{month}':return `std::string(mol_${sid}[mi_${sid}])`;
+    default:return `std::string("${esc(seg)}")`; } };
+  const concat = segs.length ? segs.map(cpp).join(' + ') : 'std::string("")';
+  let out=`${I}{\n`;
+  if(usesWd){
+    out+=`${I}  struct tm tmv_${sid} = {};\n`;
+    out+=`${I}  tmv_${sid}.tm_year = atoi(${st}.substr(0,4).c_str()) - 1900;\n`;
+    out+=`${I}  tmv_${sid}.tm_mon  = atoi(${st}.substr(5,2).c_str()) - 1;\n`;
+    out+=`${I}  tmv_${sid}.tm_mday = atoi(${st}.substr(8,2).c_str());\n`;
+    out+=`${I}  mktime(&tmv_${sid});\n`;
+    out+=`${I}  static const char* wd_${sid}[] = {${N.wd_s.map(s=>`"${esc(s)}"`).join(', ')}};\n`;
+    out+=`${I}  static const char* wdl_${sid}[] = {${N.wd_l.map(s=>`"${esc(s)}"`).join(', ')}};\n`;
+  }
+  if(usesMo){
+    out+=`${I}  int mi_${sid} = atoi(${st}.substr(5,2).c_str()) - 1; if(mi_${sid}<0||mi_${sid}>11) mi_${sid}=0;\n`;
+    out+=`${I}  static const char* mo_${sid}[] = {${N.mo_s.map(s=>`"${esc(s)}"`).join(', ')}};\n`;
+    out+=`${I}  static const char* mol_${sid}[] = {${N.mo_l.map(s=>`"${esc(s)}"`).join(', ')}};\n`;
+  }
+  out+=`${I}  std::string out_${sid} = ${concat};\n`;
+  out+=`${I}  it.printf(${el.x}, ${el.y}, id(${fontId}), ${color}, TextAlign::${anchor}, "%s", out_${sid}.c_str());\n`;
+  out+=`${I}}`;
+  return out;
+}
 function transformOptions(kind){
   if(kind==='number') return [['none',T('Geen','None')],['roundN',T('Afronden op N decimalen','Round to N decimals')],['scale',T('Schalen (× factor)','Scale (× factor)')]];
   if(kind==='bool')   return [['none',T('Geen','None')],['boolLabel',T('on/off → eigen labels','on/off → custom labels')]];
@@ -1413,7 +1479,7 @@ function transformOptions(kind){
     const base = [['none',T('Geen','None')], ['trimSeconds',T('Laatste 3 tekens weg (…:SS → UU:MM)','Drop last 3 chars (…:SS → HH:MM)')]];
     if(kind==='string') base.push(['boolLabel',T('on/off → eigen labels','on/off → custom labels')]);
     Object.keys(STRTRANSFORMS).forEach(id=>base.push([id, T(STRTRANSFORMS[id].nl, STRTRANSFORMS[id].en)]));
-    Object.keys(NAMETRANSFORMS).forEach(id=>base.push([id, T(NAMETRANSFORMS[id].nl, NAMETRANSFORMS[id].en)]));
+    base.push(['custom', T('Aangepast format (weekdag/maand/datum/tijd)','Custom format (weekday/month/date/time)')]);
     return base;
   }
   // static
@@ -1480,7 +1546,9 @@ function bindInspector(host, el){
     }
   });
   host.querySelectorAll('[data-k2]').forEach(inp=>{
-    inp.addEventListener('change',()=>{ pushUndo(); el[inp.dataset.k2]=inp.value; el.transformArg={}; afterChange(); });
+    inp.addEventListener('change',()=>{ pushUndo(); el[inp.dataset.k2]=inp.value; el.transformArg={};
+      if(inp.value==='custom'){ el.transformArg={fmt:'{wd} {dd} {mon}', lang:(window.APP_LANG==='en'?'en':'nl')}; }
+      afterChange(); });
   });
   // anchor
   host.querySelectorAll('[data-anchor]').forEach(b=>b.addEventListener('click',()=>{ pushUndo();
@@ -1640,7 +1708,9 @@ function drawStmt(el, indent){
   if(el.type==='clock') return clockCode(el, I, color, anchor);
   const font=fontById(el.fontId)||{id:'font_klein'};
   if(el.type==='icon') return `${I}it.printf(${el.x}, ${el.y}, id(${font.id}), ${color}, TextAlign::${anchor}, "\\U${pad8(el.iconHex||'')}");`;
-  // text — weekday/month NAME transforms need a small helper block
+  // text — custom format and weekday/month NAME transforms need a helper block
+  if(el.transform==='custom' && el.source && el.source.kind==='sensor' && el.source.sourceId)
+    return textCustomBlock(el, I, font.id, color, anchor);
   if(NAMETRANSFORMS[el.transform] && el.source && el.source.kind==='sensor' && el.source.sourceId)
     return textNameBlock(el, I, font.id, color, anchor);
   const v=valueExpr(el);
@@ -1802,6 +1872,9 @@ function collectGlyphs(){
           addText(E.fontId,(E.format&&E.format.prefix)||''); addText(E.fontId,(E.format&&E.format.suffix)||'');
           if(E.transform==='boolLabel'){ const a=E.transformArg||{}; addText(E.fontId,a.trueLabel||'Aan'); addText(E.fontId,a.falseLabel||'Uit'); }
           if(NAMETRANSFORMS[E.transform]) NAMETRANSFORMS[E.transform].arr.forEach(nm=>addText(E.fontId, nm));   // weekday/month letters
+          if(E.transform==='custom'){ const a=E.transformArg||{}; const N=DTNAMES[a.lang==='en'?'en':'nl'];
+            [].concat(N.wd_s,N.wd_l,N.mo_s,N.mo_l).forEach(nm=>addText(E.fontId, nm));
+            addText(E.fontId, String(a.fmt||'').replace(/\{[a-z]+\}/g,'')); addText(E.fontId,'0123456789'); }
         }
       }
       else if(E.type==='wifi'){ (E.wifi&&E.wifi.levels||[]).forEach(lv=>addIcon(E.fontId, lv.hex, lv.icon||'wifi')); }
@@ -2312,7 +2385,7 @@ function openProfileSettings(){
      <label class="toggle"><input type="checkbox" id="ps-wait" ${p.waitEnabled!==false?'checked':''}> ${T('Wachtscherm gebruiken','Use waiting screen')}</label>
      <div class="hint" style="margin:4px 0 0">${T('Genereert de “waiting for data”-tak (if initial_data_received == false). Het wachtscherm ontwerp je via de scherm-keuze boven het canvas.','Generates the “waiting for data” branch (if initial_data_received == false). Design the waiting screen via the screen selector above the canvas.')}</div>
      <hr style="border-color:var(--line);margin:14px 0">
-     <button type="button" id="ps-yaml-toggle" style="background:none;border:none;cursor:pointer;font-weight:600;color:var(--accent);padding:0;font-size:13px">▸ ${T('Gegenereerde YAML — welke blokken','Generated YAML — which blocks')}</button>
+     <button type="button" id="ps-yaml-toggle" style="background:none;border:none;cursor:pointer;font-weight:600;color:var(--accent);padding:0;font-size:13px">▸ ${T('Gegenereerde YAML-blokken','Generated YAML Blocks')}</button>
      <div id="ps-yaml-body" style="display:none;margin-top:8px">
          <label class="toggle"><input type="checkbox" id="ps-o-refresh" ${o.refresh?'checked':''}> ${T('Refresh-logica (esphome on_boot + script + time)','Refresh logic (esphome on_boot + script + time)')}</label>
          <div class="row tight" style="margin:4px 0 8px">
@@ -2383,7 +2456,7 @@ function openProfileSettings(){
   $('#ps-model').onchange=showInfo; showInfo();
   { const tg=$('#ps-yaml-toggle'), body=$('#ps-yaml-body'); if(tg&&body) tg.onclick=()=>{
       const open=body.style.display!=='none'; body.style.display=open?'none':'';
-      tg.textContent=(open?'▸ ':'▾ ')+T('Gegenereerde YAML — welke blokken','Generated YAML — which blocks'); }; }
+      tg.textContent=(open?'▸ ':'▾ ')+T('Gegenereerde YAML-blokken','Generated YAML Blocks'); }; }
   $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>{ $('#ps-bg').value=b.dataset.bg; });
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
     if(confirm(T('Profiel verwijderen?','Delete profile?'))){ state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist(); boot(); closeModal(); } };
@@ -2538,7 +2611,12 @@ function _elFromCall(method, A, colors, qrMap, grMap, sources){
       const ref=/id\(\s*([A-Za-z_]\w*)\s*\)\s*\.state/.exec(rest.join(','));
       if(method==='printf' && rest.length && ref && sources.some(s=>s.id===ref[1])){
         el.source={kind:'sensor',sourceId:ref[1],text:'',expr:''};
-        el.format={mode:'raw',decimals:1,prefix:'',suffix:'',raw:lit};
+        // turn common formats into builder mode so prefix/suffix/decimals stay editable
+        const dm=/^([^%]*)%\.(\d+)f([^%]*)$/.exec(lit), im=/^([^%]*)%d([^%]*)$/.exec(lit), sm=/^([^%]*)%s([^%]*)$/.exec(lit);
+        if(dm) el.format={mode:'builder',decimals:+dm[2],prefix:dm[1],suffix:dm[3],raw:lit};
+        else if(im) el.format={mode:'builder',decimals:0,prefix:im[1],suffix:im[3],raw:lit};
+        else if(sm) el.format={mode:'builder',decimals:1,prefix:sm[1],suffix:sm[3],raw:lit};
+        else el.format={mode:'raw',decimals:1,prefix:'',suffix:'',raw:lit};
         el.role='value';     // bound to a source → it's a value element
       } else {
         el.source={kind:'static',text:lit,sourceId:'',expr:''};

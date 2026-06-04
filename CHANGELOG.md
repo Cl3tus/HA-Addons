@@ -1,3 +1,11 @@
+## 2.9.2
+- **Waarde-icoon** in het elementenpaneel is nu een duidelijke **#** (zoals in de lagenlijst).
+- **Waarde-bron**: alleen nog **Sensor** als brontype (vaste tekst en vrije expressie zijn weg bij Waarde).
+- **Decimalen werken weer** bij geïmporteerde getalsensoren: `%.1f`-achtige formats worden nu als builder (prefix/suffix/decimalen) ingelezen i.p.v. als rauwe string.
+- **Aangepast datum/tijd-format**: nieuwe transform **"Aangepast format"** met een vrij in te vullen patroon en tokens — `{wd} {wday} {mon} {month} {dd} {mm} {yyyy} {yy} {hh} {min} {ss}` — plus een NL/EN-keuze voor de namen. Bv. `{wd} {dd} {mon}` → **Zo 19 apr**. De losse weekdag/maand-transforms zijn uit de lijst gehaald (custom dekt ze).
+- **Laag verwijderen**: klein prullenbakje naast het oogje in de lagenlijst.
+- **Profiel-instellingen**: kop heet nu **"Gegenereerde YAML-blokken"**.
+
 ## 2.9.1
 - **Import herkent nu tekst vs. waarde**: regels gebonden aan een bron worden als **Waarde** ingelezen, losse letterlijke tekst als **Tekst**.
 - **Bestaande profielen automatisch bijgewerkt**: tekst-elementen krijgen bij het opstarten de juiste rol (statisch → Tekst, bron/expressie → Waarde), zodat de lagen en de inspector meteen kloppen.
