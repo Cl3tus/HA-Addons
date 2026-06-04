@@ -1741,7 +1741,7 @@ function genYAML(){
   out+=`# ============================================================\n\n`;
 
   const o = outCfg(p);
-  const friendly = d.comment || d.name || 'E-ink Display';
+  const friendly = p.name || 'E-ink Display';
 
   // refresh logic — esphome on_boot + script + time belong together (one toggle)
   if(o.refresh){
@@ -2171,7 +2171,6 @@ function openProfileSettings(){
   const modelOpts=EINK_MODELS.map(m=>`<option value="${attr(m.v)}" ${d.model===m.v?'selected':''}>${m.v} — ${m.d}</option>`).join('');
   openModal(T('Profiel-instellingen','Profile settings'),
     `<div class="row"><div><label class="fld">${T('Profielnaam','Profile name')}</label><input id="ps-name" value="${attr(p.name)}"></div></div>
-     <div class="row"><div><label class="fld">${T('Device naam','Device name')}</label><input id="ps-dev" value="${attr(d.name)}"></div><div><label class="fld">Friendly name</label><input id="ps-fn" value="${attr(d.comment)}"></div></div>
      <div class="row"><div><label class="fld">Model</label><select id="ps-model" style="width:100%">${modelOpts}</select></div></div>
      <div class="hint" id="ps-model-info"></div>
      <div class="row"><div><label class="fld">${T('Rotatie','Rotation')}</label><select id="ps-rot">${[0,90,180,270].map(r=>`<option ${d.rotation===r?'selected':''}>${r}</option>`).join('')}</select></div>
@@ -2199,12 +2198,12 @@ function openProfileSettings(){
            <div><label class="fld">${T('Wacht-timeout','Wait timeout')}</label><input id="ps-o-timeout" value="${attr(o.waitTimeout)}"></div>
            <div><label class="fld">${T('Interval (min)','Interval (min)')}</label><input id="ps-o-interval" type="number" min="1" value="${o.timeInterval}" style="width:70px"></div>
          </div>
-         <label class="toggle"><input type="checkbox" id="ps-o-globals" ${o.globals?'checked':''}> globals</label>
-         <div style="margin:4px 0">
+         <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0">
+           <label class="toggle"><input type="checkbox" id="ps-o-globals" ${o.globals?'checked':''}> globals</label>
            <label class="toggle"><input type="checkbox" id="ps-o-fonts" ${o.fonts?'checked':''}> font</label>
-           <label class="toggle" style="margin-left:14px"><input type="checkbox" id="ps-o-colors" ${o.colors?'checked':''}> color</label>
-           <label class="toggle" style="margin-left:14px"><input type="checkbox" id="ps-o-sensors" ${o.sensors?'checked':''}> sensor</label>
-           <label class="toggle" style="margin-left:14px"><input type="checkbox" id="ps-o-textsensors" ${o.textSensors?'checked':''}> text_sensor</label>
+           <label class="toggle"><input type="checkbox" id="ps-o-colors" ${o.colors?'checked':''}> color</label>
+           <label class="toggle"><input type="checkbox" id="ps-o-sensors" ${o.sensors?'checked':''}> sensor</label>
+           <label class="toggle"><input type="checkbox" id="ps-o-textsensors" ${o.textSensors?'checked':''}> text_sensor</label>
          </div>
          <hr style="border-color:var(--line);margin:10px 0">
          <label class="toggle"><input type="checkbox" id="ps-o-spi" ${o.spi?'checked':''}> ${T('SPI-bus genereren','Generate SPI bus')}</label>
@@ -2232,14 +2231,14 @@ function openProfileSettings(){
      <hr style="border-color:var(--line);margin:14px 0">
      <button class="btn ghost sm danger" id="ps-delete">${T('Profiel verwijderen','Delete profile')}</button>`,
     [{label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
-      p.name=$('#ps-name').value; d.name=$('#ps-dev').value; d.comment=$('#ps-fn').value;
+      p.name=$('#ps-name').value;
       d.model=$('#ps-model').value; d.rotation=+$('#ps-rot').value; d.w=+$('#ps-w').value; d.h=+$('#ps-h').value;
       d.bg=$('#ps-bg').value;
       p.waitEnabled=$('#ps-wait').checked;
       if(!p.waitEnabled && editScreen==='wait'){ editScreen='main'; const ss=$('#screen-select'); if(ss) ss.value='main'; }
       { const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!p.waitEnabled; }
       p.output=Object.assign(outCfg(p), {
-        refresh:$('#ps-o-refresh').checked,
+        refresh:$('#ps-o-refresh').checked || p.waitEnabled,   // waiting screen needs the refresh logic
         bootPriority:$('#ps-o-prio').value, bootDelay:$('#ps-o-delay').value, waitTimeout:$('#ps-o-timeout').value,
         timeInterval:+$('#ps-o-interval').value||15,
         globals:$('#ps-o-globals').checked,
@@ -2260,6 +2259,8 @@ function openProfileSettings(){
   const showInfo=()=>{ const mi=modelInfo($('#ps-model').value);
     infoEl.innerHTML=`${mi.d} · ${T('kleuren','colours')}: <b>${colTypeName[mi.c]||mi.c}</b>`; };
   $('#ps-model').onchange=showInfo; showInfo();
+  // waiting screen relies on the refresh logic → tick it automatically
+  { const tw=$('#ps-wait'); if(tw) tw.onchange=()=>{ if(tw.checked){ const r=$('#ps-o-refresh'); if(r) r.checked=true; } }; }
   $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>{ $('#ps-bg').value=b.dataset.bg; });
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
     if(confirm(T('Profiel verwijderen?','Delete profile?'))){ state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist(); boot(); closeModal(); } };
@@ -2300,6 +2301,45 @@ function _readSnapshot(text){
   const m=/#\s*eink-editor:v1:([A-Za-z0-9+/=]+)/.exec(String(text));
   if(!m) return null;
   try{ return JSON.parse(decodeURIComponent(escape(atob(m[1])))); }catch(e){ return null; }
+}
+/* read a pin value from a block (handles "key: GPIOxx" and "key:\n number: GPIOxx") */
+function _yamlPin(block, key){
+  let m=new RegExp(key+':[ \\t]*([A-Za-z0-9]+)','').exec(block);
+  if(m && m[1]) return m[1];
+  m=new RegExp(key+':[ \\t]*\\r?\\n[ \\t]*number:[ \\t]*([A-Za-z0-9]+)','').exec(block);
+  return m? m[1] : null;
+}
+/* set the profile's "which YAML blocks" output settings from an imported config */
+function applyOutputFromYaml(text, p){
+  const has=k=>_extractTopBlock(text,k)!=null;
+  const o=outCfg(p);
+  const esph=_extractTopBlock(text,'esphome')||'';
+  const tm=_extractTopBlock(text,'time')||'';
+  const spi=_extractTopBlock(text,'spi')||'';
+  const disp=_extractTopBlock(text,'display')||'';
+  o.refresh = has('esphome')||has('script')||has('time');
+  o.globals = has('globals');
+  o.fonts = has('font'); o.colors = has('color');
+  o.sensors = has('sensor'); o.textSensors = has('text_sensor');
+  o.spi = has('spi');
+  let m;
+  if((m=/priority:[ \t]*([\d.]+)/.exec(esph))) o.bootPriority=m[1];
+  if((m=/-[ \t]*delay:[ \t]*([0-9a-z]+)/i.exec(esph))) o.bootDelay=m[1];
+  if((m=/timeout:[ \t]*([0-9a-z]+)/i.exec(esph))) o.waitTimeout=m[1];
+  if((m=/minutes:[ \t]*\/(\d+)/.exec(tm))) o.timeInterval=+m[1];
+  if(o.spi){ const a=_yamlPin(spi,'clk_pin'); if(a) o.spiClk=a; const b=_yamlPin(spi,'mosi_pin'); if(b) o.spiMosi=b; }
+  if(/cs_pin:/.test(disp)){
+    o.displayPins=true;
+    if((m=/data_rate:[ \t]*([A-Za-z0-9]+)/.exec(disp))) o.dataRate=m[1];
+    const cs=_yamlPin(disp,'cs_pin'); if(cs) o.csPin=cs;
+    const dc=_yamlPin(disp,'dc_pin'); if(dc) o.dcPin=dc;
+    const bs=_yamlPin(disp,'busy_pin'); if(bs) o.busyPin=bs;
+    const rs=_yamlPin(disp,'reset_pin'); if(rs) o.resetPin=rs;
+    if((m=/reset_duration:[ \t]*([A-Za-z0-9]+)/.exec(disp))) o.resetDuration=m[1];
+    o.csIgnoreStrap=/ignore_strapping_warning:[ \t]*true/.test(disp);
+    o.busyInverted=/busy_pin:[\s\S]*?inverted:[ \t]*true/.test(disp);
+  }
+  p.output=o;
 }
 
 /* ---- best-effort lambda parser ------------------------------------------
@@ -2464,6 +2504,7 @@ function doImport(){
   });
   const snap=_readSnapshot(text);   // full layout, only present in studio-generated YAML
   const p=profile(); let n=0, nSrc=0;
+  applyOutputFromYaml(text, p);     // sync the "which YAML blocks" settings to the imported config
   if(Array.isArray(doc.font)){ p.fonts=doc.font.map(parseFont); n+=p.fonts.length; }
   if(Array.isArray(doc.color)){ p.colors=doc.color.map(parseColor); n+=p.colors.length; }
   ['sensor','text_sensor'].forEach(key=>{
@@ -2569,6 +2610,27 @@ async function loadProfilesFromServer(){
     }
   }catch(e){ console.warn('profile load failed',e); }
 }
+
+/* If profile JSONs were deleted in the file manager, drop them from the profile
+   manager too. Runs when returning to the studio (focus / back-navigation), so
+   the two stay in sync without the studio re-creating the deleted files. */
+async function reconcileProfilesFromServer(){
+  if(!SERVER_STORAGE) return;
+  try{
+    const r=await fetch('api/profiles'); if(!r.ok) return;
+    const names=new Set((await r.json()).profiles||[]);
+    if(!names.size) return;                            // empty list → don't wipe everything
+    const keep=state.profiles.filter(p=>names.has(pslug(p)));
+    if(!keep.length || keep.length===state.profiles.length) return;
+    state.profiles=keep;
+    if(!keep.some(p=>p.id===state.current)) state.current=keep[0].id;
+    _knownServerSlugs=names;
+    persist(); renderProfiles();
+    if(!keep.some(p=>p.id===state.current)) boot();
+  }catch(e){}
+}
+window.addEventListener('pageshow', e=>{ if(e.persisted) reconcileProfilesFromServer(); });
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) reconcileProfilesFromServer(); });
 
 async function serverSaveProject(){
   try{
@@ -2769,7 +2831,7 @@ function wire(){
   const cb64=$('#code-b64'); if(cb64) cb64.onchange=()=>{ window.INCLUDE_SNAPSHOT=cb64.checked; renderCode(); };
   const scr=$('#screen-select'); if(scr) scr.onchange=()=>{ editScreen=scr.value; selectedId=null; selectedIds=new Set(); undoStack=[]; redoStack=[]; renderCanvas(); renderLayers(); renderInspector(); };
   $('#code-copy').onclick=()=>{ navigator.clipboard.writeText(genYAML()).then(()=>toast(T('Naar klembord gekopieerd','Copied to clipboard'))); };
-  $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), (profile().device.name||'display')+'.yaml'); toast(T('YAML gedownload','YAML downloaded')); };
+  $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); toast(T('YAML gedownload','YAML downloaded')); };
 
   $('#zoom-in').onclick=()=>{ zoom=clamp(zoom+0.1,0.3,2); applyZoom(); };
   $('#zoom-out').onclick=()=>{ zoom=clamp(zoom-0.1,0.3,2); applyZoom(); };

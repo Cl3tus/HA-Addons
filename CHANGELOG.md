@@ -1,3 +1,13 @@
+## 2.8.0
+- **Bestandsbeheer — multi-select fix**: een regel aanklikken wist niet langer de rest van je selectie (klikken werkt nu net als de vakjes: aan/uit per regel). Daardoor kun je probleemloos veel bestanden tegelijk aanvinken.
+- **Boomweergave blijft open**: na verwijderen/vernieuwen klapt de mappenstructuur niet meer dicht — uitgevouwen mappen blijven uitgevouwen.
+- **Profielen synchroniseren**: profielen die je in het bestandsbeheer verwijdert verdwijnen nu ook uit de profielkiezer (bij terugkeren naar de studio), en worden niet opnieuw aangemaakt.
+- **Import vult nu ook de YAML-blok-instellingen** (Profiel-instellingen → "Gegenereerde YAML"): aan de hand van de geplakte config worden esphome/script/time, globals, font, color, sensor, text_sensor, SPI en display-pins (incl. pinwaarden, prioriteit, timeouts, interval) automatisch goed gezet.
+- **Profiel-instellingen**: "Device naam" en "Friendly name" verwijderd (niet meer gebruikt — de sensor-namen gebruiken nu de profielnaam).
+- **Wachtscherm aan** zet automatisch de **Refresh-logica** aan (die heeft het wachtscherm nodig).
+- YAML-blokken-checkboxjes netter op één rij; geen verspringend beeld meer bij hover (stabiele scrollbar in dialogen).
+- **Layout**: de bovenbalk, de canvas-/raster-balk en de elementen-knoppen blijven nu altijd in beeld; alleen de elementen-, lagen- en canvasframes scrollen zelf.
+
 ## 2.7.0
 - **Verborgen elementen worden nu volledig uitgecomment** in de YAML — ook elementen met een if/else-blok (zoals WiFi/klok). Eerder bleef de rest van het blok als "live" code staan. De comment is nu ook in de juiste taal (NL/EN).
 - **Gegenereerde YAML — per blok aan/uit (Profiel-instellingen → "Gegenereerde YAML — welke blokken")**:

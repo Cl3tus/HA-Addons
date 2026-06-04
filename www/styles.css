@@ -67,9 +67,11 @@ body {
   background: var(--bg);
   color: var(--txt);
   font-size: 13px;
-  /* allow the whole app to scroll when the window is smaller than the
-     minimum usable size (e.g. narrow ingress panel on a phone) */
-  overflow: auto;
+  /* the top bar / toolbars must stay put: never scroll the page vertically
+     (inner frames scroll instead). Horizontal scroll only kicks in on very
+     narrow windows. */
+  overflow-x: auto;
+  overflow-y: hidden;
   -webkit-font-smoothing: antialiased;
 }
 button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
@@ -83,9 +85,10 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
     "top top top"
     "left center right";
   height: 100vh;
-  /* below this size, body scrollbars appear instead of squashing panels */
+  overflow: hidden;            /* regions manage their own scrolling */
+  /* keep a usable minimum width (horizontal scroll on narrow windows); height
+     always fits the viewport so the top bar/toolbars never scroll away */
   min-width: 1000px;
-  min-height: 600px;
 }
 body.chrome-hidden #app { grid-template-rows: 0 1fr; }
 body.chrome-hidden #topbar { display: none; }
@@ -179,8 +182,9 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 
 /* Left panel: the "Add elements" palette stays fixed; only the layers list
    scrolls when there are more layers than fit. */
-#left > .section:first-child,
-#left > .palette { flex: none; }
+#left > .section:first-child { flex: none; }
+/* the elements palette scrolls on its own when the panel is short */
+#left > .palette { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
 #left > .section:last-child { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 #left > .section:last-child > h3 { flex: none; }
 #left .layers { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
@@ -345,7 +349,7 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
 }
 .modal header { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; }
 .modal header b { flex: 1; }
-.modal .mbody { padding: 16px; overflow: auto; }
+.modal .mbody { padding: 16px; overflow: auto; scrollbar-gutter: stable; }
 .modal footer { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
 
 /* icon picker */

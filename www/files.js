@@ -7,6 +7,7 @@ let currentPath = '';
 let entries     = [];
 let selected    = new Set();   // full paths of selected entries (works across the tree)
 let rowIndex    = new Map();   // fullPath -> entry (for all rendered rows)
+let expandedPaths = new Set(); // folder paths that are expanded (kept across refresh)
 
 // ---------------------------------------------------------------- API  (relative URLs – required for HA Ingress)
 
@@ -218,6 +219,7 @@ async function navigate(path) {
     entries = data.entries ?? [];
     renderBreadcrumb(data.path ?? '');
     renderTable(entries);
+    await restoreExpansion();
   } catch (e) {
     toast(_t('Fout bij laden: ', 'Loading error: ') + e.message, true);
   }
@@ -276,6 +278,7 @@ async function toggleExpand(row, chev, fullPath, depth) {
     let n = row.nextSibling;
     while (n && (n._depth || 0) > depth) { const x = n; n = n.nextSibling; x.remove(); }
     row._expanded = false;
+    expandedPaths.delete(fullPath);
     chev.classList.remove('mdi-chevron-down'); chev.classList.add('mdi-chevron-right');
     return;
   }
@@ -284,13 +287,30 @@ async function toggleExpand(row, chev, fullPath, depth) {
   catch (e) { toast(_t('Fout bij laden: ', 'Loading error: ') + e.message, true); return; }
   const kids = (data.entries || []).slice()
     .sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1));
-  let after = row;
+  let after = row; const newRows = [];
   kids.forEach(child => {
     const r = makeRow(child, {depth: depth + 1, parentPath: fullPath});
-    after.after(r); after = r;
+    after.after(r); after = r; newRows.push(r);
   });
   row._expanded = true;
+  expandedPaths.add(fullPath);
   chev.classList.remove('mdi-chevron-right'); chev.classList.add('mdi-chevron-down');
+  // restore any child folders that were expanded before (so a refresh keeps the tree open)
+  for (const r of newRows) {
+    if (r._isDir && expandedPaths.has(r.dataset.path)) {
+      const c = r.querySelector('.fe-chev');
+      if (c) await toggleExpand(r, c, r.dataset.path, depth + 1);
+    }
+  }
+}
+// re-open the folders that were expanded, after a fresh renderTable
+async function restoreExpansion() {
+  if (!expandedPaths.size) return;
+  const rows = $$('#fe-tbody tr[data-path]').filter(r => r._isDir && (r._depth || 0) === 0 && expandedPaths.has(r.dataset.path));
+  for (const r of rows) {
+    const c = r.querySelector('.fe-chev');
+    if (c && !r._expanded) await toggleExpand(r, c, r.dataset.path, 0);
+  }
 }
 
 function makeRow(e, opts) {
@@ -304,6 +324,7 @@ function makeRow(e, opts) {
 
   const row = document.createElement('tr');
   row._depth = depth;
+  row._isDir = isDir;
   if (!isUp) { row.dataset.path = fullPath; rowIndex.set(fullPath, e); }
 
   const chevron = isDir
@@ -351,8 +372,9 @@ function makeRow(e, opts) {
     };
   }
 
-  row.onclick = ev => {
-    if (!ev.ctrlKey && !ev.metaKey && !ev.shiftKey) selected.clear();
+  row.onclick = () => {
+    // toggle (accumulate) — same as the checkbox, so clicking a row never wipes
+    // the rest of your selection
     if (selected.has(fullPath)) selected.delete(fullPath);
     else selected.add(fullPath);
     renderSelection();
