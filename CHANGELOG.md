@@ -1,3 +1,8 @@
+## 2.8.2
+- **Canvas-scrollbars werken weer**: de zoom schaalt nu de canvas-inhoud zelf en het frame krijgt de geschaalde afmetingen, zodat het canvasgebied scrollbars toont en je tot elke rand kunt scrollen (ook ingezoomd of op kleine schermen).
+- **Lagen vallen niet meer weg**: op korte schermen krimpt en scrollt de elementen-palet eerst, zodat de lagenlijst altijd zichtbaar blijft.
+- **Checkbox-geglitch in Profiel-instellingen gefixt**: het uitklapbare "Gegenereerde YAML"-gedeelte gebruikt geen native `<details>` meer (die gaf de hover-glitch); dialogen verankeren bovenaan met één scrollgebied.
+
 ## 2.8.1
 - **Wachtscherm en Refresh-logica losgekoppeld** — het aanzetten van het wachtscherm zet niet langer automatisch de refresh-logica aan (ze staan los van elkaar).
 - **Verspringend beeld bij hover gefixt**: dialogen verankeren nu bovenaan i.p.v. te centreren (geen herpositionering meer als de inhoud van hoogte verandert), en de spinner-pijltjes van getalvelden zijn weg zodat hoveren niets meer verschuift.

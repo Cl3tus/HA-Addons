@@ -186,9 +186,10 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 /* Left panel: the "Add elements" palette stays fixed; only the layers list
    scrolls when there are more layers than fit. */
 #left > .section:first-child { flex: none; }
-/* the elements palette scrolls on its own when the panel is short */
-#left > .palette { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
-#left > .section:last-child { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+/* the elements palette shrinks + scrolls first, so the layers list below always
+   keeps a usable minimum height (it doesn't get pushed off-screen) */
+#left > .palette { flex: 0 1 auto; min-height: 56px; overflow-y: auto; }
+#left > .section:last-child { flex: 1 1 auto; min-height: 140px; display: flex; flex-direction: column; }
 #left > .section:last-child > h3 { flex: none; }
 #left .layers { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
@@ -255,9 +256,12 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 .toggle input { accent-color: var(--accent); }
 
 #stage-wrap {
-  flex: 1; overflow: auto; display: grid; place-items: center; padding: 28px;
+  /* flex + margin:auto on the child centres the canvas when it fits, but still
+     lets you scroll to every edge when it's bigger than the viewport */
+  flex: 1; overflow: auto; display: flex; padding: 28px;
 }
 #stage-frame {
+  margin: auto;
   background: #d4d6d7;
   box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px #000, 0 0 0 9px #2a2a2a, 0 0 0 10px #000;
   border-radius: 3px;
@@ -344,7 +348,7 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
   /* anchor near the top (not centred) so the dialog never re-positions when its
      content height changes — prevents the "jump" on hover/expand */
   display: none; align-items: flex-start; justify-content: center; z-index: 100;
-  padding: 6vh 16px; overflow-y: auto; backdrop-filter: blur(3px);
+  padding: 6vh 16px; overflow: hidden; backdrop-filter: blur(3px);
 }
 .modal-back.open { display: flex; }
 .modal {

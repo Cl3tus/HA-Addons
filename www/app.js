@@ -441,13 +441,18 @@ let _marqueeFinish=null;
 window.addEventListener('mouseup', ()=>{ if(_marqueeStart && _marqueeFinish) _marqueeFinish(); });
 window.addEventListener('touchend', ()=>{ if(_marqueeStart && _marqueeFinish) _marqueeFinish(); });
 function applyZoom(){
-  const p=profile();
-  $('#konva-host').style.width = p.device.w+'px';
-  $('#konva-host').style.height = p.device.h+'px';
-  stage.width(p.device.w); stage.height(p.device.h);
-  $('#stage-frame').style.transform = `scale(${zoom})`;
-  $('#stage-frame').style.transformOrigin='center top';
-  $('#stage-frame').style.background = p.device.bg || '#d4d6d7';
+  const p=profile(), W=p.device.w, H=p.device.h;
+  const kh=$('#konva-host'), cv=$('#eink-canvas'), fr=$('#stage-frame');
+  kh.style.width = W+'px'; kh.style.height = H+'px';
+  stage.width(W); stage.height(H);
+  // scale the inner content from the top-left and size the FRAME to the scaled
+  // result, so #stage-wrap gets real scrollbars when the canvas overflows
+  kh.style.transformOrigin='0 0'; kh.style.transform=`scale(${zoom})`;
+  if(cv) cv.style.transform='none';   // the e-ink overlay fills the frame via inset:0
+  fr.style.transform='none';
+  fr.style.width = (W*zoom)+'px';
+  fr.style.height = (H*zoom)+'px';
+  fr.style.background = p.device.bg || '#d4d6d7';
   $('#zoom-val').textContent = Math.round(zoom*100)+'%';
 }
 function gridStep(){ return (profile().device.grid)|| 16; }
@@ -2188,9 +2193,8 @@ function openProfileSettings(){
      <label class="toggle"><input type="checkbox" id="ps-wait" ${p.waitEnabled!==false?'checked':''}> ${T('Wachtscherm gebruiken','Use waiting screen')}</label>
      <div class="hint" style="margin:4px 0 0">${T('Genereert de “waiting for data”-tak (if initial_data_received == false). Het wachtscherm ontwerp je via de scherm-keuze boven het canvas.','Generates the “waiting for data” branch (if initial_data_received == false). Design the waiting screen via the screen selector above the canvas.')}</div>
      <hr style="border-color:var(--line);margin:14px 0">
-     <details>
-       <summary style="cursor:pointer;font-weight:600;color:var(--accent)">${T('Gegenereerde YAML — welke blokken','Generated YAML — which blocks')}</summary>
-       <div style="margin-top:8px">
+     <button type="button" id="ps-yaml-toggle" style="background:none;border:none;cursor:pointer;font-weight:600;color:var(--accent);padding:0;font-size:13px">▸ ${T('Gegenereerde YAML — welke blokken','Generated YAML — which blocks')}</button>
+     <div id="ps-yaml-body" style="display:none;margin-top:8px">
          <label class="toggle"><input type="checkbox" id="ps-o-refresh" ${o.refresh?'checked':''}> ${T('Refresh-logica (esphome on_boot + script + time)','Refresh logic (esphome on_boot + script + time)')}</label>
          <div class="row tight" style="margin:4px 0 8px">
            <div><label class="fld">${T('Boot-prioriteit','Boot priority')}</label><input id="ps-o-prio" value="${attr(o.bootPriority)}"></div>
@@ -2227,7 +2231,6 @@ function openProfileSettings(){
            <label class="toggle" style="margin-left:14px"><input type="checkbox" id="ps-o-busyinv" ${o.busyInverted?'checked':''}> busy inverted</label>
          </div>
        </div>
-     </details>
      <hr style="border-color:var(--line);margin:14px 0">
      <button class="btn ghost sm danger" id="ps-delete">${T('Profiel verwijderen','Delete profile')}</button>`,
     [{label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
@@ -2259,6 +2262,9 @@ function openProfileSettings(){
   const showInfo=()=>{ const mi=modelInfo($('#ps-model').value);
     infoEl.innerHTML=`${mi.d} · ${T('kleuren','colours')}: <b>${colTypeName[mi.c]||mi.c}</b>`; };
   $('#ps-model').onchange=showInfo; showInfo();
+  { const tg=$('#ps-yaml-toggle'), body=$('#ps-yaml-body'); if(tg&&body) tg.onclick=()=>{
+      const open=body.style.display!=='none'; body.style.display=open?'none':'';
+      tg.textContent=(open?'▸ ':'▾ ')+T('Gegenereerde YAML — welke blokken','Generated YAML — which blocks'); }; }
   $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>{ $('#ps-bg').value=b.dataset.bg; });
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
     if(confirm(T('Profiel verwijderen?','Delete profile?'))){ state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist(); boot(); closeModal(); } };
