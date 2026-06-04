@@ -196,10 +196,22 @@ function previewFamily(font){
   return 'IBM Plex Sans';
 }
 /* inline font preview inside the Fonts modal (#nf-preview) */
-function previewFontInline(f){
+async function previewFontInline(f){
   const host=$('#nf-preview'); if(!host||!f) return;
-  const fam=previewFamily(f);
+  let fam=previewFamily(f);
   const isMdi=/materialdesignicons/i.test(f.file||'');
+  // a local font stored on the server (no inline bytes) → fetch + register it so the preview renders
+  if(!isMdi && f.kind!=='gfonts' && !f.dataUrl){
+    const fname=_fontFileName(f);
+    if(fname && SERVER_FONTS.has(fname)){
+      fam='pf_'+f.id;
+      if(!_previewLoaded.has(fam)){
+        host.style.display='block'; host.innerHTML='<div class="fld">…</div>';
+        try{ const r=await fetch('api/fonts/'+encodeURIComponent(fname));
+          if(r.ok){ const buf=await r.arrayBuffer(); const ff=new FontFace(fam,buf); await ff.load(); document.fonts.add(ff); _previewLoaded.add(fam); } }catch(e){}
+      }
+    }
+  }
   const sample = isMdi ? '4 0 8 C 5 6 4'
                        : 'AaBbCc Gg 0123 .,:%/°€';
   const sz=Math.max(14,Math.min(f.size||30,56));
@@ -207,6 +219,7 @@ function previewFontInline(f){
   host.innerHTML=`<div class="fld" style="margin-bottom:4px">${esc(f.id)} — ${f.size}px · ${esc(fam)}</div>`+
     `<div style="font-family:'${fam.replace(/'/g,'')}', sans-serif;font-size:${sz}px;line-height:1.25;word-break:break-word">${sample}</div>`;
 }
+var _previewLoaded=new Set();
 function fontLoaded(font){
   return /materialdesignicons/i.test(font.file||'') || !!font.dataUrl || font.kind==='gfonts';
 }
@@ -498,12 +511,12 @@ function buildNode(el){
   else if(E.type==='gauge'){
     const pct=Math.max(0,Math.min(100,E.percent==null?50:E.percent));
     const ro=E.r||50, ri=Math.min(E.inner||30, ro-1);
-    // custom shape: fill starts at the top (−90°); the node's own rotation stays
-    // equal to el.rotation so the transformer's rotate handle sits on top.
+    // custom shape: the START ANGLE is baked into the arc (a0) while the node's
+    // own rotation stays 0, so the transformer's rotate handle always sits on top.
     node = new Konva.Shape({ x:E.x, y:E.y, width:2*ro, height:2*ro, offsetX:ro, offsetY:ro,
-      rotation:E.rotation||0, fill:color.css,
+      rotation:0, fill:color.css,
       sceneFunc:(ctx,shape)=>{
-        const a0=-Math.PI/2, a1=a0 + (pct/100)*2*Math.PI;
+        const a0=-Math.PI/2 + (E.rotation||0)*Math.PI/180, a1=a0 + (pct/100)*2*Math.PI;
         ctx.beginPath();
         ctx.arc(ro, ro, ro, a0, a1, false);
         ctx.arc(ro, ro, ri, a1, a0, true);
@@ -736,7 +749,7 @@ function attachSelection(el, node){
       else if(el.type==='triangle'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='polygon'){ el.r=Math.max(4,Math.round(node.radius()*((sx+sy)/2))); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='ring'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round(node.outerRadius()*f)); el.inner=Math.max(2,Math.round(node.innerRadius()*f)); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
-      else if(el.type==='gauge'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round((el.r||50)*f)); el.inner=Math.max(2,Math.round((el.inner||30)*f)); el.rotation=((Math.round(node.rotation())%360)+360)%360; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      else if(el.type==='gauge'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round((el.r||50)*f)); el.inner=Math.max(2,Math.round((el.inner||30)*f)); el.rotation=((((el.rotation||0)+Math.round(node.rotation()))%360)+360)%360; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='qr'){ el.scale=Math.max(1,Math.round((el.scale||4)*((sx+sy)/2))); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       node.scaleX(1); node.scaleY(1); afterChange(); });
   } else if(el.type==='line'){
@@ -1144,7 +1157,7 @@ function renderInspector(){
 
   // value source + format + transform (text only)
   if(el.type==='text'){
-    h+=g(T('Waardebron','Value source'), sourceEditor(el));
+    h+=g(T('Bron','Source'), sourceEditor(el));
     h+=g(T('Format & transform','Format & transform'), formatEditor(el));
   }
 
@@ -1909,7 +1922,7 @@ function openSources(){
             '⚠ Live data is off. Click <b>○ Live</b> in the top bar first to fetch your real entities; then you can search and add them here.')}
     </div></div>`;
 
-  openModal(T('Waardebronnen (sensor-mapping)','Value sources (sensor mapping)'),
+  openModal(T('Bronnen (sensor-mapping)','Sources (sensor mapping)'),
     `${help}
      <table class="tbl"><thead><tr><th>id (lambda)</th><th>entity_id (HA)</th><th>${T('type','type')}</th><th>${T('voorbeeld','sample')}</th><th>live</th><th></th></tr></thead><tbody id="src-body">${rows}</tbody></table>
      <div class="row tight" style="margin-top:10px">
@@ -1978,13 +1991,25 @@ function addSourceFromEntity(eid){
 }
 
 /* ---- Fonts & colors modal ---- */
-function openFonts(){
-  const previewable=f=>(f.kind==='gfonts'||/materialdesignicons/i.test(f.file||'')||fontHasBytes(f));
+var SERVER_FONTS=new Set();   // filenames currently present in the storage fonts/ folder
+async function refreshServerFonts(){
+  if(!SERVER_STORAGE) return;
+  try{ const r=await fetch('api/fonts'); if(r.ok){ const j=await r.json(); SERVER_FONTS=new Set(j.fonts||[]); } }catch(e){}
+}
+async function openFonts(){
+  await refreshServerFonts();
+  const onServer=f=>{ const n=_fontFileName(f); return !!(n && SERVER_FONTS.has(n)); };
+  const previewable=f=>(f.kind==='gfonts'||/materialdesignicons/i.test(f.file||'')||fontHasBytes(f)||onServer(f));
+  const statusTag=f=>/materialdesignicons/i.test(f.file||'') ? '<span class="tag">MDI</span>'
+    : f.kind==='gfonts' ? `<span class="tag">${T('geladen','loaded')}</span>`
+    : fontHasBytes(f) ? `<span class="tag" style="color:var(--ok)">${T('geüpload','uploaded')}</span>`
+    : onServer(f) ? `<span class="tag" style="color:var(--ok)" title="${T('Bestand staat al in de fonts/-map','File is already in the fonts/ folder')}">${T('in fonts/','in fonts/')}</span>`
+    : `<span class="tag" style="color:var(--red)">${T('upload nodig','upload needed')}</span>`;
   const frows=profile().fonts.map((f,i)=>`<tr>
     <td class="mono">${previewable(f)?`<a href="#" class="font-prev" data-prev="${i}" title="${T('Klik voor voorbeeld','Click to preview')}">${f.id}</a>`:f.id}</td>
     <td>${f.kind==='gfonts'?`gfonts: ${f.family} ${f.weight}`:f.file}</td>
     <td>${f.size}px</td>
-    <td>${/materialdesignicons/i.test(f.file||'')?'<span class="tag">MDI</span>':(f.kind==='gfonts'?`<span class="tag">${T('geladen','loaded')}</span>`:(fontHasBytes(f)?`<span class="tag" style="color:var(--ok)">${T('geüpload','uploaded')}</span>`:`<span class="tag" style="color:var(--red)">${T('upload nodig','upload needed')}</span>`))}</td>
+    <td>${statusTag(f)}</td>
     <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?`<input type="file" accept=".ttf,.otf" data-font="${i}" style="font-size:10px">`:''}</td>
     <td><button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">✕</button></td>
   </tr>`).join('');

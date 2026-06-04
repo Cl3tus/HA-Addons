@@ -95,8 +95,8 @@ body.chrome-hidden #topbar { display: none; }
   grid-area: top;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 14px;
+  gap: 8px;
+  padding: 0 12px;
   background: var(--panel);   /* #1c1c1c dark / #ffffff light — matches HA */
   border-bottom: 1px solid var(--line);
 }
@@ -244,7 +244,7 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 }
 #canvas-toolbar .grp { display: flex; align-items: center; gap: 6px; }
 #canvas-toolbar .zoomval { font-family: var(--mono); width: 42px; text-align: center; color: var(--txt-dim); }
-.toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--txt-dim); cursor: pointer; user-select: none; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--txt-dim); cursor: pointer; user-select: none; white-space: nowrap; }
 .toggle input { accent-color: var(--accent); }
 
 #stage-wrap {

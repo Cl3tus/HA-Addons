@@ -1,3 +1,12 @@
+## 2.6.2
+- **Gauge**: het rotatie-handvat staat nu weer **bovenaan** terwijl de starthoek (270°) behouden blijft — de starthoek wordt nu in de tekening verwerkt i.p.v. de hele vorm te draaien.
+- **Bestandsbeheer**: per regel een **selectievakje** + een "alles selecteren" in de kop, zodat je makkelijk meerdere bestanden tegelijk kunt selecteren (bv. om te verwijderen).
+- **Fonts**: als een lokaal font al in de **fonts/**-map op de server staat, toont de status nu **"in fonts/"** (geen upload nodig) en kun je het ook in het voorbeeld bekijken.
+- **Bronnen**: "Waardebronnen" heet nu **Bronnen** (NL) / **Sources** (EN).
+- **Topbalk** compacter ingedeeld zodat de groepen ook in het Nederlands netjes op één regel passen.
+- **Uitlijnknoppen** in de canvasbalk staan nu netjes gecentreerd tussen de scheidingslijnen.
+- **Wachtscherm-checkbox** ingekort naar "Wachtscherm" (past op één regel).
+
 ## 2.6.1
 - **Gegenereerde glyphs leesbaarder**: gewone fonts houden de compacte één-regel-array (`glyphs: ['A', 'Q', 'U', …]`), maar **icoon-fonts (MDI)** krijgen nu elke glyph op een eigen regel met een comment van de icoonnaam erachter, bv. `- "\U000F1A80" # mdi:thermometer-water`. Wifi- en klok-iconen tonen nu ook hun echte MDI-naam in de comment.
 

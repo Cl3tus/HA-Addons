@@ -321,8 +321,10 @@ function makeRow(e, opts) {
       })
     : '';
 
+  const checkCell = topLevel ? `<input type="checkbox" class="fe-cb">` : '';
   row.innerHTML = `
-    <td style="padding-left:${depth * 18}px;white-space:nowrap">${isUp ? '' : chevron}${icon}</td>
+    <td class="fe-check">${checkCell}</td>
+    <td class="fe-icon" style="padding-left:${depth * 18}px;white-space:nowrap">${isUp ? '' : chevron}${icon}</td>
     <td class="${nameClass}">${esc(isUp ? '..' : e.name)}</td>
     <td class="fe-size">${size}</td>
     <td class="fe-date">${date}</td>`;
@@ -335,6 +337,17 @@ function makeRow(e, opts) {
   if (isDir) {
     const chev = row.querySelector('.fe-chev');
     chev.onclick = ev => { ev.stopPropagation(); toggleExpand(row, chev, fullPath, depth); };
+  }
+
+  // multi-select checkbox (top-level rows only)
+  const cb = row.querySelector('.fe-cb');
+  if (cb) {
+    cb.checked = selected.has(e.name);
+    cb.onclick = ev => {
+      ev.stopPropagation();
+      if (cb.checked) selected.add(e.name); else selected.delete(e.name);
+      renderSelection(); updateToolbar(); updateStatus();
+    };
   }
 
   row.onclick = ev => {
@@ -373,9 +386,14 @@ function makeRow(e, opts) {
 }
 
 function renderSelection() {
-  $$('#fe-tbody tr[data-name]').forEach(row => {
-    row.classList.toggle('sel', selected.has(row.dataset.name));
+  const rows = $$('#fe-tbody tr[data-name]');
+  rows.forEach(row => {
+    const on = selected.has(row.dataset.name);
+    row.classList.toggle('sel', on);
+    const cb = row.querySelector('.fe-cb'); if (cb) cb.checked = on;
   });
+  const all = $('#fe-selall');
+  if (all) all.checked = rows.length > 0 && rows.every(r => selected.has(r.dataset.name));
 }
 
 function updateToolbar() {
@@ -648,6 +666,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('#btn-theme-fe').onclick = () => window.haTheme?.toggle();
   $('#btn-upload').onclick   = () => $('#upload-input').click();
+
+  // select-all checkbox in the table header
+  const selAll = $('#fe-selall');
+  if (selAll) selAll.onclick = () => {
+    const rows = $$('#fe-tbody tr[data-name]');
+    if (selAll.checked) rows.forEach(r => selected.add(r.dataset.name));
+    else rows.forEach(r => selected.delete(r.dataset.name));
+    renderSelection(); updateToolbar(); updateStatus();
+  };
 
   // Text editor
   $('#fe-editor-save').onclick  = saveEditor;

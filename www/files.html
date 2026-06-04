@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
 <link rel="stylesheet" href="vendor/fonts.css">
 <link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
-<link rel="stylesheet" href="styles.css?v=2.6.1">
+<link rel="stylesheet" href="styles.css?v=2.6.2">
 <style>
   body { overflow: hidden; }
 
@@ -123,7 +123,9 @@
     border-bottom: 1px solid var(--line);
     vertical-align: middle;
   }
-  .fe-table td:first-child { width: 36px; text-align: center; font-size: 17px; padding-right: 4px; }
+  .fe-table td.fe-check { width: 30px; text-align: center; padding-right: 0; }
+  .fe-table td.fe-check input { accent-color: var(--accent); cursor: pointer; }
+  .fe-table td.fe-icon { width: 36px; text-align: center; font-size: 17px; padding-right: 4px; }
   .fe-name { font-size: 13px; }
   .fe-name.is-dir { color: var(--accent); font-weight: 500; }
   .fe-name.is-up  { color: var(--txt-faint); }
@@ -289,6 +291,7 @@
     <table class="fe-table">
       <thead>
         <tr>
+          <th style="width:30px;text-align:center"><input type="checkbox" id="fe-selall" title="Alles selecteren"></th>
           <th></th>
           <th data-i18n="Naam">Naam</th>
           <th class="fe-size" data-i18n="Grootte">Grootte</th>
@@ -362,8 +365,8 @@
 <!-- Toast -->
 <div class="toast" id="fe-toast"></div>
 
-<script src="files.js?v=2.6.1"></script>
-<script src="lang.js?v=2.6.1"></script>
-<script src="theme.js?v=2.6.1"></script>
+<script src="files.js?v=2.6.2"></script>
+<script src="lang.js?v=2.6.2"></script>
+<script src="theme.js?v=2.6.2"></script>
 </body>
 </html>
