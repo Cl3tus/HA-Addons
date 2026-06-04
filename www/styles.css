@@ -347,11 +347,11 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
 #code-out {
   flex: 1; margin: 0; padding: 14px; overflow: auto;
   font-family: var(--mono); font-size: 11.5px; line-height: 1.55;
-  color: #c8d0dd; tab-size: 2;
-  /* wrap very long lines (e.g. the base64 recovery comment) instead of one huge
-     horizontal scrollbar; normal lines still wrap at spaces, base64 breaks mid-token */
-  white-space: pre-wrap; overflow-wrap: anywhere;
+  color: #c8d0dd; tab-size: 2; white-space: pre;
 }
+/* only the base64 recovery string wraps (no giant horizontal scrollbar for it);
+   the rest of the YAML keeps pre formatting and may scroll horizontally */
+#code-out .b64wrap { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; }
 .code-tag { color: var(--accent); }
 .code-key { color: #79c0ff; }
 .code-str { color: #a7e0a0; }

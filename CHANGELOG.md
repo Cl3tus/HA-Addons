@@ -1,3 +1,8 @@
+## 2.9.7
+- **Genereer YAML**-knop togglet nu: nog een keer drukken sluit het venster weer.
+- **Alleen de base64-herstelcode breekt af** in het YAML-venster; de rest van de code houdt zijn normale opmaak (horizontale scrollbar mag). Kopiëren/downloaden blijft één regel.
+- **Display-pins netter**: nu in een raster naast elkaar i.p.v. onder elkaar.
+
 ## 2.9.6
 - **Profiel-instellingen → YAML-blokken**: zet je **SPI-bus genereren** uit, dan worden `clk_pin`/`mosi_pin` nu leeggemaakt en grijs (disabled).
 - **Display-pins per regel aan/uit**: elke pin (`data_rate`, `cs_pin`, `dc_pin`, `busy_pin`, `reset_pin`, `reset_duration`) heeft nu een eigen checkbox. Uit = veld leeg + grijs en de regel wordt niet gegenereerd. De waarde blijft bewaard zodra je 'm weer aanzet.

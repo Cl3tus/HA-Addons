@@ -2130,7 +2130,15 @@ function haSensor(s){
   return `  - platform: homeassistant\n    entity_id: ${s.entityId}\n    id: ${s.id}\n    on_value:\n      then:\n        - lambda: 'id(data_updated) = true;'\n`;
 }
 
-function renderCode(){ $('#code-out').textContent = genYAML(); }
+function renderCode(){
+  const code = genYAML();
+  const h = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // wrap ONLY the long base64 recovery string so the rest of the YAML keeps its
+  // normal layout (horizontal scroll allowed); copy/download stay one line
+  const html = h(code).replace(/(# eink-editor:v1:)([A-Za-z0-9+/=]+)/,
+    (m,p1,p2)=>p1+'<span class="b64wrap">'+p2+'</span>');
+  $('#code-out').innerHTML = html;
+}
 
 /* ============================================================
    ICON PICKER (MDI meta from CDN)
@@ -2389,11 +2397,11 @@ function rgbToHex(css){ if(/^#/.test(css)) return css; return '#1d1d1b'; }
 /* ---- Profile settings ---- */
 function openProfileSettings(){
   const p=profile(), d=p.device, o=outCfg(p);
-  // one display-pin line: a checkbox to include it + its value field (greyed when off)
+  // one display-pin cell: a checkbox to include it + its value field (greyed when off)
   const pinRow=(onId,valId,label,on,val,extra='')=>`
-    <div style="display:flex;align-items:center;gap:8px;margin:3px 0">
-      <label class="toggle" style="min-width:150px"><input type="checkbox" id="ps-o-${onId}" data-pinon="${valId}" ${on?'checked':''}> ${label}</label>
-      <input id="${valId}" data-default="${attr(val)}" value="${on?attr(val):''}" style="width:120px" ${on?'':'disabled'}>
+    <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+      <label class="toggle" style="font-size:12px"><input type="checkbox" id="ps-o-${onId}" data-pinon="${valId}" ${on?'checked':''}> <span class="mono">${label}</span></label>
+      <input id="${valId}" data-default="${attr(val)}" value="${on?attr(val):''}" ${on?'':'disabled'} style="width:100%">
       ${extra}
     </div>`;
   const colTypeName={mono:T('mono (zwart/wit)','mono (black/white)'),bwr:T('BWR (zwart/wit/rood)','BWR (black/white/red)'),'7c':T('7-kleuren','7-colour')};
@@ -2440,11 +2448,11 @@ function openProfileSettings(){
            <div><label class="fld">mosi_pin</label><input id="ps-o-spimosi" data-default="${attr(o.spiMosi)}" value="${o.spi?attr(o.spiMosi):''}" style="width:110px" ${o.spi?'':'disabled'}></div>
          </div>
          <label class="toggle"><input type="checkbox" id="ps-o-pins" ${o.displayPins?'checked':''}> ${T('Display-pins genereren','Generate display pins')}</label>
-         <div id="ps-pins-box" style="margin:4px 0 0;${o.displayPins?'':'opacity:.45'}">
+         <div id="ps-pins-box" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px 14px;margin:8px 0 0;${o.displayPins?'':'opacity:.45'}">
            ${pinRow('dataRateOn','ps-o-datarate','data_rate',o.dataRateOn,o.dataRate)}
-           ${pinRow('csPinOn','ps-o-cs','cs_pin',o.csPinOn,o.csPin, `<label class="toggle"><input type="checkbox" id="ps-o-csstrap" ${o.csIgnoreStrap?'checked':''}> ignore_strapping</label>`)}
+           ${pinRow('csPinOn','ps-o-cs','cs_pin',o.csPinOn,o.csPin, `<label class="toggle" style="font-size:11px"><input type="checkbox" id="ps-o-csstrap" ${o.csIgnoreStrap?'checked':''}> ignore_strap</label>`)}
+           ${pinRow('busyPinOn','ps-o-busy','busy_pin',o.busyPinOn,o.busyPin, `<label class="toggle" style="font-size:11px"><input type="checkbox" id="ps-o-busyinv" ${o.busyInverted?'checked':''}> inverted</label>`)}
            ${pinRow('dcPinOn','ps-o-dc','dc_pin',o.dcPinOn,o.dcPin)}
-           ${pinRow('busyPinOn','ps-o-busy','busy_pin',o.busyPinOn,o.busyPin, `<label class="toggle"><input type="checkbox" id="ps-o-busyinv" ${o.busyInverted?'checked':''}> inverted</label>`)}
            ${pinRow('resetPinOn','ps-o-reset','reset_pin',o.resetPinOn,o.resetPin)}
            ${pinRow('resetDurOn','ps-o-resetdur','reset_duration',o.resetDurOn,o.resetDuration)}
          </div>
@@ -3071,7 +3079,9 @@ function wire(){
   }
   $('#btn-load').onclick=loadProject;
 
-  $('#btn-code').onclick=()=>{ renderCode(); $('#code-drawer').classList.add('open'); };
+  $('#btn-code').onclick=()=>{ const d=$('#code-drawer');
+    if(d.classList.contains('open')) d.classList.remove('open');
+    else { renderCode(); d.classList.add('open'); } };
   $('#code-close').onclick=()=>$('#code-drawer').classList.remove('open');
   const cb64=$('#code-b64'); if(cb64) cb64.onchange=()=>{ window.INCLUDE_SNAPSHOT=cb64.checked; renderCode(); };
   const scr=$('#screen-select'); if(scr) scr.onchange=()=>{ editScreen=scr.value; selectedId=null; selectedIds=new Set(); undoStack=[]; redoStack=[]; renderCanvas(); renderLayers(); renderInspector(); };
