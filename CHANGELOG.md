@@ -1,3 +1,9 @@
+## 2.8.3
+- **Echte oorzaak van de layout-problemen gevonden** (grid-cellen hadden `min-height:auto` en groeiden met hun inhoud i.p.v. de rij te respecteren). Met `min-height:0` op de panelen werken nu:
+  - **Canvas-scrollbars** in het middenframe (in-/uitzoomen + kleine schermen),
+  - de **lagenlijst** blijft altijd zichtbaar: het elementen-palet wordt afgetopt op ~45% en scrollt zelf,
+  - het **linkerpaneel** scrollt netjes mee i.p.v. dat het onderste deel wegvalt.
+
 ## 2.8.2
 - **Canvas-scrollbars werken weer**: de zoom schaalt nu de canvas-inhoud zelf en het frame krijgt de geschaalde afmetingen, zodat het canvasgebied scrollbars toont en je tot elke rand kunt scrollen (ook ingezoomd of op kleine schermen).
 - **Lagen vallen niet meer weg**: op korte schermen krimpt en scrollt de elementen-palet eerst, zodat de lagenlijst altijd zichtbaar blijft.
