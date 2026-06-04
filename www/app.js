@@ -1947,6 +1947,8 @@ function outputDefaults(){
     dataRate:'500kHz', csPin:'GPIO15', csIgnoreStrap:true,
     dcPin:'GPIO27', busyPin:'GPIO25', busyInverted:true,
     resetPin:'GPIO26', resetDuration:'2ms',
+    // per-line on/off within the display pin block (only used when displayPins is on)
+    dataRateOn:true, csPinOn:true, dcPinOn:true, busyPinOn:true, resetPinOn:true, resetDurOn:true,
   };
 }
 function outCfg(p){ return Object.assign(outputDefaults(), (p||profile()).output||{}); }
@@ -2058,12 +2060,12 @@ function genYAML(){
   // display + lambda
   out+=`display:\n  - platform: waveshare_epaper\n    id: eink_display\n    model: ${d.model}\n    rotation: ${d.rotation}°\n`;
   if(o.displayPins){
-    out+=`    data_rate: ${o.dataRate}\n`;
-    out+=`    cs_pin:\n      number: ${o.csPin}\n      ignore_strapping_warning: ${o.csIgnoreStrap?'true':'false'}\n`;
-    out+=`    dc_pin: ${o.dcPin}\n`;
-    out+=`    busy_pin:\n      number: ${o.busyPin}\n      inverted: ${o.busyInverted?'true':'false'}\n`;
-    out+=`    reset_pin: ${o.resetPin}\n`;
-    out+=`    reset_duration: ${o.resetDuration}\n`;
+    if(o.dataRateOn) out+=`    data_rate: ${o.dataRate}\n`;
+    if(o.csPinOn)    out+=`    cs_pin:\n      number: ${o.csPin}\n      ignore_strapping_warning: ${o.csIgnoreStrap?'true':'false'}\n`;
+    if(o.dcPinOn)    out+=`    dc_pin: ${o.dcPin}\n`;
+    if(o.busyPinOn)  out+=`    busy_pin:\n      number: ${o.busyPin}\n      inverted: ${o.busyInverted?'true':'false'}\n`;
+    if(o.resetPinOn) out+=`    reset_pin: ${o.resetPin}\n`;
+    if(o.resetDurOn) out+=`    reset_duration: ${o.resetDuration}\n`;
   } else {
     out+=`    # cs/dc/busy/reset pins: ${T('houd je eigen pin-config aan','keep your own pin config')}\n`;
   }
@@ -2387,6 +2389,13 @@ function rgbToHex(css){ if(/^#/.test(css)) return css; return '#1d1d1b'; }
 /* ---- Profile settings ---- */
 function openProfileSettings(){
   const p=profile(), d=p.device, o=outCfg(p);
+  // one display-pin line: a checkbox to include it + its value field (greyed when off)
+  const pinRow=(onId,valId,label,on,val,extra='')=>`
+    <div style="display:flex;align-items:center;gap:8px;margin:3px 0">
+      <label class="toggle" style="min-width:150px"><input type="checkbox" id="ps-o-${onId}" data-pinon="${valId}" ${on?'checked':''}> ${label}</label>
+      <input id="${valId}" data-default="${attr(val)}" value="${on?attr(val):''}" style="width:120px" ${on?'':'disabled'}>
+      ${extra}
+    </div>`;
   const colTypeName={mono:T('mono (zwart/wit)','mono (black/white)'),bwr:T('BWR (zwart/wit/rood)','BWR (black/white/red)'),'7c':T('7-kleuren','7-colour')};
   const modelOpts=EINK_MODELS.map(m=>`<option value="${attr(m.v)}" ${d.model===m.v?'selected':''}>${m.v} — ${m.d}</option>`).join('');
   openModal(T('Profiel-instellingen','Profile settings'),
@@ -2427,23 +2436,17 @@ function openProfileSettings(){
          <hr style="border-color:var(--line);margin:10px 0">
          <label class="toggle"><input type="checkbox" id="ps-o-spi" ${o.spi?'checked':''}> ${T('SPI-bus genereren','Generate SPI bus')}</label>
          <div class="row tight" style="margin:4px 0 8px">
-           <div><label class="fld">clk_pin</label><input id="ps-o-spiclk" value="${attr(o.spiClk)}" style="width:110px"></div>
-           <div><label class="fld">mosi_pin</label><input id="ps-o-spimosi" value="${attr(o.spiMosi)}" style="width:110px"></div>
+           <div><label class="fld">clk_pin</label><input id="ps-o-spiclk" data-default="${attr(o.spiClk)}" value="${o.spi?attr(o.spiClk):''}" style="width:110px" ${o.spi?'':'disabled'}></div>
+           <div><label class="fld">mosi_pin</label><input id="ps-o-spimosi" data-default="${attr(o.spiMosi)}" value="${o.spi?attr(o.spiMosi):''}" style="width:110px" ${o.spi?'':'disabled'}></div>
          </div>
          <label class="toggle"><input type="checkbox" id="ps-o-pins" ${o.displayPins?'checked':''}> ${T('Display-pins genereren','Generate display pins')}</label>
-         <div class="row tight" style="margin:4px 0 0">
-           <div><label class="fld">data_rate</label><input id="ps-o-datarate" value="${attr(o.dataRate)}" style="width:90px"></div>
-           <div><label class="fld">cs_pin</label><input id="ps-o-cs" value="${attr(o.csPin)}" style="width:90px"></div>
-           <div><label class="fld">dc_pin</label><input id="ps-o-dc" value="${attr(o.dcPin)}" style="width:90px"></div>
-         </div>
-         <div class="row tight" style="margin:4px 0 0">
-           <div><label class="fld">busy_pin</label><input id="ps-o-busy" value="${attr(o.busyPin)}" style="width:90px"></div>
-           <div><label class="fld">reset_pin</label><input id="ps-o-reset" value="${attr(o.resetPin)}" style="width:90px"></div>
-           <div><label class="fld">reset_duration</label><input id="ps-o-resetdur" value="${attr(o.resetDuration)}" style="width:90px"></div>
-         </div>
-         <div style="margin-top:6px">
-           <label class="toggle"><input type="checkbox" id="ps-o-csstrap" ${o.csIgnoreStrap?'checked':''}> cs ignore_strapping_warning</label>
-           <label class="toggle" style="margin-left:14px"><input type="checkbox" id="ps-o-busyinv" ${o.busyInverted?'checked':''}> busy inverted</label>
+         <div id="ps-pins-box" style="margin:4px 0 0;${o.displayPins?'':'opacity:.45'}">
+           ${pinRow('dataRateOn','ps-o-datarate','data_rate',o.dataRateOn,o.dataRate)}
+           ${pinRow('csPinOn','ps-o-cs','cs_pin',o.csPinOn,o.csPin, `<label class="toggle"><input type="checkbox" id="ps-o-csstrap" ${o.csIgnoreStrap?'checked':''}> ignore_strapping</label>`)}
+           ${pinRow('dcPinOn','ps-o-dc','dc_pin',o.dcPinOn,o.dcPin)}
+           ${pinRow('busyPinOn','ps-o-busy','busy_pin',o.busyPinOn,o.busyPin, `<label class="toggle"><input type="checkbox" id="ps-o-busyinv" ${o.busyInverted?'checked':''}> inverted</label>`)}
+           ${pinRow('resetPinOn','ps-o-reset','reset_pin',o.resetPinOn,o.resetPin)}
+           ${pinRow('resetDurOn','ps-o-resetdur','reset_duration',o.resetDurOn,o.resetDuration)}
          </div>
        </div>
      <hr style="border-color:var(--line);margin:14px 0">
@@ -2462,11 +2465,16 @@ function openProfileSettings(){
         globals:$('#ps-o-globals').checked,
         fonts:$('#ps-o-fonts').checked, colors:$('#ps-o-colors').checked,
         sensors:$('#ps-o-sensors').checked, textSensors:$('#ps-o-textsensors').checked,
-        spi:$('#ps-o-spi').checked, spiClk:$('#ps-o-spiclk').value, spiMosi:$('#ps-o-spimosi').value,
+        spi:$('#ps-o-spi').checked,
+        spiClk:$('#ps-o-spi').checked?$('#ps-o-spiclk').value:o.spiClk, spiMosi:$('#ps-o-spi').checked?$('#ps-o-spimosi').value:o.spiMosi,
         displayPins:$('#ps-o-pins').checked,
-        dataRate:$('#ps-o-datarate').value, csPin:$('#ps-o-cs').value, csIgnoreStrap:$('#ps-o-csstrap').checked,
-        dcPin:$('#ps-o-dc').value, busyPin:$('#ps-o-busy').value, busyInverted:$('#ps-o-busyinv').checked,
-        resetPin:$('#ps-o-reset').value, resetDuration:$('#ps-o-resetdur').value,
+        // per-pin: keep the stored value when the line is switched off (field is blanked in the UI)
+        dataRateOn:$('#ps-o-dataRateOn').checked, dataRate:$('#ps-o-dataRateOn').checked?$('#ps-o-datarate').value:o.dataRate,
+        csPinOn:$('#ps-o-csPinOn').checked, csPin:$('#ps-o-csPinOn').checked?$('#ps-o-cs').value:o.csPin, csIgnoreStrap:$('#ps-o-csstrap').checked,
+        dcPinOn:$('#ps-o-dcPinOn').checked, dcPin:$('#ps-o-dcPinOn').checked?$('#ps-o-dc').value:o.dcPin,
+        busyPinOn:$('#ps-o-busyPinOn').checked, busyPin:$('#ps-o-busyPinOn').checked?$('#ps-o-busy').value:o.busyPin, busyInverted:$('#ps-o-busyinv').checked,
+        resetPinOn:$('#ps-o-resetPinOn').checked, resetPin:$('#ps-o-resetPinOn').checked?$('#ps-o-reset').value:o.resetPin,
+        resetDurOn:$('#ps-o-resetDurOn').checked, resetDuration:$('#ps-o-resetDurOn').checked?$('#ps-o-resetdur').value:o.resetDuration,
       });
       // adapt the colour palette to the model's colour capability (only when it changes)
       const newType=modelInfo(d.model).c;
@@ -2480,6 +2488,16 @@ function openProfileSettings(){
   { const tg=$('#ps-yaml-toggle'), body=$('#ps-yaml-body'); if(tg&&body) tg.onclick=()=>{
       const open=body.style.display!=='none'; body.style.display=open?'none':'';
       tg.textContent=(open?'▸ ':'▾ ')+T('Gegenereerde YAML-blokken','Generated YAML Blocks'); }; }
+  // enable/disable a field, blanking it when off and restoring its default when on
+  const setField=(inp, on)=>{ if(!inp) return; inp.disabled=!on; if(!on) inp.value=''; else if(!inp.value) inp.value=inp.dataset.default||''; };
+  // SPI: clk/mosi greyed + blanked when "Generate SPI bus" is off
+  { const spi=$('#ps-o-spi'); const sync=()=>{ setField($('#ps-o-spiclk'),spi.checked); setField($('#ps-o-spimosi'),spi.checked); }; if(spi){ spi.onchange=sync; } }
+  // display pins: each line has its own checkbox; the master greys the whole block
+  const pinsMaster=$('#ps-o-pins'), pinsBox=$('#ps-pins-box');
+  const syncPins=()=>{ const m=pinsMaster.checked; pinsBox.style.opacity=m?'1':'.45';
+    $$('#ps-pins-box [data-pinon]').forEach(cb=>{ cb.disabled=!m; setField($('#'+cb.dataset.pinon), m&&cb.checked); }); };
+  $$('#ps-pins-box [data-pinon]').forEach(cb=>cb.onchange=()=>setField($('#'+cb.dataset.pinon), (!pinsMaster||pinsMaster.checked)&&cb.checked));
+  if(pinsMaster){ pinsMaster.onchange=syncPins; syncPins(); }
   $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>{ $('#ps-bg').value=b.dataset.bg; });
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
     if(confirm(T('Profiel verwijderen?','Delete profile?'))){ state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist(); boot(); closeModal(); } };

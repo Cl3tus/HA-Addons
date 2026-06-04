@@ -1,3 +1,9 @@
+## 2.9.6
+- **Profiel-instellingen → YAML-blokken**: zet je **SPI-bus genereren** uit, dan worden `clk_pin`/`mosi_pin` nu leeggemaakt en grijs (disabled).
+- **Display-pins per regel aan/uit**: elke pin (`data_rate`, `cs_pin`, `dc_pin`, `busy_pin`, `reset_pin`, `reset_duration`) heeft nu een eigen checkbox. Uit = veld leeg + grijs en de regel wordt niet gegenereerd. De waarde blijft bewaard zodra je 'm weer aanzet.
+- **YAML-venster breder** gemaakt.
+- **Lange base64-herstelcode** onderaan de YAML breekt nu visueel af naar de volgende regel i.p.v. één hele lange horizontale balk (alleen visueel — de gekopieerde code blijft één regel).
+
 ## 2.9.5
 - **Kritieke fix: bootloop door `std::out_of_range`**. De gegenereerde datum-transformaties (Aangepast format, weekdag/maand, DD-MM-… etc.) deden `substr()` zonder lengte-check. Bij het opstarten — als een datum-/tekst-sensor nog leeg of "unknown" is — gooide dat een exception op het device → eindeloze herstart. Alle substr-aanroepen hebben nu een lengte-guard: bij een te korte/lege waarde wordt het veld leeg gelaten i.p.v. te crashen. **Genereer je YAML opnieuw en flash het device** (via OTA zodra safe mode actief is, of via USB).
 
