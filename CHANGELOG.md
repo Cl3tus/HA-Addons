@@ -1,3 +1,7 @@
+## 2.8.1
+- **Wachtscherm en Refresh-logica losgekoppeld** — het aanzetten van het wachtscherm zet niet langer automatisch de refresh-logica aan (ze staan los van elkaar).
+- **Verspringend beeld bij hover gefixt**: dialogen verankeren nu bovenaan i.p.v. te centreren (geen herpositionering meer als de inhoud van hoogte verandert), en de spinner-pijltjes van getalvelden zijn weg zodat hoveren niets meer verschuift.
+
 ## 2.8.0
 - **Bestandsbeheer — multi-select fix**: een regel aanklikken wist niet langer de rest van je selectie (klikken werkt nu net als de vakjes: aan/uit per regel). Daardoor kun je probleemloos veel bestanden tegelijk aanvinken.
 - **Boomweergave blijft open**: na verwijderen/vernieuwen klapt de mappenstructuur niet meer dicht — uitgevouwen mappen blijven uitgevouwen.

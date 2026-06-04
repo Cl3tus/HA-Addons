@@ -2238,7 +2238,7 @@ function openProfileSettings(){
       if(!p.waitEnabled && editScreen==='wait'){ editScreen='main'; const ss=$('#screen-select'); if(ss) ss.value='main'; }
       { const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!p.waitEnabled; }
       p.output=Object.assign(outCfg(p), {
-        refresh:$('#ps-o-refresh').checked || p.waitEnabled,   // waiting screen needs the refresh logic
+        refresh:$('#ps-o-refresh').checked,
         bootPriority:$('#ps-o-prio').value, bootDelay:$('#ps-o-delay').value, waitTimeout:$('#ps-o-timeout').value,
         timeInterval:+$('#ps-o-interval').value||15,
         globals:$('#ps-o-globals').checked,
@@ -2259,8 +2259,6 @@ function openProfileSettings(){
   const showInfo=()=>{ const mi=modelInfo($('#ps-model').value);
     infoEl.innerHTML=`${mi.d} · ${T('kleuren','colours')}: <b>${colTypeName[mi.c]||mi.c}</b>`; };
   $('#ps-model').onchange=showInfo; showInfo();
-  // waiting screen relies on the refresh logic → tick it automatically
-  { const tw=$('#ps-wait'); if(tw) tw.onchange=()=>{ if(tw.checked){ const r=$('#ps-o-refresh'); if(r) r.checked=true; } }; }
   $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>{ $('#ps-bg').value=b.dataset.bg; });
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
     if(confirm(T('Profiel verwijderen?','Delete profile?'))){ state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist(); boot(); closeModal(); } };
