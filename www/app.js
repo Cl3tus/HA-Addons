@@ -1381,11 +1381,14 @@ function formatEditor(el){
 /* substr-based date/time reformatting for HA string/time values. Assumes an
    ISO-ish input: "HH:MM:SS", "YYYY-MM-DD", or "YYYY-MM-DD HH:MM:SS". */
 function _iso(s){ return /^\d{4}-\d{2}-\d{2}/.test(String(s)); }
+// finds the time portion whether the value is "HH:MM:SS" or "YYYY-MM-DD HH:MM:SS"
+function _timeAt(s,len){ const c=String(s).indexOf(':'); const o=c>=2?c-2:0; return String(s).substr(o,len); }
+function _timeCpp(s,len){ return `(${s}.find(':') != std::string::npos && ${s}.find(':') >= 2 ? ${s}.substr(${s}.find(':') - 2, ${len}) : ${s}.substr(0, ${len}))`; }
 var STRTRANSFORMS = {
-  time_hm:     { nl:'Tijd → UU:MM (uit datum-tijd)', en:'Time → HH:MM (from datetime)',
-                 expr:s=>`${s}.substr(11,5)`, prev:s=>s.length>=16?s.substr(11,5):s },
-  time_hms:    { nl:'Tijd → UU:MM:SS (uit datum-tijd)', en:'Time → HH:MM:SS (from datetime)',
-                 expr:s=>`${s}.substr(11,8)`, prev:s=>s.length>=19?s.substr(11,8):s },
+  time_hm:     { nl:'Tijd → UU:MM', en:'Time → HH:MM',
+                 expr:s=>_timeCpp(s,5), prev:s=>_timeAt(s,5) },
+  time_hms:    { nl:'Tijd → UU:MM:SS', en:'Time → HH:MM:SS',
+                 expr:s=>_timeCpp(s,8), prev:s=>_timeAt(s,8) },
   date_ymd:    { nl:'Datum → JJJJ-MM-DD', en:'Date → YYYY-MM-DD',
                  expr:s=>`${s}.substr(0,10)`, prev:s=>String(s).substr(0,10) },
   date_dmy:    { nl:'Datum → DD-MM-JJJJ', en:'Date → DD-MM-YYYY',
@@ -1476,7 +1479,7 @@ function transformOptions(kind){
   if(kind==='number') return [['none',T('Geen','None')],['roundN',T('Afronden op N decimalen','Round to N decimals')],['scale',T('Schalen (× factor)','Scale (× factor)')]];
   if(kind==='bool')   return [['none',T('Geen','None')],['boolLabel',T('on/off → eigen labels','on/off → custom labels')]];
   if(kind==='time' || kind==='string'){
-    const base = [['none',T('Geen','None')], ['trimSeconds',T('Laatste 3 tekens weg (…:SS → UU:MM)','Drop last 3 chars (…:SS → HH:MM)')]];
+    const base = [['none',T('Geen','None')]];
     if(kind==='string') base.push(['boolLabel',T('on/off → eigen labels','on/off → custom labels')]);
     Object.keys(STRTRANSFORMS).forEach(id=>base.push([id, T(STRTRANSFORMS[id].nl, STRTRANSFORMS[id].en)]));
     base.push(['custom', T('Aangepast format (weekdag/maand/datum/tijd)','Custom format (weekday/month/date/time)')]);

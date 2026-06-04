@@ -1,3 +1,7 @@
+## 2.9.3
+- **Tijd → UU:MM en UU:MM:SS werken nu ook bij tijd-alleen sensoren** (zonder datum). De transform zoekt nu zelf het tijd-gedeelte op, of de waarde nu `18:30:00` of `2026-04-19 18:30:00` is.
+- **"Laatste 3 tekens weg" (drop last 3 chars) verwijderd** uit de transform-lijst.
+
 ## 2.9.2
 - **Waarde-icoon** in het elementenpaneel is nu een duidelijke **#** (zoals in de lagenlijst).
 - **Waarde-bron**: alleen nog **Sensor** als brontype (vaste tekst en vrije expressie zijn weg bij Waarde).
