@@ -16,7 +16,7 @@
 <script src="vendor/konva.min.js"></script>
 <script src="vendor/js-yaml.min.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=2.5.0">
+<link rel="stylesheet" href="styles.css?v=2.6.0">
 </head>
 <body>
 <div id="app">
@@ -39,24 +39,31 @@
     <div class="topbar-spacer"></div>
 
     <button class="btn ghost" id="btn-import">⇩ <span data-i18n="YAML importeren">YAML importeren</span></button>
-    <button class="btn ghost" id="btn-sources"><span class="mdi mdi-database"></span> <span data-i18n="Waardebronnen">Waardebronnen</span></button>
-    <button class="btn ghost" id="btn-fonts"><span class="mdi mdi-format-font"></span> Fonts</button>
     <div class="topbar-sep"></div>
+    <button class="btn ghost" id="btn-sources"><span class="mdi mdi-database"></span> <span data-i18n="Waardebronnen">Waardebronnen</span></button>
+    <div class="topbar-sep"></div>
+    <button class="btn ghost" id="btn-fonts"><span class="mdi mdi-format-font"></span> Fonts</button>
     <a href="files.html" class="btn ghost" title="Bestandsbeheer"><span class="mdi mdi-folder-outline"></span> <span data-i18n="Bestanden">Bestanden</span></a>
+    <div class="topbar-sep"></div>
     <button class="btn ghost" id="btn-live" title="Live data">○ Live</button>
     <button class="btn ghost" id="btn-refresh" title="Vernieuw live data nu"><span class="mdi mdi-refresh"></span></button>
     <select id="live-interval" title="Live data automatisch vernieuwen" style="width:auto;padding:4px 6px">
-      <option value="1">1 min</option>
+      <option value="0" data-i18n="Auto-vernieuwen uit">Auto-vernieuwen uit</option>
+      <option value="1" selected>1 min</option>
       <option value="2">2 min</option>
       <option value="5">5 min</option>
       <option value="10">10 min</option>
       <option value="15">15 min</option>
       <option value="30">30 min</option>
+      <option value="custom" data-i18n="Aangepast…">Aangepast…</option>
     </select>
+    <div class="topbar-sep"></div>
     <button class="btn ghost" id="btn-theme" title="Thema">◐ Dark</button>
     <button class="btn ghost" id="btn-lang" data-lang-toggle onclick="toggleLang()" title="Taal / Language">EN</button>
+    <div class="topbar-sep"></div>
     <button class="btn ghost" id="btn-save" data-i18n="Opslaan">Opslaan</button>
     <button class="btn ghost" id="btn-load" data-i18n="Openen">Openen</button>
+    <div class="topbar-sep"></div>
     <button class="btn primary" id="btn-code">&lt;/&gt; <span data-i18n="Genereer YAML">Genereer YAML</span></button>
   </header>
 
@@ -124,14 +131,13 @@
         <button class="btn ghost sm" id="al-bottom">⊥</button>
       </div>
       <div class="topbar-spacer" style="flex:1"></div>
+      <div class="topbar-sep"></div>
       <div class="grp">
         <button class="btn ghost sm" id="btn-undo" title="Ctrl+Z">↶</button>
         <button class="btn ghost sm" id="btn-redo" title="Ctrl+Y">↷</button>
         <button class="btn ghost sm" id="btn-dup" title="Ctrl+D">⧉</button>
         <button class="btn ghost sm danger" id="btn-del" title="Del">🗑</button>
       </div>
-      <div class="topbar-sep"></div>
-      <label class="toggle"><input type="checkbox" id="tg-chrome"> <span data-i18n="Afleidingsvrij">Afleidingsvrij</span></label>
     </div>
 
     <div id="stage-wrap">
@@ -174,8 +180,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=2.5.0"></script>
-<script src="lang.js?v=2.5.0"></script>
-<script src="theme.js?v=2.5.0"></script>
+<script src="app.js?v=2.6.0"></script>
+<script src="lang.js?v=2.6.0"></script>
+<script src="theme.js?v=2.6.0"></script>
 </body>
 </html>

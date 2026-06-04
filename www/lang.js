@@ -40,6 +40,8 @@
     'Hoofdscherm': 'Main screen',
     'Wachtscherm': 'Waiting screen',
     'Wachtscherm aan': 'Waiting screen on',
+    'Auto-vernieuwen uit': 'Auto-refresh off',
+    'Aangepast…': 'Custom…',
     'kleuren': 'colours',
     'Widget (icoon+waarde)': 'Widget (icon+value)',
     'WiFi-icoon': 'Wi-Fi icon',

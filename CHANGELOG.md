@@ -1,3 +1,14 @@
+## 2.6.0
+- **Gauge starthoek** staat nu standaard op **270°** (vulling start bovenaan).
+- **Marquee-selectie vanaf de rand**: je kunt nu een sleep-selectie beginnen in het grijze/zwarte/witte gebied *rondom* het canvas en alsnog elementen pakken die tegen de rand liggen.
+- **Live-interval**: keuzes uitgebreid met **Auto-vernieuwen uit** en **Aangepast…** (eigen aantal minuten invoeren).
+- **Bestandsbeheer — boomweergave**: mappen zijn nu inklapbaar; klik op het pijltje om de bestanden *onder* een map te zien zonder erin te hoeven klikken en weer terug. Dubbelklik op een genest bestand opent/preview/download het direct.
+- **Fonts**: klik op een geladen font-id voor een **inline voorbeeld**. De losse "TTF uploaden"-knop is weg — bij *Lokale TTF* upload je het bestand al via "kies bestand".
+- **Material Design Icons** (v7.4.47) wordt nu ook als TTF in de **fonts/**-map gezet, zodat je 'm in het bestandsbeheer ziet en evt. door een eigen build kunt vervangen.
+- **Topbalk opnieuw ingedeeld** met nettere scheidingslijnen: Importeren · Waardebronnen · Fonts/Bestanden · Live/vernieuwen/timer · Thema/Taal · Opslaan/Openen · Genereer YAML.
+- **Focusmodus (afleidingsvrij) verwijderd.**
+- Extra **scheidingslijn** in de canvasbalk tussen de uitlijnknoppen en undo/redo.
+
 ## 2.5.0
 - **Live data: aparte ↻-vernieuwknop + instelbaar interval**. Aan/uit blijft de Live-knop; vernieuwen doe je nu met de losse ↻-knop (niet meer uit-en-aan klikken). Daarnaast een keuze voor automatisch vernieuwen (1 / 2 / 5 / 10 / 15 / 30 min, standaard 1 min), die ook wordt onthouden.
 - **Snap volgt nu live het raster** tijdens het slepen, voor elke rastergrootte (8/10/16/20/25/40 px). Houd **Shift** ingedrukt om tijdelijk vrij te bewegen.

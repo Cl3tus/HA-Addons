@@ -74,8 +74,8 @@ function isFontFile(name) {
 }
 
 let _fontPrevN = 0;
-async function openFontPreview(name) {
-  const path = entryPath(name);
+async function openFontPreview(name, fullPath) {
+  const path = fullPath || entryPath(name);
   try {
     const r = await fetch(`api/fs/download?path=${enc(path)}`);
     if (!r.ok) throw new Error(r.status);
@@ -157,8 +157,8 @@ function editorRedo() {
   _refreshUndoButtons();
 }
 
-async function openEditor(name) {
-  const path = entryPath(name);
+async function openEditor(name, fullPath) {
+  const path = fullPath || entryPath(name);
   try {
     const content = await apiRead(path);
     _editPath  = path;
@@ -257,23 +257,57 @@ function renderTable(ents) {
     const parent = currentPath.includes('/')
       ? currentPath.split('/').slice(0, -1).join('/')
       : '';
-    tbody.appendChild(makeRow({name: '..', type: '_up'}, parent));
+    tbody.appendChild(makeRow({name: '..', type: '_up'}, {upPath: parent, depth: 0}));
   }
 
-  ents.forEach(e => tbody.appendChild(makeRow(e, null)));
+  ents.forEach(e => tbody.appendChild(makeRow(e, {depth: 0, parentPath: currentPath})));
 
   empty.style.display = ents.length === 0 ? '' : 'none';
   updateStatus();
 }
 
-function makeRow(e, upPath) {
+function fullPathOf(parentPath, name) { return parentPath ? parentPath + '/' + name : name; }
+
+// expand/collapse a folder row in place, showing its children indented beneath it
+async function toggleExpand(row, chev, fullPath, depth) {
+  if (row._expanded) {
+    let n = row.nextSibling;
+    while (n && (n._depth || 0) > depth) { const x = n; n = n.nextSibling; x.remove(); }
+    row._expanded = false;
+    chev.classList.remove('mdi-chevron-down'); chev.classList.add('mdi-chevron-right');
+    return;
+  }
+  let data;
+  try { data = await apiList(fullPath); }
+  catch (e) { toast(_t('Fout bij laden: ', 'Loading error: ') + e.message, true); return; }
+  const kids = (data.entries || []).slice()
+    .sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1));
+  let after = row;
+  kids.forEach(child => {
+    const r = makeRow(child, {depth: depth + 1, parentPath: fullPath});
+    after.after(r); after = r;
+  });
+  row._expanded = true;
+  chev.classList.remove('mdi-chevron-right'); chev.classList.add('mdi-chevron-down');
+}
+
+function makeRow(e, opts) {
+  opts = opts || {};
+  const depth = opts.depth || 0;
+  const parentPath = opts.parentPath || '';
   const isUp   = e.type === '_up';
   const isDir  = e.type === 'dir';
   const isFile = e.type === 'file';
+  const fullPath = isUp ? '' : fullPathOf(parentPath, e.name);
+  const topLevel = !isUp && parentPath === currentPath;   // only top level is selectable
 
   const row = document.createElement('tr');
-  if (!isUp) row.dataset.name = e.name;
+  row._depth = depth;
+  if (topLevel) row.dataset.name = e.name;
 
+  const chevron = isDir
+    ? '<span class="fe-chev mdi mdi-chevron-right" style="cursor:pointer;color:var(--txt-faint)"></span>'
+    : '<span style="display:inline-block;width:1.1em"></span>';
   const icon = isUp  ? '<span class="mdi mdi-arrow-up-bold" style="color:var(--txt-faint)"></span>'
              : isDir ? '<span class="mdi mdi-folder" style="color:var(--accent)"></span>'
              : fileIcon(e.name);
@@ -288,17 +322,26 @@ function makeRow(e, upPath) {
     : '';
 
   row.innerHTML = `
-    <td>${icon}</td>
+    <td style="padding-left:${depth * 18}px;white-space:nowrap">${isUp ? '' : chevron}${icon}</td>
     <td class="${nameClass}">${esc(isUp ? '..' : e.name)}</td>
     <td class="fe-size">${size}</td>
     <td class="fe-date">${date}</td>`;
 
   if (isUp) {
-    row.onclick = () => navigate(upPath);
+    row.onclick = () => navigate(opts.upPath);
     return row;
   }
 
+  if (isDir) {
+    const chev = row.querySelector('.fe-chev');
+    chev.onclick = ev => { ev.stopPropagation(); toggleExpand(row, chev, fullPath, depth); };
+  }
+
   row.onclick = ev => {
+    if (!topLevel) {                       // nested rows: click toggles folders, no selection
+      if (isDir) { const chev = row.querySelector('.fe-chev'); toggleExpand(row, chev, fullPath, depth); }
+      return;
+    }
     if (!ev.ctrlKey && !ev.metaKey && !ev.shiftKey) selected.clear();
     if (selected.has(e.name)) selected.delete(e.name);
     else selected.add(e.name);
@@ -308,13 +351,13 @@ function makeRow(e, upPath) {
   };
 
   row.ondblclick = () => {
-    if (isDir) navigate(currentPath ? currentPath + '/' + e.name : e.name);
-    else if (isFontFile(e.name)) openFontPreview(e.name);
-    else if (isTextFile(e.name)) openEditor(e.name);
-    else doDownload(e.name);
+    if (isDir) navigate(fullPath);
+    else if (isFontFile(e.name)) openFontPreview(e.name, fullPath);
+    else if (isTextFile(e.name)) openEditor(e.name, fullPath);
+    else doDownload(e.name, fullPath);
   };
 
-  row.oncontextmenu = ev => {
+  if (topLevel) row.oncontextmenu = ev => {
     ev.preventDefault();
     if (!selected.has(e.name)) {
       selected.clear();
@@ -406,9 +449,9 @@ async function doDelete() {
   }
 }
 
-function doDownload(name) {
+function doDownload(name, fullPath) {
   const a = document.createElement('a');
-  a.href = `api/fs/download?path=${enc(entryPath(name))}`;
+  a.href = `api/fs/download?path=${enc(fullPath || entryPath(name))}`;
   a.download = name;
   document.body.appendChild(a);
   a.click();

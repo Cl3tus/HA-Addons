@@ -64,6 +64,17 @@ SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 for _d in (PROJECTS_DIR, FONTS_DIR, PROFILES_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
+# Seed the bundled Material Design Icons TTF into fonts/ so it shows up in the
+# file manager and can be replaced with your own build (it is no longer only
+# baked into the web assets).
+try:
+    _mdi_src = WWW_DIR / "vendor" / "mdi" / "fonts" / "materialdesignicons-webfont.ttf"
+    _mdi_dst = FONTS_DIR / "materialdesignicons-webfont.ttf"
+    if _mdi_src.exists() and not _mdi_dst.exists():
+        shutil.copy2(str(_mdi_src), str(_mdi_dst))
+except Exception:
+    pass
+
 # Migrate existing data from /data to STORAGE_DIR (runs once)
 if STORAGE_DIR != DATA_DIR:
     for _sub in ("projects", "fonts"):

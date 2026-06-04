@@ -195,6 +195,18 @@ function previewFamily(font){
   if(/digital/i.test(font.file||'')) return 'IBM Plex Mono';
   return 'IBM Plex Sans';
 }
+/* inline font preview inside the Fonts modal (#nf-preview) */
+function previewFontInline(f){
+  const host=$('#nf-preview'); if(!host||!f) return;
+  const fam=previewFamily(f);
+  const isMdi=/materialdesignicons/i.test(f.file||'');
+  const sample = isMdi ? '4 0 8 C 5 6 4'
+                       : 'AaBbCc Gg 0123 .,:%/°€';
+  const sz=Math.max(14,Math.min(f.size||30,56));
+  host.style.display='block';
+  host.innerHTML=`<div class="fld" style="margin-bottom:4px">${esc(f.id)} — ${f.size}px · ${esc(fam)}</div>`+
+    `<div style="font-family:'${fam.replace(/'/g,'')}', sans-serif;font-size:${sz}px;line-height:1.25;word-break:break-word">${sample}</div>`;
+}
 function fontLoaded(font){
   return /materialdesignicons/i.test(font.file||'') || !!font.dataUrl || font.kind==='gfonts';
 }
@@ -365,6 +377,38 @@ function setupMarquee(){
   };
   stage.on('mouseup touchend', finish);
   _marqueeFinish = finish;   // expose to the (once-bound) window listeners below
+
+  // also allow starting a marquee from the margin AROUND the canvas (the grey/
+  // black/white area in #stage-wrap, outside the device) so you can rubber-band
+  // from outside the page and still catch elements near the edges
+  const wrap=$('#stage-wrap');
+  if(wrap && !wrap._marqueeBound){
+    wrap._marqueeBound=true;
+    wrap.addEventListener('mousedown', e=>{
+      if(e.button!==0) return;
+      if($('#konva-host').contains(e.target)) return;             // inside canvas → Konva handles it
+      if(e.target.closest && e.target.closest('#code-drawer')) return;
+      const add = e.ctrlKey||e.metaKey||e.shiftKey;
+      _marqueeStart = clientToStage(e.clientX, e.clientY);
+      _marqueeBase = add ? new Set(selectedIds) : new Set();
+      _marqueeRect=new Konva.Rect({x:_marqueeStart.x,y:_marqueeStart.y,width:0,height:0,
+        stroke:'#e8a13a',dash:[4,3],fill:'rgba(232,161,58,0.08)',listening:false});
+      contentLayer.add(_marqueeRect); contentLayer.draw();
+      const move=ev=>{ if(!_marqueeStart||!_marqueeRect) return; const p=clientToStage(ev.clientX,ev.clientY);
+        _marqueeRect.setAttrs({x:Math.min(_marqueeStart.x,p.x),y:Math.min(_marqueeStart.y,p.y),
+          width:Math.abs(p.x-_marqueeStart.x),height:Math.abs(p.y-_marqueeStart.y)}); contentLayer.batchDraw(); };
+      const up=()=>{ window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up);
+        if(_marqueeFinish) _marqueeFinish(); };
+      window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+      e.preventDefault();
+    });
+  }
+}
+/* map a viewport (clientX/Y) point to canvas/stage coordinates, clamped to the device */
+function clientToStage(clientX, clientY){
+  const r=$('#konva-host').getBoundingClientRect(); const p=profile();
+  return { x: clamp((clientX-r.left)/zoom, 0, p.device.w),
+           y: clamp((clientY-r.top)/zoom, 0, p.device.h) };
 }
 let _marqueeBase=null;
 let _marqueeFinish=null;
@@ -929,7 +973,7 @@ function addElement(type, pos){
   } else if(type==='ring'){
     Object.assign(base,{ x:cx,y:cy, r:50, inner:30, colorId:'color_text', anchor:undefined });
   } else if(type==='gauge'){
-    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, percent:50, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, percent:50, rotation:270, colorId:'color_text', anchor:undefined });
   } else if(type==='qr'){
     Object.assign(base,{ x:cx-50,y:cy-50, text:'https://home-assistant.io', scale:4, ecc:'LOW', colorId:'color_text', anchor:undefined });
   } else if(type==='wifi'){
@@ -1929,8 +1973,9 @@ function addSourceFromEntity(eid){
 
 /* ---- Fonts & colors modal ---- */
 function openFonts(){
+  const previewable=f=>(f.kind==='gfonts'||/materialdesignicons/i.test(f.file||'')||fontHasBytes(f));
   const frows=profile().fonts.map((f,i)=>`<tr>
-    <td class="mono">${f.id}</td>
+    <td class="mono">${previewable(f)?`<a href="#" class="font-prev" data-prev="${i}" title="${T('Klik voor voorbeeld','Click to preview')}">${f.id}</a>`:f.id}</td>
     <td>${f.kind==='gfonts'?`gfonts: ${f.family} ${f.weight}`:f.file}</td>
     <td>${f.size}px</td>
     <td>${/materialdesignicons/i.test(f.file||'')?'<span class="tag">MDI</span>':(f.kind==='gfonts'?`<span class="tag">${T('geladen','loaded')}</span>`:(fontHasBytes(f)?`<span class="tag" style="color:var(--ok)">${T('geüpload','uploaded')}</span>`:`<span class="tag" style="color:var(--red)">${T('upload nodig','upload needed')}</span>`))}</td>
@@ -1940,13 +1985,10 @@ function openFonts(){
   openModal('Fonts',
     `<h4 style="margin:0 0 8px;color:var(--accent)">Fonts</h4>
      <table class="tbl"><thead><tr><th>id</th><th>${T('bron','source')}</th><th>${T('grootte','size')}</th><th>status</th><th>upload</th><th></th></tr></thead><tbody>${frows}</tbody></table>
+     <div class="hint" style="margin:6px 0 0">${T('Tip: klik op een geladen font-id voor een voorbeeld.','Tip: click a loaded font id for a preview.')}</div>
+     <div id="nf-preview" style="display:none;margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)"></div>
      <div class="src-box" style="margin-top:10px">
-       <div class="row tight" style="align-items:center;margin-bottom:8px">
-         <button class="btn sm" id="nf-quickupload">⬆ ${T('TTF uploaden…','Upload TTF…')}</button>
-         <div class="hint" style="flex:1;margin:0">${T('Kiest een TTF/OTF en voegt het direct toe als lettertype.','Pick a TTF/OTF and adds it as a font right away.')}</div>
-       </div>
-       <input id="nf-quickfile" type="file" accept=".ttf,.otf" style="display:none">
-       <label class="fld">${T('… of handmatig toevoegen','… or add manually')}</label>
+       <label class="fld">${T('Font toevoegen','Add font')}</label>
        <div class="row tight">
          <div><input id="nf-id" type="text" class="mono" placeholder="${T('id (bv. font_groot)','id (e.g. font_large)')}"></div>
          <div><input id="nf-size" type="number" placeholder="${T('grootte','size')}" value="30" style="width:90px"></div>
@@ -1965,21 +2007,8 @@ function openFonts(){
      </div>
      <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')}</div>`,
     [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ persist(); closeModal(); }}]);
-  // quick TTF upload: add a local font straight from a picked file (deduped by filename)
-  const qf=$('#nf-quickfile');
-  $('#nf-quickupload').onclick=()=>qf.click();
-  qf.onchange=async e=>{
-    const file=e.target.files[0]; if(!file) return;
-    const base=(file.name.replace(/\.[^.]+$/,'')||'font').replace(/[^A-Za-z0-9_]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase()||'font';
-    let id=base, n=2; while(fontById(id)) id=base+'_'+(n++);
-    const rd=new FileReader(); rd.onload=async()=>{
-      const f={ id, size:30, kind:'local', file:'fonts/'+file.name, dataUrl:rd.result, dynamic:false, baseCharset:' -.:%/°0123456789', seedGlyphs:[] };
-      reuseFontFile(f);   // dedupe: share dataUrl if this filename already exists
-      profile().fonts.push(f);
-      await registerUploadedFonts(); await maybeUploadFont(f, file.name);
-      persist(); afterChange(); openFonts(); toast(T('Font toegevoegd','Font added'));
-    }; rd.readAsDataURL(file);
-  };
+  // click a loaded font id → inline preview
+  $$('#modal-body [data-prev]').forEach(a=>a.onclick=ev=>{ ev.preventDefault(); previewFontInline(profile().fonts[+a.dataset.prev]); });
   // existing uploads
   $$('#modal-body input[type=file][data-font]').forEach(inp=>inp.addEventListener('change',e=>{
     const f=profile().fonts[+inp.dataset.font], file=e.target.files[0]; if(!file) return;
@@ -2569,8 +2598,17 @@ function wire(){
   const lb=$('#btn-live'); if(lb) lb.onclick=toggleLive;
   const rb=$('#btn-refresh'); if(rb) rb.onclick=()=>refreshLive();
   const li=$('#live-interval'); if(li){
-    li.value=String(parseInt(localStorage.getItem('einkLiveIntervalMin')||'1',10)||1);
-    li.onchange=()=>{ localStorage.setItem('einkLiveIntervalMin', String(liveIntervalMin())); startLiveTimer(); };
+    _setLiveIntervalValue(localStorage.getItem('einkLiveIntervalMin')||'1');
+    li.onchange=()=>{
+      if(li.value==='custom'){
+        const cur=localStorage.getItem('einkLiveIntervalMin')||'1';
+        const ans=prompt(T('Vernieuw-interval in minuten (0 = uit):','Refresh interval in minutes (0 = off):'), cur);
+        if(ans==null){ _setLiveIntervalValue(cur); return; }
+        let m=parseInt(ans,10); if(isNaN(m)||m<0) m=0;
+        _setLiveIntervalValue(String(m));
+      }
+      localStorage.setItem('einkLiveIntervalMin', String(liveIntervalMin())); startLiveTimer();
+    };
   }
   const tw=$('#tg-wait'); if(tw) tw.onchange=()=>{
     const p=profile(); p.waitEnabled=tw.checked; persist();
@@ -2594,7 +2632,6 @@ function wire(){
   $('#tg-grid').onchange=()=>drawGrid();
   $('#grid-size').onchange=e=>{ profile().device.grid=+e.target.value; persist(); drawGrid(); };
   $('#tg-eink').onchange=renderCanvas;
-  $('#tg-chrome').onchange=e=>document.body.classList.toggle('chrome-hidden',e.target.checked);
 
   $('#btn-undo').onclick=undo; $('#btn-redo').onclick=redo;
   $('#btn-dup').onclick=dupSel; $('#btn-del').onclick=deleteSel;
@@ -2671,15 +2708,25 @@ function toggleLive(){
   }
   refreshLive();        // turns live on, fetches, and (re)starts the timer
 }
-/* Auto-refresh interval in minutes (1..n), from the toolbar select; persisted */
+/* Auto-refresh interval in minutes from the toolbar select; 0 = off. Persisted. */
 function liveIntervalMin(){
-  const sel=$('#live-interval'); let v=sel?parseInt(sel.value,10):0;
-  if(!v||v<1) v=parseInt(localStorage.getItem('einkLiveIntervalMin')||'1',10)||1;
-  return Math.max(1,v);
+  const sel=$('#live-interval');
+  let v = (sel && sel.value!=='custom') ? parseInt(sel.value,10) : NaN;
+  if(isNaN(v)) v=parseInt(localStorage.getItem('einkLiveIntervalMin')||'1',10);
+  return isNaN(v)?1:Math.max(0,v);
+}
+/* select/insert the option matching v minutes (adds a custom value if needed) */
+function _setLiveIntervalValue(v){
+  const sel=$('#live-interval'); if(!sel) return; v=String(Math.max(0,parseInt(v,10)||0));
+  let opt=Array.prototype.find.call(sel.options, o=>o.value===v);
+  if(!opt){ opt=document.createElement('option'); opt.value=v; opt.textContent=v+' min';
+    sel.insertBefore(opt, sel.querySelector('option[value="custom"]')); }
+  sel.value=v;
 }
 function startLiveTimer(){
   stopLiveTimer();
-  if(LIVE_ON) LIVE_TIMER=setInterval(()=>refreshLive(true), liveIntervalMin()*60000);
+  const m=liveIntervalMin();
+  if(LIVE_ON && m>=1) LIVE_TIMER=setInterval(()=>refreshLive(true), m*60000);
 }
 function stopLiveTimer(){ if(LIVE_TIMER){ clearInterval(LIVE_TIMER); LIVE_TIMER=null; } }
 /* Fetch HA states now. silent=true suppresses the success toast (auto-refresh). */
