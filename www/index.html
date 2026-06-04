@@ -16,7 +16,7 @@
 <script src="vendor/konva.min.js"></script>
 <script src="vendor/js-yaml.min.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=2.6.3">
+<link rel="stylesheet" href="styles.css?v=2.7.0">
 </head>
 <body>
 <div id="app">
@@ -32,8 +32,8 @@
     <div class="profile-pick">
       <label data-i18n="Profiel">Profiel</label>
       <select id="profile-select" style="width:auto;min-width:150px"></select>
-      <button class="btn ghost sm" id="profile-new" title="Nieuw profiel">+</button>
-      <button class="btn ghost sm" id="profile-settings" title="Profiel-instellingen">⚙</button>
+      <button class="btn ghost sm" id="profile-new" data-i18n-title="Nieuw profiel" title="Nieuw profiel">+</button>
+      <button class="btn ghost sm" id="profile-settings" data-i18n-title="Profiel-instellingen" title="Profiel-instellingen">⚙</button>
     </div>
 
     <div class="topbar-spacer"></div>
@@ -43,11 +43,11 @@
     <button class="btn ghost" id="btn-sources"><span class="mdi mdi-database"></span> <span data-i18n="Bronnen">Bronnen</span></button>
     <div class="topbar-sep"></div>
     <button class="btn ghost" id="btn-fonts"><span class="mdi mdi-format-font"></span> Fonts</button>
-    <a href="files.html" class="btn ghost" title="Bestandsbeheer"><span class="mdi mdi-folder-outline"></span> <span data-i18n="Bestanden">Bestanden</span></a>
+    <a href="files.html" class="btn ghost" data-i18n-title="Bestandsbeheer" title="Bestandsbeheer"><span class="mdi mdi-folder-outline"></span> <span data-i18n="Bestanden">Bestanden</span></a>
     <div class="topbar-sep"></div>
-    <button class="btn ghost" id="btn-live" title="Live data">○ Live</button>
-    <button class="btn ghost" id="btn-refresh" title="Vernieuw live data nu"><span class="mdi mdi-refresh"></span></button>
-    <select id="live-interval" title="Live data automatisch vernieuwen" style="width:auto;padding:4px 6px">
+    <button class="btn ghost" id="btn-live" data-i18n-title="Live data" title="Live data">○ Live</button>
+    <button class="btn ghost" id="btn-refresh" data-i18n-title="Vernieuw live data nu" title="Vernieuw live data nu"><span class="mdi mdi-refresh"></span></button>
+    <select id="live-interval" data-i18n-title="Live data automatisch vernieuwen" title="Live data automatisch vernieuwen" style="width:auto;padding:4px 6px">
       <option value="0" data-i18n="Auto-vernieuwen uit">Auto-vernieuwen uit</option>
       <option value="1" selected>1 min</option>
       <option value="2">2 min</option>
@@ -58,7 +58,7 @@
       <option value="custom" data-i18n="Aangepast…">Aangepast…</option>
     </select>
     <div class="topbar-sep"></div>
-    <button class="btn ghost" id="btn-theme" title="Thema">◐ Dark</button>
+    <button class="btn ghost" id="btn-theme" data-i18n-title="Thema" title="Thema">◐ Dark</button>
     <button class="btn ghost" id="btn-lang" data-lang-toggle onclick="toggleLang()" title="Taal / Language">EN</button>
     <div class="topbar-sep"></div>
     <button class="btn ghost" id="btn-save" data-i18n="Opslaan">Opslaan</button>
@@ -97,7 +97,7 @@
   <!-- ============ CENTER: canvas ============ -->
   <section id="center">
     <div id="canvas-toolbar">
-      <select id="screen-select" title="Scherm" style="width:auto;padding:3px 6px">
+      <select id="screen-select" data-i18n-title="Scherm" title="Scherm" style="width:auto;padding:3px 6px">
         <option value="wait" data-i18n="Wachtscherm">Wachtscherm</option>
         <option value="main" data-i18n="Hoofdscherm">Hoofdscherm</option>
       </select>
@@ -110,7 +110,7 @@
       </div>
       <div class="topbar-sep"></div>
       <label class="toggle"><input type="checkbox" id="tg-grid" checked> <span data-i18n="Raster">Raster</span></label>
-      <select id="grid-size" title="Rastergrootte" style="width:auto;padding:3px 6px">
+      <select id="grid-size" data-i18n-title="Rastergrootte" title="Rastergrootte" style="width:auto;padding:3px 6px">
         <option value="8">8 px</option>
         <option value="10">10 px</option>
         <option value="16" selected>16 px</option>
@@ -150,7 +150,7 @@
     <div id="code-drawer">
       <header>
         <b data-i18n="Gegenereerde YAML">Gegenereerde YAML</b>
-        <label class="toggle" style="margin-right:auto" title="Voegt onderaan een herstelcode toe. Plak die YAML later terug via 'YAML importeren' om je volledige ontwerp te herstellen."><input type="checkbox" id="code-b64" checked> <span data-i18n="base64-herstelcode">base64-herstelcode</span></label>
+        <label class="toggle" style="margin-right:auto" data-i18n-title="Voegt onderaan een herstelcode toe. Plak die YAML later terug via 'YAML importeren' om je volledige ontwerp te herstellen." title="Voegt onderaan een herstelcode toe."><input type="checkbox" id="code-b64" checked> <span data-i18n="base64-herstelcode">base64-herstelcode</span></label>
         <button class="btn sm" id="code-copy" data-i18n="Kopieer">Kopieer</button>
         <button class="btn sm" id="code-download" data-i18n="Download .yaml">Download .yaml</button>
         <button class="btn ghost sm" id="code-close">✕</button>
@@ -179,8 +179,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=2.6.3"></script>
-<script src="lang.js?v=2.6.3"></script>
-<script src="theme.js?v=2.6.3"></script>
+<script src="app.js?v=2.7.0"></script>
+<script src="lang.js?v=2.7.0"></script>
+<script src="theme.js?v=2.7.0"></script>
 </body>
 </html>

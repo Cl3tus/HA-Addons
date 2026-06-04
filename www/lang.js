@@ -45,6 +45,13 @@
     'Wachtscherm aan': 'Waiting screen on',
     'Auto-vernieuwen uit': 'Auto-refresh off',
     'Aangepast…': 'Custom…',
+    'Live data': 'Live data',
+    'Vernieuw live data nu': 'Refresh live data now',
+    'Live data automatisch vernieuwen': 'Auto-refresh live data',
+    'Scherm': 'Screen',
+    'Rastergrootte': 'Grid size',
+    "Voegt onderaan een herstelcode toe. Plak die YAML later terug via 'YAML importeren' om je volledige ontwerp te herstellen.":
+      "Adds a restore code at the bottom. Paste that YAML back via 'Import YAML' to restore your whole design.",
     'kleuren': 'colours',
     'Widget (icoon+waarde)': 'Widget (icon+value)',
     'WiFi-icoon': 'Wi-Fi icon',
@@ -78,6 +85,8 @@
     'Verplaatsen': 'Move',
     'Downloaden': 'Download',
     'Vernieuwen': 'Refresh',
+    'Vernieuwen (F5)': 'Refresh (F5)',
+    'Alles selecteren': 'Select all',
     'Naam': 'Name',
     'Grootte': 'Size',
     'Gewijzigd': 'Modified',
@@ -127,6 +136,10 @@
     document.querySelectorAll('[data-i18n]').forEach(function (el) {
       var key = el.getAttribute('data-i18n');
       el.textContent = window.t(key);
+    });
+    // tooltips: data-i18n-title="<NL text>" → translated title attribute
+    document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
+      el.title = window.t(el.getAttribute('data-i18n-title'));
     });
     // language toggle buttons show the OTHER language as their label
     document.querySelectorAll('[data-lang-toggle]').forEach(function (btn) {

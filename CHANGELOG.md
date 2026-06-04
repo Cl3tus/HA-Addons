@@ -1,3 +1,14 @@
+## 2.7.0
+- **Verborgen elementen worden nu volledig uitgecomment** in de YAML — ook elementen met een if/else-blok (zoals WiFi/klok). Eerder bleef de rest van het blok als "live" code staan. De comment is nu ook in de juiste taal (NL/EN).
+- **Gegenereerde YAML — per blok aan/uit (Profiel-instellingen → "Gegenereerde YAML — welke blokken")**:
+  - `substitutions:`-blok is **weg**; `${friendly_name}` wordt nu direct ingevuld.
+  - **Refresh-logica** (esphome `on_boot` + `script` + `time`) als één schakelaar (ze horen bij elkaar), met instelbare **boot-prioriteit, boot-delay, wait-timeout** en **time-interval (min)**. Standaard aan.
+  - **globals**, **font**, **color**, **sensor**, **text_sensor** elk een eigen aan/uit (standaard aan).
+  - **SPI-bus** optioneel genereren met instelbare `clk_pin`/`mosi_pin` (standaard uit).
+  - **Display-pins** (`data_rate`, `cs_pin`, `dc_pin`, `busy_pin`, `reset_pin`, `reset_duration`) optioneel genereren met eigen velden (standaard uit; anders blijft je eigen pin-config staan).
+- **Ctrl+A** selecteert nu de **gegenereerde YAML** wanneer dat venster open is (i.p.v. alle elementen op het canvas).
+- **Vertalingen**: YAML-comments, tooltips (topbalk + bestandsbeheer) en het "verborgen/hidden"-label volgen nu netjes de gekozen taal.
+
 ## 2.6.3
 - **Bestandsbeheer**: selectievakjes staan nu óók bij **bestanden** (niet alleen mappen), en werken door de hele boomweergave heen — selecteer bestanden uit meerdere (uitgeklapte) mappen tegelijk om te verwijderen/verplaatsen. Selectie werkt nu op volledig pad.
 - **Fonts niet meer in "limbo"**: lokale fonts die al in de **fonts/**-map op de server staan worden nu bij het opstarten automatisch geladen en geregistreerd, zodat ze direct goed renderen op het canvas (niet langer als "upload nodig" terwijl het bestand er al is).

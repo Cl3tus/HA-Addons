@@ -125,6 +125,7 @@ function seedProfile(name='My display'){
     elements: [],
     waitEnabled: true,    // whether to emit the "waiting for data" branch at all
     waitElements: [],     // seeded with a default WAITING FOR DATA text on first boot
+    output: outputDefaults(),   // which YAML blocks to generate
   };
   function f(id,kind,file,family,weight,size,dynamic,base){
     return {id,kind,file,family,weight,size,dynamic:!!dynamic,
@@ -1581,7 +1582,7 @@ function wifiCode(el, I, color, anchor){
   const font=(fontById(el.fontId)||{id:'font_mdi_small'}).id;
   const levels=(el.wifi&&el.wifi.levels)||[];
   const I2=I+'  ';
-  let out=`${I}// WiFi icoon (${el.name||'wifi'})\n`;
+  let out=`${I}// ${T('WiFi-icoon','WiFi icon')} (${el.name||'wifi'})\n`;
   out+=`${I}if (id(wifisignal).has_state()) {\n`;
   levels.forEach((lv,i)=>{
     const line=`it.printf(${el.x}, ${el.y}, id(${font}), ${color}, TextAlign::${anchor}, "\\U${pad8(lv.hex)}");`;
@@ -1599,7 +1600,7 @@ function clockCode(el, I, color, anchor){
   const hpart = /LEFT$/.test(anchor)?'LEFT':(/RIGHT$/.test(anchor)?'RIGHT':'CENTER');
   const valign = 'CENTER_'+hpart; // CENTER_LEFT / CENTER / CENTER_RIGHT
   const va = hpart==='CENTER' ? 'CENTER' : valign;
-  let out=`${I}// Refresh tijdstempel (${el.name||'klok'})\n`;
+  let out=`${I}// ${T('Refresh-tijdstempel','Refresh timestamp')} (${el.name||'klok'})\n`;
   out+=`${I}{\n`;
   out+=`${I}  char ts_${shortId(el)}[24];\n`;
   out+=`${I}  time_t t_${shortId(el)} = id(homeassistant_time).now().timestamp;\n`;
@@ -1637,9 +1638,13 @@ function applyBranch(el, ov){
 }
 function elementCode(el, baseIndent){
   if(el.visible===false){
-    // point 1: hidden in layers -> commented out in YAML (kept visible as intent)
+    // hidden in layers -> the WHOLE statement (incl. multi-line if/else blocks) is commented out
     const inner=drawStmt(Object.assign({},el,{visible:true}), '').trim();
-    return `${baseIndent}// [verborgen] ${el.name||el.type}: ${inner}`;
+    const lines=inner.split('\n');
+    const lbl=T('verborgen','hidden');
+    return lines.map((ln,i)=> i===0
+      ? `${baseIndent}// [${lbl}] ${el.name||el.type}: ${ln}`
+      : `${baseIndent}// ${ln}`).join('\n');
   }
   const cd=el.condition;
   if(!cd || !cd.enabled || !cd.sourceId){
@@ -1649,9 +1654,9 @@ function elementCode(el, baseIndent){
   const tVis=(cd.whenTrue&&cd.whenTrue.visible!==false), fVis=(cd.whenFalse&&cd.whenFalse.visible!==false);
   const I=baseIndent, I2=baseIndent+'  ';
   let out=`${I}if (${condExpr(cd)}) {\n`;
-  out += (tVis? drawStmt(tEl,I2):`${I2}// (verborgen)`)+'\n';
+  out += (tVis? drawStmt(tEl,I2):`${I2}// (${T('verborgen','hidden')})`)+'\n';
   out += `${I}} else {\n`;
-  out += (fVis? drawStmt(fEl,I2):`${I2}// (verborgen)`)+'\n';
+  out += (fVis? drawStmt(fEl,I2):`${I2}// (${T('verborgen','hidden')})`)+'\n';
   out += `${I}}`;
   return out;
 }
@@ -1710,6 +1715,22 @@ function orderedFor(list){
 }
 function orderedElements(){ return orderedFor(els()); }
 
+/* per-profile "which blocks to generate" settings (see Profile settings → Generated YAML) */
+function outputDefaults(){
+  return {
+    refresh:true,                                   // esphome on_boot + script + time (grouped — they belong together)
+    bootPriority:'600.0', bootDelay:'2s', waitTimeout:'30s', timeInterval:15,
+    globals:true,
+    spi:false, spiClk:'GPIO13', spiMosi:'GPIO14',
+    fonts:true, colors:true, sensors:true, textSensors:true,
+    displayPins:false,
+    dataRate:'500kHz', csPin:'GPIO15', csIgnoreStrap:true,
+    dcPin:'GPIO27', busyPin:'GPIO25', busyInverted:true,
+    resetPin:'GPIO26', resetDuration:'2ms',
+  };
+}
+function outCfg(p){ return Object.assign(outputDefaults(), (p||profile()).output||{}); }
+
 function genYAML(){
   const p=profile(), d=p.device, gl=collectGlyphs();
   let out='';
@@ -1719,50 +1740,68 @@ function genYAML(){
   out+=`# ${T('Zet je lokale TTF-fonts in de fonts/-map van je ESPHome-config.','Put your local TTF fonts in your ESPHome config fonts/ folder.')}\n`;
   out+=`# ============================================================\n\n`;
 
-  // substitutions
-  out+=`substitutions:\n  device_name: "${d.name}"\n  friendly_name: "${d.comment}"\n  board_type: "ESP32"\n\n`;
+  const o = outCfg(p);
+  const friendly = d.comment || d.name || 'E-ink Display';
 
-  // esphome on_boot
-  out+=`# ${T('--- vul aan in je bestaande esphome: blok ---','--- add to your existing esphome: block ---')}\nesphome:\n  on_boot:\n    priority: 600.0\n    then:\n      - delay: 2s\n      - component.update: eink_display\n      - wait_until:\n          condition:\n            lambda: 'return id(data_updated) == true;'\n          timeout: 30s\n      - lambda: 'id(initial_data_received) = true;'\n      - script.execute: update_screen\n\n`;
+  // refresh logic — esphome on_boot + script + time belong together (one toggle)
+  if(o.refresh){
+    out+=`# ${T('--- vul aan in je bestaande esphome: blok ---','--- add to your existing esphome: block ---')}\n`;
+    out+=`esphome:\n  on_boot:\n    priority: ${o.bootPriority}\n    then:\n      - delay: ${o.bootDelay}\n      - component.update: eink_display\n      - wait_until:\n          condition:\n            lambda: 'return id(data_updated) == true;'\n          timeout: ${o.waitTimeout}\n      - lambda: 'id(initial_data_received) = true;'\n      - script.execute: update_screen\n\n`;
+  }
 
   // globals
-  out+=`globals:\n  - id: data_updated\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: initial_data_received\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: recorded_display_refresh\n    type: int\n    restore_value: yes\n    initial_value: '0'\n\n`;
+  if(o.globals){
+    out+=`globals:\n  - id: data_updated\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: initial_data_received\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: recorded_display_refresh\n    type: int\n    restore_value: yes\n    initial_value: '0'\n\n`;
+  }
 
-  // script
-  out+=`script:\n  - id: update_screen\n    then:\n      - lambda: 'id(data_updated) = false;'\n      - component.update: eink_display\n      - lambda: 'id(recorded_display_refresh) += 1;'\n      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'\n\n`;
+  // script + time (part of the refresh logic)
+  if(o.refresh){
+    out+=`script:\n  - id: update_screen\n    then:\n      - lambda: 'id(data_updated) = false;'\n      - component.update: eink_display\n      - lambda: 'id(recorded_display_refresh) += 1;'\n      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'\n\n`;
+    out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n          - if:\n              condition:\n                lambda: 'return id(data_updated) == true;'\n              then:\n                - script.execute: update_screen\n\n`;
+  }
 
-  // time
-  out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /15\n        then:\n          - if:\n              condition:\n                lambda: 'return id(data_updated) == true;'\n              then:\n                - script.execute: update_screen\n\n`;
+  // SPI bus (board-specific pins)
+  if(o.spi){
+    out+=`spi:\n  clk_pin: ${o.spiClk}\n  mosi_pin: ${o.spiMosi}\n\n`;
+  }
 
   // fonts
-  out+=`font:\n`;
-  p.fonts.forEach(f=>{
-    if(f.kind==='gfonts'){
-      out+=`  - file:\n      type: gfonts\n      family: ${f.family}\n      weight: ${f.weight}\n    id: ${f.id}\n    size: ${f.size}\n`;
-    } else {
-      out+=`  - file: '${f.file}'\n    id: ${f.id}\n    size: ${f.size}\n`;
-    }
-    out+=glyphBlock(f, gl[f.id]);
-  });
-  out+='\n';
+  if(o.fonts){
+    out+=`font:\n`;
+    p.fonts.forEach(f=>{
+      if(f.kind==='gfonts'){
+        out+=`  - file:\n      type: gfonts\n      family: ${f.family}\n      weight: ${f.weight}\n    id: ${f.id}\n    size: ${f.size}\n`;
+      } else {
+        out+=`  - file: '${f.file}'\n    id: ${f.id}\n    size: ${f.size}\n`;
+      }
+      out+=glyphBlock(f, gl[f.id]);
+    });
+    out+='\n';
+  }
 
   // colors
-  out+=`color:\n`;
-  p.colors.forEach(c=>{ out+=`  - id: ${c.id}\n    red: ${c.r}%\n    green: ${c.g}%\n    blue: ${c.b}%\n    white: ${c.w}%\n`; });
-  out+='\n';
+  if(o.colors){
+    out+=`color:\n`;
+    p.colors.forEach(c=>{ out+=`  - id: ${c.id}\n    red: ${c.r}%\n    green: ${c.g}%\n    blue: ${c.b}%\n    white: ${c.w}%\n`; });
+    out+='\n';
+  }
 
-  // sensors (diagnostics + used numeric homeassistant)
+  // sensors (diagnostics + used numeric homeassistant) — ${friendly_name} inlined (no substitutions block)
   const used = usedSources();
-  out+=`sensor:\n`;
-  out+=`  - platform: template\n    name: "\${friendly_name} Display Last Update"\n    device_class: timestamp\n    entity_category: diagnostic\n    id: display_last_update\n`;
-  out+=`  - platform: template\n    name: "\${friendly_name} Recorded Display Refresh"\n    accuracy_decimals: 0\n    unit_of_measurement: "Refreshes"\n    state_class: total_increasing\n    entity_category: diagnostic\n    lambda: 'return id(recorded_display_refresh);'\n`;
-  out+=`  - platform: wifi_signal\n    name: "\${friendly_name} WiFi Signal"\n    id: wifisignal\n    entity_category: diagnostic\n    update_interval: 60s\n`;
-  used.filter(s=>s.kind==='number').forEach(s=>out+=haSensor(s));
-  out+='\n';
+  if(o.sensors){
+    out+=`sensor:\n`;
+    out+=`  - platform: template\n    name: "${friendly} Display Last Update"\n    device_class: timestamp\n    entity_category: diagnostic\n    id: display_last_update\n`;
+    out+=`  - platform: template\n    name: "${friendly} Recorded Display Refresh"\n    accuracy_decimals: 0\n    unit_of_measurement: "Refreshes"\n    state_class: total_increasing\n    entity_category: diagnostic\n    lambda: 'return id(recorded_display_refresh);'\n`;
+    out+=`  - platform: wifi_signal\n    name: "${friendly} WiFi Signal"\n    id: wifisignal\n    entity_category: diagnostic\n    update_interval: 60s\n`;
+    used.filter(s=>s.kind==='number').forEach(s=>out+=haSensor(s));
+    out+='\n';
+  }
 
   // text sensors (used string/time/bool homeassistant)
-  const txt = used.filter(s=>s.kind!=='number');
-  if(txt.length){ out+=`text_sensor:\n`; txt.forEach(s=>out+=haSensor(s)); out+='\n'; }
+  if(o.textSensors){
+    const txt = used.filter(s=>s.kind!=='number');
+    if(txt.length){ out+=`text_sensor:\n`; txt.forEach(s=>out+=haSensor(s)); out+='\n'; }
+  }
 
   // graph: components (one per graph element)
   const allEls=[].concat(p.elements||[], p.waitElements||[]);
@@ -1797,7 +1836,18 @@ function genYAML(){
   }
 
   // display + lambda
-  out+=`display:\n  - platform: waveshare_epaper\n    id: eink_display\n    model: ${d.model}\n    update_interval: never\n    rotation: ${d.rotation}°\n    # cs/dc/busy/reset pins: keep your own pin config\n    lambda: |-\n`;
+  out+=`display:\n  - platform: waveshare_epaper\n    id: eink_display\n    model: ${d.model}\n    rotation: ${d.rotation}°\n`;
+  if(o.displayPins){
+    out+=`    data_rate: ${o.dataRate}\n`;
+    out+=`    cs_pin:\n      number: ${o.csPin}\n      ignore_strapping_warning: ${o.csIgnoreStrap?'true':'false'}\n`;
+    out+=`    dc_pin: ${o.dcPin}\n`;
+    out+=`    busy_pin:\n      number: ${o.busyPin}\n      inverted: ${o.busyInverted?'true':'false'}\n`;
+    out+=`    reset_pin: ${o.resetPin}\n`;
+    out+=`    reset_duration: ${o.resetDuration}\n`;
+  } else {
+    out+=`    # cs/dc/busy/reset pins: ${T('houd je eigen pin-config aan','keep your own pin config')}\n`;
+  }
+  out+=`    update_interval: never\n    lambda: |-\n`;
   const L='      ';
   if(p.waitEnabled===false){
     // waiting screen disabled — draw the main screen unconditionally
@@ -2116,7 +2166,7 @@ function rgbToHex(css){ if(/^#/.test(css)) return css; return '#1d1d1b'; }
 
 /* ---- Profile settings ---- */
 function openProfileSettings(){
-  const p=profile(), d=p.device;
+  const p=profile(), d=p.device, o=outCfg(p);
   const colTypeName={mono:T('mono (zwart/wit)','mono (black/white)'),bwr:T('BWR (zwart/wit/rood)','BWR (black/white/red)'),'7c':T('7-kleuren','7-colour')};
   const modelOpts=EINK_MODELS.map(m=>`<option value="${attr(m.v)}" ${d.model===m.v?'selected':''}>${m.v} — ${m.d}</option>`).join('');
   openModal(T('Profiel-instellingen','Profile settings'),
@@ -2139,6 +2189,47 @@ function openProfileSettings(){
      <label class="toggle"><input type="checkbox" id="ps-wait" ${p.waitEnabled!==false?'checked':''}> ${T('Wachtscherm gebruiken','Use waiting screen')}</label>
      <div class="hint" style="margin:4px 0 0">${T('Genereert de “waiting for data”-tak (if initial_data_received == false). Het wachtscherm ontwerp je via de scherm-keuze boven het canvas.','Generates the “waiting for data” branch (if initial_data_received == false). Design the waiting screen via the screen selector above the canvas.')}</div>
      <hr style="border-color:var(--line);margin:14px 0">
+     <details>
+       <summary style="cursor:pointer;font-weight:600;color:var(--accent)">${T('Gegenereerde YAML — welke blokken','Generated YAML — which blocks')}</summary>
+       <div style="margin-top:8px">
+         <label class="toggle"><input type="checkbox" id="ps-o-refresh" ${o.refresh?'checked':''}> ${T('Refresh-logica (esphome on_boot + script + time)','Refresh logic (esphome on_boot + script + time)')}</label>
+         <div class="row tight" style="margin:4px 0 8px">
+           <div><label class="fld">${T('Boot-prioriteit','Boot priority')}</label><input id="ps-o-prio" value="${attr(o.bootPriority)}"></div>
+           <div><label class="fld">${T('Boot-vertraging','Boot delay')}</label><input id="ps-o-delay" value="${attr(o.bootDelay)}"></div>
+           <div><label class="fld">${T('Wacht-timeout','Wait timeout')}</label><input id="ps-o-timeout" value="${attr(o.waitTimeout)}"></div>
+           <div><label class="fld">${T('Interval (min)','Interval (min)')}</label><input id="ps-o-interval" type="number" min="1" value="${o.timeInterval}" style="width:70px"></div>
+         </div>
+         <label class="toggle"><input type="checkbox" id="ps-o-globals" ${o.globals?'checked':''}> globals</label>
+         <div style="margin:4px 0">
+           <label class="toggle"><input type="checkbox" id="ps-o-fonts" ${o.fonts?'checked':''}> font</label>
+           <label class="toggle" style="margin-left:14px"><input type="checkbox" id="ps-o-colors" ${o.colors?'checked':''}> color</label>
+           <label class="toggle" style="margin-left:14px"><input type="checkbox" id="ps-o-sensors" ${o.sensors?'checked':''}> sensor</label>
+           <label class="toggle" style="margin-left:14px"><input type="checkbox" id="ps-o-textsensors" ${o.textSensors?'checked':''}> text_sensor</label>
+         </div>
+         <hr style="border-color:var(--line);margin:10px 0">
+         <label class="toggle"><input type="checkbox" id="ps-o-spi" ${o.spi?'checked':''}> ${T('SPI-bus genereren','Generate SPI bus')}</label>
+         <div class="row tight" style="margin:4px 0 8px">
+           <div><label class="fld">clk_pin</label><input id="ps-o-spiclk" value="${attr(o.spiClk)}" style="width:110px"></div>
+           <div><label class="fld">mosi_pin</label><input id="ps-o-spimosi" value="${attr(o.spiMosi)}" style="width:110px"></div>
+         </div>
+         <label class="toggle"><input type="checkbox" id="ps-o-pins" ${o.displayPins?'checked':''}> ${T('Display-pins genereren','Generate display pins')}</label>
+         <div class="row tight" style="margin:4px 0 0">
+           <div><label class="fld">data_rate</label><input id="ps-o-datarate" value="${attr(o.dataRate)}" style="width:90px"></div>
+           <div><label class="fld">cs_pin</label><input id="ps-o-cs" value="${attr(o.csPin)}" style="width:90px"></div>
+           <div><label class="fld">dc_pin</label><input id="ps-o-dc" value="${attr(o.dcPin)}" style="width:90px"></div>
+         </div>
+         <div class="row tight" style="margin:4px 0 0">
+           <div><label class="fld">busy_pin</label><input id="ps-o-busy" value="${attr(o.busyPin)}" style="width:90px"></div>
+           <div><label class="fld">reset_pin</label><input id="ps-o-reset" value="${attr(o.resetPin)}" style="width:90px"></div>
+           <div><label class="fld">reset_duration</label><input id="ps-o-resetdur" value="${attr(o.resetDuration)}" style="width:90px"></div>
+         </div>
+         <div style="margin-top:6px">
+           <label class="toggle"><input type="checkbox" id="ps-o-csstrap" ${o.csIgnoreStrap?'checked':''}> cs ignore_strapping_warning</label>
+           <label class="toggle" style="margin-left:14px"><input type="checkbox" id="ps-o-busyinv" ${o.busyInverted?'checked':''}> busy inverted</label>
+         </div>
+       </div>
+     </details>
+     <hr style="border-color:var(--line);margin:14px 0">
      <button class="btn ghost sm danger" id="ps-delete">${T('Profiel verwijderen','Delete profile')}</button>`,
     [{label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
       p.name=$('#ps-name').value; d.name=$('#ps-dev').value; d.comment=$('#ps-fn').value;
@@ -2147,6 +2238,19 @@ function openProfileSettings(){
       p.waitEnabled=$('#ps-wait').checked;
       if(!p.waitEnabled && editScreen==='wait'){ editScreen='main'; const ss=$('#screen-select'); if(ss) ss.value='main'; }
       { const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!p.waitEnabled; }
+      p.output=Object.assign(outCfg(p), {
+        refresh:$('#ps-o-refresh').checked,
+        bootPriority:$('#ps-o-prio').value, bootDelay:$('#ps-o-delay').value, waitTimeout:$('#ps-o-timeout').value,
+        timeInterval:+$('#ps-o-interval').value||15,
+        globals:$('#ps-o-globals').checked,
+        fonts:$('#ps-o-fonts').checked, colors:$('#ps-o-colors').checked,
+        sensors:$('#ps-o-sensors').checked, textSensors:$('#ps-o-textsensors').checked,
+        spi:$('#ps-o-spi').checked, spiClk:$('#ps-o-spiclk').value, spiMosi:$('#ps-o-spimosi').value,
+        displayPins:$('#ps-o-pins').checked,
+        dataRate:$('#ps-o-datarate').value, csPin:$('#ps-o-cs').value, csIgnoreStrap:$('#ps-o-csstrap').checked,
+        dcPin:$('#ps-o-dc').value, busyPin:$('#ps-o-busy').value, busyInverted:$('#ps-o-busyinv').checked,
+        resetPin:$('#ps-o-reset').value, resetDuration:$('#ps-o-resetdur').value,
+      });
       // adapt the colour palette to the model's colour capability (only when it changes)
       const newType=modelInfo(d.model).c;
       if(newType!==paletteType(p.colors)) p.colors=colorSetFor(newType);
@@ -2683,7 +2787,14 @@ function wire(){
     if(e.target.matches('input,textarea,select')) return;
     if((e.ctrlKey||e.metaKey)&&e.key==='z'){ e.preventDefault(); undo(); }
     else if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.shiftKey&&e.key==='Z'))){ e.preventDefault(); redo(); }
-    else if((e.ctrlKey||e.metaKey)&&e.key==='a'){ e.preventDefault(); setSelection(els().map(x=>x.id), null); }
+    else if((e.ctrlKey||e.metaKey)&&e.key==='a'){
+      // when the YAML drawer is open, Ctrl+A selects the generated code instead of the canvas
+      if($('#code-drawer').classList.contains('open')){
+        e.preventDefault();
+        const pre=$('#code-out'); const r=document.createRange(); r.selectNodeContents(pre);
+        const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      } else { e.preventDefault(); setSelection(els().map(x=>x.id), null); }
+    }
     else if((e.ctrlKey||e.metaKey)&&e.key==='d'){ e.preventDefault(); dupSel(); }
     else if(e.key==='Delete'||e.key==='Backspace'){ deleteSel(); }
     else if(e.key==='Escape'){ select(null); }
