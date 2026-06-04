@@ -189,9 +189,9 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 /* Left panel: the "Add elements" palette stays fixed; only the layers list
    scrolls when there are more layers than fit. */
 #left > .section:first-child { flex: none; }
-/* the elements palette is capped to ~45% of the panel and scrolls on its own,
-   so the layers list below always keeps the remaining space (never pushed off) */
-#left > .palette { flex: 0 0 auto; max-height: 45%; overflow-y: auto; }
+/* the elements palette is capped to ~60% of the panel and scrolls on its own,
+   so the layers list below always keeps ~40% (never pushed off) */
+#left > .palette { flex: 0 0 auto; max-height: 60%; overflow-y: auto; }
 #left > .section:last-child { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 #left > .section:last-child > h3 { flex: none; }
 #left .layers { flex: 1 1 auto; min-height: 0; overflow-y: auto; }

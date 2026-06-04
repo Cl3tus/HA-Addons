@@ -3005,7 +3005,7 @@ async function boot(){
   try{ await registerUploadedFonts(); }catch(e){ console.warn(e); }
   initStage();
   selectedId=null;
-  fitZoom();
+  zoom=1; applyZoom();                 // default to 100% (use "Passend" to fit)
   renderCanvas(); renderLayers(); renderInspector();
   updateLiveBadge();
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>renderCanvas());

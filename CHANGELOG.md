@@ -1,3 +1,7 @@
+## 2.8.4
+- **Linkerpaneel**: elementen-palet mag nu tot **60%** van het paneel beslaan, lagenlijst houdt minstens **40%**.
+- **Canvas opent nu standaard op 100%** (gebruik "Passend" om in te passen).
+
 ## 2.8.3
 - **Echte oorzaak van de layout-problemen gevonden** (grid-cellen hadden `min-height:auto` en groeiden met hun inhoud i.p.v. de rij te respecteren). Met `min-height:0` op de panelen werken nu:
   - **Canvas-scrollbars** in het middenframe (in-/uitzoomen + kleine schermen),
