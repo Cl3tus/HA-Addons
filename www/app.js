@@ -1651,12 +1651,12 @@ function collectGlyphs(){
           if(E.transform==='boolLabel'){ const a=E.transformArg||{}; addText(E.fontId,a.trueLabel||'Aan'); addText(E.fontId,a.falseLabel||'Uit'); }
         }
       }
-      else if(E.type==='wifi'){ (E.wifi&&E.wifi.levels||[]).forEach(lv=>addIcon(E.fontId, lv.hex, 'wifi')); }
+      else if(E.type==='wifi'){ (E.wifi&&E.wifi.levels||[]).forEach(lv=>addIcon(E.fontId, lv.hex, lv.icon||'wifi')); }
       else if(E.type==='clock'){
         // time digits + separators are dynamic; mark font dynamic and add the format's literal chars
         if(map[E.fontId]) map[E.fontId].dynamic=true;
         addText(E.fontId, '0123456789:-/. ');
-        if(E.clock&&E.clock.icon) addIcon(E.clock.iconFontId, E.clock.iconHex, 'clock');
+        if(E.clock&&E.clock.icon) addIcon(E.clock.iconFontId, E.clock.iconHex, E.clock.iconName||'clock');
       }
       else if(E.type==='graph'){
         const ax=E.graph&&E.graph.axes;
@@ -1808,13 +1808,19 @@ function glyphBlock(f, g){
     if(f.seedGlyphs && f.seedGlyphs.length){ f.seedGlyphs.forEach(c=>chars.add(c)); }
     else return ''; // full font (no glyph restriction)
   }
-  // single-line flow array for readability (icons first, then plain chars)
-  const parts=[];
-  if(icons.size) icons.forEach((name,hex)=>parts.push(`"\\U${hex}"`));
-  Array.from(chars).filter(c=>c && c.codePointAt(0)<0xF0000).sort()
-    .forEach(ch=>parts.push(`"${glyphEsc(ch)}"`));
-  return `    glyphs: [${parts.join(', ')}]\n`;
+  const plain=Array.from(chars).filter(c=>c && c.codePointAt(0)<0xF0000).sort();
+  // icon font (has MDI glyphs): one per line with a "# mdi:<name>" comment
+  if(icons.size){
+    let out='    glyphs:\n';
+    icons.forEach((name,hex)=>{ out+=`      - "\\U${hex}"${name?` # mdi:${name}`:''}\n`; });
+    plain.forEach(ch=>{ out+=`      - ${glyphQ1(ch)}\n`; });   // any stray plain chars
+    return out;
+  }
+  // regular font: compact single-line array, e.g. glyphs: ['A', 'Q', 'U']
+  return `    glyphs: [${plain.map(glyphQ1).join(', ')}]\n`;
 }
+/* single-quoted YAML scalar (a literal ' is doubled; backslash stays literal) */
+function glyphQ1(ch){ return "'"+String(ch).replace(/'/g,"''")+"'"; }
 function usedSources(){
   const ids=new Set();
   els().forEach(el=>{

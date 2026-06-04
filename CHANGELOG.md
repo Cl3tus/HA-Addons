@@ -1,3 +1,6 @@
+## 2.6.1
+- **Gegenereerde glyphs leesbaarder**: gewone fonts houden de compacte één-regel-array (`glyphs: ['A', 'Q', 'U', …]`), maar **icoon-fonts (MDI)** krijgen nu elke glyph op een eigen regel met een comment van de icoonnaam erachter, bv. `- "\U000F1A80" # mdi:thermometer-water`. Wifi- en klok-iconen tonen nu ook hun echte MDI-naam in de comment.
+
 ## 2.6.0
 - **Gauge starthoek** staat nu standaard op **270°** (vulling start bovenaan).
 - **Marquee-selectie vanaf de rand**: je kunt nu een sleep-selectie beginnen in het grijze/zwarte/witte gebied *rondom* het canvas en alsnog elementen pakken die tegen de rand liggen.
