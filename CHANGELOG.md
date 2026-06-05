@@ -3,6 +3,12 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.0.2
+- New **app icon** and a **banner** header (shown in About, Documentation and the
+  GitHub README).
+- Added an MIT **LICENSE**, license badge, and a `.gitattributes` for consistent
+  line endings.
+
 ## 3.0.1
 - File manager: the tree now starts **fully expanded** (every folder open) on load.
 - Supported architectures trimmed to **aarch64** and **amd64** (matches the badges).

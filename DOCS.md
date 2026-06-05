@@ -1,4 +1,6 @@
-<img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/eink_studio/icon.png" width="120" align="right" alt="E-ink Studio">
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/eink_studio/banner.png" alt="E-ink Studio" width="100%">
+</p>
 
 # E-ink Studio — Documentation
 
