@@ -605,7 +605,6 @@ function buildNode(el){
       const tc=colorById(tr.colorId)||color; const pts=[]; const n=40;
       for(let i=0;i<=n;i++){ const x=E.x+(E.w*i/n);
         let yy=E.y+E.h*(0.5-0.32*Math.sin(i/n*Math.PI*2+ti));
-        if(tr.lineType==='STEPLINE'){ yy=E.y+E.h*(0.5-0.32*Math.sin(Math.floor(i/4)*4/n*Math.PI*2+ti)); }
         pts.push(x,yy); }
       g.add(new Konva.Line({points:pts, stroke:tc.css, strokeWidth:Math.max(1,(tr.thickness??2)*0.7),
         dash: tr.lineType==='DOTTED'?[2,3]:(tr.lineType==='DASHED'?[6,4]:undefined)}));
@@ -623,6 +622,23 @@ function buildNode(el){
       if(ax.yTitle) add(ax.yTitle, E.x, E.y-fs-2,'l');
       if(ax.showXScale!==false){ add('-'+(E.graph.duration||'1h'),E.x,E.y+E.h+2,'l'); add('0',E.x+E.w,E.y+E.h+2,'r'); }
       if(ax.xTitle) add(ax.xTitle, E.x+E.w/2, E.y+E.h+16,'c');
+    }
+    // legend preview (positioned independently; defaults to the right of the graph)
+    const lg=E.graph&&E.graph.legend;
+    if(lg&&lg.show){
+      const lf=fontById(lg.nameFontId)||profile().fonts[0]||{size:14};
+      const lfam=previewFamily(lf), lfs=Math.min(lf.size||14,14);
+      const lx=numFilled(lg.x)?+lg.x:(E.x+E.w+8), ly=numFilled(lg.y)?+lg.y:E.y;
+      const traces=(E.graph.traces||[]).filter(t=>t.sourceId);
+      const rowH=lfs+6, sampleW=lg.showLines!==false?18:0, pad=6;
+      let maxw=0; const labels=traces.map(t=>{ const lab=t.name||(srcById(t.sourceId)||{}).id||t.sourceId||'?';
+        const tn=new Konva.Text({text:lab,fontFamily:lfam,fontSize:lfs}); maxw=Math.max(maxw,tn.width()); return lab; });
+      const boxW=pad*2+sampleW+(sampleW?6:0)+maxw, boxH=pad*2+Math.max(1,traces.length)*rowH-6;
+      if(lg.border!==false) g.add(new Konva.Rect({x:lx,y:ly,width:boxW,height:boxH,stroke:color.css,strokeWidth:1}));
+      traces.forEach((t,ri)=>{ const ry=ly+pad+ri*rowH, tc=colorById(t.colorId)||color;
+        if(sampleW) g.add(new Konva.Line({points:[lx+pad,ry+lfs/2,lx+pad+sampleW,ry+lfs/2],stroke:tc.css,
+          strokeWidth:Math.max(1,(t.thickness??2)*0.7),dash:t.lineType==='DOTTED'?[2,3]:(t.lineType==='DASHED'?[6,4]:undefined)}));
+        g.add(new Konva.Text({text:labels[ri],fontFamily:lfam,fontSize:lfs,fill:color.css,x:lx+pad+(sampleW?sampleW+6:0),y:ry})); });
     }
     // centre-origin so the transformer resizes around the middle (no rotation for graphs)
     const gcx=E.x+E.w/2, gcy=E.y+E.h/2;
@@ -1103,8 +1119,10 @@ function addElement(type, pos){
     Object.assign(base,{ x:cx-150,y:cy, w:300,h:140, colorId:'color_text', anchor:undefined,
       graph:{ duration:'1h', x_grid:'10min', y_grid:5, border:true,
         min_range:'', max_range:'',
-        traces:[{sourceId:'aquatemp', lineType:'SOLID', thickness:2, continuous:true, colorId:'color_text'}],
-        axes:{ show:false, fontId:'font_klein', yTitle:'', xTitle:'', showYScale:true, showXScale:true } } });
+        traces:[{sourceId:'aquatemp', name:'', lineType:'SOLID', thickness:2, continuous:true, colorId:'color_text'}],
+        axes:{ show:false, fontId:'font_klein', yTitle:'', xTitle:'', showYScale:true, showXScale:true },
+        legend:{ show:false, x:'', y:'', nameFontId:'font_klein', valueFontId:'', border:true,
+                 showLines:true, showValues:'AUTO', showUnits:true, direction:'AUTO' } } });
   }
   els().push(base); selectedId=base.id; afterChange();
 }
@@ -1345,8 +1363,9 @@ function renderInspector(){
     h+=g(T('Grafiek — traces (stijlen)','Graph — traces (styles)'),`
       ${(gr.traces||[]).map((t,i)=>`<div class="cond-box">
         <div class="row"><div><label class="fld">Sensor</label><select data-trace="${i}.sourceId">${srcOpts(t.sourceId,true)}</select></div></div>
+        <div class="row"><div><label class="fld">${T('Naam (legenda)','Name (legend)')}</label><input data-trace="${i}.name" type="text" value="${attr(t.name)}" placeholder="${T('bv. Buiten','e.g. Outside')}" title="${T('Label voor deze trace in de legenda. Leeg = ESPHome gebruikt de sensornaam.','Label for this trace in the legend. Empty = ESPHome uses the sensor name.')}"></div></div>
         <div class="row tight"><div><label class="fld">${T('Lijntype','Line type')}</label><select data-trace="${i}.lineType">
-          ${['SOLID','DOTTED','DASHED','STEPLINE'].map(o=>`<option ${t.lineType===o?'selected':''}>${o}</option>`).join('')}</select></div>
+          ${['SOLID','DOTTED','DASHED'].map(o=>`<option ${t.lineType===o?'selected':''}>${o}</option>`).join('')}</select></div>
           <div><label class="fld">${T('Dikte','Thickness')}</label><input data-trace="${i}.thickness" type="number" min="1" max="10" value="${t.thickness??2}"></div></div>
         <div class="row tight"><div><label class="fld">${T('Kleur','Colour')}</label><select data-trace="${i}.colorId">${profile().colors.map(c=>`<option value="${c.id}" ${t.colorId===c.id?'selected':''}>${c.id}</option>`).join('')}</select></div>
           <div style="display:flex;align-items:flex-end"><label class="toggle"><input type="checkbox" data-trace="${i}.continuous" ${t.continuous!==false?'checked':''}> ${T('Continu','Continuous')}</label></div></div>
@@ -1365,6 +1384,22 @@ function renderInspector(){
       <label class="toggle"><input type="checkbox" data-axes="showXScale" ${ax.showXScale!==false?'checked':''}> ${T('X-schaal tonen (0 … −duur)','Show X scale (0 … −duration)')}</label>
       <div class="hint">${T('Y-schaalwaarden (min/midden/max) verschijnen alleen als je hierboven bij “Algemeen” een vaste','Y scale values (min/mid/max) only appear if you set a fixed')} <b>Y-min ${T('én','and')} Y-max</b> ${T('hebt ingevuld. Bij auto-schaal kent de editor de werkelijke grenzen niet.','under “General”. With auto-scale the editor cannot know the real bounds.')}</div>`:`
       <div class="hint">ESPHome's <span class="mono">graph:</span> ${T('tekent zelf geen astitels of schaalwaarden. Zet dit aan om ze als tekst rond de grafiek te genereren.','does not draw axis titles or scale values itself. Enable this to generate them as text around the graph.')}</div>`}`);
+
+    const lg=gr.legend||{};
+    h+=g(T('Grafiek — legenda','Graph — legend'),`
+      <label class="toggle"><input type="checkbox" data-legend="show" ${lg.show?'checked':''}> ${T('Legenda tekenen (it.legend)','Draw legend (it.legend)')}</label>
+      ${lg.show?`
+      <div class="row tight"><div><label class="fld">${T('Naam-font','Name font')}</label><select data-legend="nameFontId" title="${T('Verplicht. Font voor de trace-namen in de legenda.','Required. Font for the trace names in the legend.')}">${fontOpts(lg.nameFontId)}</select></div>
+        <div><label class="fld">${T('Waarde-font','Value font')}</label><select data-legend="valueFontId" title="${T('Optioneel. Font voor de actuele waarden. Leeg = geen waarden.','Optional. Font for the current values. Empty = no values.')}"><option value="" ${lg.valueFontId?'':'selected'}>${T('(geen)','(none)')}</option>${fontOpts(lg.valueFontId)}</select></div></div>
+      <div class="row tight"><div><label class="fld">${T('Waarden tonen','Show values')}</label><select data-legend="showValues" title="${T('NONE=geen, AUTO=automatisch, BESIDE=naast de naam, BELOW=onder de naam.','NONE=none, AUTO=automatic, BESIDE=next to name, BELOW=below name.')}">${['NONE','AUTO','BESIDE','BELOW'].map(o=>`<option ${(lg.showValues||'AUTO')===o?'selected':''}>${o}</option>`).join('')}</select></div>
+        <div><label class="fld">${T('Richting','Direction')}</label><select data-legend="direction" title="${T('Hoe de items gestapeld worden.','How the items are stacked.')}">${['AUTO','HORIZONTAL','VERTICAL'].map(o=>`<option ${(lg.direction||'AUTO')===o?'selected':''}>${o}</option>`).join('')}</select></div></div>
+      <div class="row tight"><div><label class="fld">${T('Legenda X','Legend X')}</label><input data-legend="x" type="number" value="${attr(lg.x)}" placeholder="${T('auto (rechts)','auto (right)')}" title="${T('Linkerbovenhoek van de legenda. Leeg = rechts naast de grafiek.','Top-left of the legend. Empty = right of the graph.')}"></div>
+        <div><label class="fld">${T('Legenda Y','Legend Y')}</label><input data-legend="y" type="number" value="${attr(lg.y)}" placeholder="${T('auto','auto')}" title="${T('Bovenkant van de legenda. Leeg = bovenkant grafiek.','Top of the legend. Empty = top of the graph.')}"></div></div>
+      <label class="toggle"><input type="checkbox" data-legend="border" ${lg.border!==false?'checked':''}> ${T('Rand om legenda','Legend border')}</label>
+      <label class="toggle"><input type="checkbox" data-legend="showLines" ${lg.showLines!==false?'checked':''}> ${T('Lijnvoorbeelden tonen','Show line samples')}</label>
+      <label class="toggle"><input type="checkbox" data-legend="showUnits" ${lg.showUnits!==false?'checked':''}> ${T('Eenheden tonen','Show units')}</label>
+      <div class="hint">${T('De legenda wordt los geplaatst met','The legend is placed separately with')} <span class="mono">it.legend(x, y, …)</span>. ${T('Geef je traces hierboven een naam voor nette labels.','Give your traces a name above for tidy labels.')}</div>
+      `:`<div class="hint">${T('Toont sensornamen, lijnstijlen en (optioneel) actuele waarden in een apart kader.','Shows sensor names, line styles and (optionally) current values in a separate box.')}</div>`}`);
   }
 
   // condition (if / else) — available on every element
@@ -1421,16 +1456,16 @@ function affixControl(which, val){
 function formatEditor(el){
   const fmt=el.format||{mode:'builder'};
   const kind = el.source&&el.source.kind==='sensor' ? (srcById(el.source.sourceId)||{}).kind : el.source&&el.source.kind;
-  let h=`<div class="row"><div><label class="fld">${T('Modus','Mode')}</label><select data-fmt="mode">
+  let h=`<div class="row"><div><label class="fld">${T('Modus','Mode')}</label><select data-fmt="mode" title="${T('Builder: prefix/suffix/decimalen los instellen. Rauwe printf: zelf de C-format string typen.','Builder: set prefix/suffix/decimals separately. Raw printf: type the C format string yourself.')}">
       <option value="builder" ${fmt.mode!=='raw'?'selected':''}>Builder</option>
       <option value="raw" ${fmt.mode==='raw'?'selected':''}>${T('Rauwe printf','Raw printf')}</option></select></div></div>`;
   if(fmt.mode==='raw'){
-    h+=`<div class="row"><div><label class="fld">Format string</label><input data-fmt="raw" class="mono" type="text" value="${attr(fmt.raw||'%s')}"></div></div>`;
+    h+=`<div class="row"><div><label class="fld">Format string</label><input data-fmt="raw" class="mono" type="text" value="${attr(fmt.raw||'%s')}" title="${T('C printf-format. %.1f = 1 decimaal, %s = tekst, %% = letterlijk %. Letterlijke tekens (bv. °C) komen automatisch in de font-glyphs.','C printf format. %.1f = 1 decimal, %s = text, %% = literal %. Literal characters (e.g. °C) are added to the font glyphs automatically.')}"></div></div>`;
   } else {
     h+=`<div class="row tight">
       <div><label class="fld">Prefix</label>${affixControl('prefix', fmt.prefix||'')}</div>
       <div><label class="fld">Suffix</label>${affixControl('suffix', fmt.suffix||'')}</div></div>`;
-    if(kind==='number') h+=`<div class="row"><div><label class="fld">${T('Decimalen','Decimals')}</label><input data-fmt="decimals" type="number" min="0" max="6" value="${fmt.decimals??1}"></div></div>`;
+    if(kind==='number') h+=`<div class="row"><div><label class="fld">${T('Decimalen','Decimals')}</label><input data-fmt="decimals" type="number" min="0" max="6" value="${fmt.decimals??1}" title="${T('Aantal cijfers achter de komma.','Number of digits after the decimal point.')}"></div></div>`;
   }
   // transform
   const opts = transformOptions(kind);
@@ -1657,7 +1692,16 @@ function bindInspector(host, el){
   // source
   host.querySelectorAll('[data-src]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.source=el.source||{}; el.source[inp.dataset.src]=inp.value; afterChange(); }));
   // format
-  host.querySelectorAll('[data-fmt]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.format=el.format||{}; el.format[inp.dataset.fmt]= inp.type==='number'?(+inp.value):inp.value; afterChange(); }));
+  host.querySelectorAll('[data-fmt]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.format=el.format||{};
+    if(inp.dataset.fmt==='mode'){
+      // switching modes: wipe the other mode's leftovers so they don't linger/generate
+      el.format.mode=inp.value;
+      if(inp.value==='raw'){ el.format.prefix=''; el.format.suffix=''; }
+      else { el.format.raw='%s'; }
+    } else {
+      el.format[inp.dataset.fmt]= inp.type==='number'?(+inp.value):inp.value;
+    }
+    afterChange(); }));
   // affix preset dropdown + custom field (point 5)
   host.querySelectorAll('[data-affix-sel]').forEach(sel=>sel.addEventListener('change',()=>{
     const which=sel.dataset.affixSel;
@@ -1693,6 +1737,7 @@ function bindInspector(host, el){
   host.querySelectorAll('[data-graph]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.graph=el.graph||{}; const k=inp.dataset.graph; el.graph[k]= inp.type==='checkbox'?inp.checked:(inp.type==='number'?(+inp.value):inp.value); afterChange(); }));
   host.querySelectorAll('[data-trace]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); const [i,prop]=inp.dataset.trace.split('.'); el.graph.traces[+i][prop]= inp.type==='checkbox'?inp.checked:(inp.type==='number'?(+inp.value):inp.value); afterChange(); }));
   host.querySelectorAll('[data-axes]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.graph.axes=el.graph.axes||{}; const k=inp.dataset.axes; el.graph.axes[k]= inp.type==='checkbox'?inp.checked:inp.value; afterChange(); }));
+  host.querySelectorAll('[data-legend]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.graph.legend=el.graph.legend||{}; const k=inp.dataset.legend; el.graph.legend[k]= inp.type==='checkbox'?inp.checked:(inp.type==='number'?(inp.value===''?'':+inp.value):inp.value); afterChange(); }));
   host.querySelectorAll('[data-trace-del]').forEach(b=>b.addEventListener('click',()=>{ pushUndo(); el.graph.traces.splice(+b.dataset.traceDel,1); afterChange(); }));
   const ta=host.querySelector('#trace-add'); if(ta) ta.addEventListener('click',()=>{ pushUndo(); el.graph.traces.push({sourceId:'', lineType:'SOLID', thickness:2, continuous:true, colorId:'color_text'}); afterChange(); });
 }
@@ -1835,11 +1880,17 @@ function textNameBlock(el, I, fontId, color, anchor){
   return out;
 }
 function numFilled(v){ return v!==''&&v!=null&&!isNaN(+v); }
+function yamlStr(s){ return '"'+String(s).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"'; }
 function graphId(el){ return 'graph_'+el.id.replace(/[^a-z0-9_]/gi,''); }
 function qrId(el){ return 'qr_'+el.id.replace(/[^a-z0-9_]/gi,''); }
 function graphDrawCode(el, I){
   let out=`${I}it.graph(${el.x}, ${el.y}, id(${graphId(el)}));`;
-  const gr=el.graph||{}, ax=gr.axes||{};
+  const gr=el.graph||{}, ax=gr.axes||{}, lg=gr.legend||{};
+  // legend is positioned independently of the graph (defaults to its right)
+  if(lg.show){
+    const lx=numFilled(lg.x)?+lg.x:(el.x+el.w+8), ly=numFilled(lg.y)?+lg.y:el.y;
+    out+=`\n${I}it.legend(${lx}, ${ly}, id(${graphId(el)}));`;
+  }
   if(!ax.show) return out;
   const font=(fontById(ax.fontId)||{id:'font_klein'}).id;
   const col='color_text';
@@ -1961,7 +2012,13 @@ function collectGlyphs(){
         const sc=E.source||{};
         if(sc.kind==='static') addText(E.fontId, transformPreview(E, sc.text||''));
         else { map[E.fontId] && (map[E.fontId].dynamic=true);
-          addText(E.fontId,(E.format&&E.format.prefix)||''); addText(E.fontId,(E.format&&E.format.suffix)||'');
+          if(E.format&&E.format.mode==='raw'){
+            // raw printf: harvest the LITERAL characters (everything that isn't a
+            // %-specifier) so e.g. "%.1f°C" still puts ° and C in the font's glyphs.
+            addText(E.fontId, String(E.format.raw||'').replace(/%[-+ 0-9.]*[dfsxX]/g,'').replace(/%%/g,'%'));
+          } else {
+            addText(E.fontId,(E.format&&E.format.prefix)||''); addText(E.fontId,(E.format&&E.format.suffix)||'');
+          }
           if(E.transform==='boolLabel'){ const a=E.transformArg||{}; addText(E.fontId,a.trueLabel||'Aan'); addText(E.fontId,a.falseLabel||'Uit'); }
           if(NAMETRANSFORMS[E.transform]) NAMETRANSFORMS[E.transform].arr.forEach(nm=>addText(E.fontId, nm));   // weekday/month letters
           if(E.transform==='custom'){ const a=E.transformArg||{}; const N=DTNAMES[a.lang==='en'?'en':'nl'];
@@ -1982,6 +2039,14 @@ function collectGlyphs(){
           addText(ax.fontId, '0123456789-. ');
           addText(ax.fontId, ax.yTitle||''); addText(ax.fontId, ax.xTitle||'');
           addText(ax.fontId, String((E.graph.min_range??''))+String((E.graph.max_range??''))+String(E.graph.duration||''));
+        }
+        const lg=E.graph&&E.graph.legend;
+        if(lg&&lg.show){
+          const traces=(E.graph.traces||[]).filter(t=>t.sourceId);
+          // name font: the trace labels (or the sensor id ESPHome falls back to)
+          if(map[lg.nameFontId]) traces.forEach(t=>addText(lg.nameFontId, t.name||(srcById(t.sourceId)||{}).id||t.sourceId||''));
+          // value font: digits/sign/decimal + common unit chars
+          if(lg.valueFontId && map[lg.valueFontId]){ map[lg.valueFontId].dynamic=true; addText(lg.valueFontId, '0123456789.-: '); if(lg.showUnits!==false) addText(lg.valueFontId, '°%CFWVAhkmsp'); }
         }
       }
     });
@@ -2111,8 +2176,21 @@ function genYAML(){
       if(traces.length){
         out+=`    traces:\n`;
         traces.forEach(t=>{
-          out+=`      - sensor: ${t.sourceId}\n        line_type: ${t.lineType||'SOLID'}\n        line_thickness: ${t.thickness??2}\n        continuous: ${t.continuous!==false?'true':'false'}\n        color: ${cppColor(t.colorId)}\n`;
+          out+=`      - sensor: ${t.sourceId}\n`;
+          if(t.name) out+=`        name: ${yamlStr(t.name)}\n`;
+          out+=`        line_type: ${t.lineType||'SOLID'}\n        line_thickness: ${t.thickness??2}\n        continuous: ${t.continuous!==false?'true':'false'}\n        color: ${cppColor(t.colorId)}\n`;
         });
+      }
+      const lg=gr.legend||{};
+      if(lg.show){
+        const nameFont=(fontById(lg.nameFontId)||profile().fonts[0]||{id:'font_klein'}).id;
+        out+=`    legend:\n      name_font: ${nameFont}\n`;
+        if(lg.valueFontId && fontById(lg.valueFontId)) out+=`      value_font: ${lg.valueFontId}\n`;
+        out+=`      border: ${lg.border!==false?'true':'false'}\n`;
+        out+=`      show_lines: ${lg.showLines!==false?'true':'false'}\n`;
+        out+=`      show_values: ${lg.showValues||'AUTO'}\n`;
+        out+=`      show_units: ${lg.showUnits!==false?'true':'false'}\n`;
+        out+=`      direction: ${lg.direction||'AUTO'}\n`;
       }
     });
     out+='\n';
@@ -2380,7 +2458,8 @@ async function openFonts(){
     <td>${f.size}px</td>
     <td>${statusTag(f)}</td>
     <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?`<input type="file" accept=".ttf,.otf" data-font="${i}" style="font-size:10px">`:''}</td>
-    <td><button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">✕</button></td>
+    <td style="white-space:nowrap">${/materialdesignicons/i.test(f.file||'')?'':`<button class="btn ghost sm" data-editfont="${i}" title="${T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}">✎</button>`}
+        <button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">✕</button></td>
   </tr>`).join('');
   openModal('Fonts',
     `<h4 style="margin:0 0 8px;color:var(--accent)">Fonts</h4>
@@ -2390,17 +2469,17 @@ async function openFonts(){
      <div class="src-box" style="margin-top:10px">
        <label class="fld">${T('Font toevoegen','Add font')}</label>
        <div class="row tight">
-         <div><input id="nf-id" type="text" class="mono" placeholder="${T('id (bv. font_groot)','id (e.g. font_large)')}"></div>
-         <div><input id="nf-size" type="number" placeholder="${T('grootte','size')}" value="30" style="width:90px"></div>
-         <div><select id="nf-kind"><option value="gfonts">Google Font</option><option value="local">${T('Lokale TTF','Local TTF')}</option></select></div>
+         <div><input id="nf-id" type="text" class="mono" placeholder="${T('id (bv. font_groot)','id (e.g. font_large)')}" title="${T('De id waarmee je dit font in elementen kiest en die in de YAML verschijnt. Letters, cijfers en _.','The id you select this font by in elements and that appears in the YAML. Letters, digits and _.')}"></div>
+         <div><input id="nf-size" type="number" placeholder="${T('grootte','size')}" value="30" style="width:90px" title="${T('Tekenhoogte in pixels (font size).','Glyph height in pixels (font size).')}"></div>
+         <div><select id="nf-kind" title="${T('Google Font (online opgehaald bij build) of een lokaal TTF/OTF-bestand in je fonts/-map.','Google Font (fetched at build) or a local TTF/OTF file in your fonts/ folder.')}"><option value="gfonts">Google Font</option><option value="local">${T('Lokale TTF','Local TTF')}</option></select></div>
        </div>
        <div class="row tight" id="nf-gfonts">
-         <div><input id="nf-family" type="text" placeholder="family (${T('bv.','e.g.')} Roboto)"></div>
-         <div><input id="nf-weight" type="number" placeholder="weight" value="400" style="width:90px"></div>
+         <div><input id="nf-family" type="text" placeholder="family (${T('bv.','e.g.')} Roboto)" title="${T('Exacte Google-Fonts-naam, bv. “Roboto”, “Noto Sans Display”.','Exact Google Fonts family name, e.g. “Roboto”, “Noto Sans Display”.')}"></div>
+         <div><input id="nf-weight" type="number" placeholder="weight" value="400" style="width:90px" title="${T('Letterdikte: 100=thin, 400=normaal, 700=bold, 900=black. Moet bestaan voor deze family.','Font weight: 100=thin, 400=regular, 700=bold, 900=black. Must exist for this family.')}"></div>
        </div>
        <div class="row tight" id="nf-local" style="display:none">
-         <div><input id="nf-file" type="text" placeholder="${T('pad in HA (bv. fonts/mijn.ttf)','path in HA (e.g. fonts/my.ttf)')}"></div>
-         <div><input id="nf-upload" type="file" accept=".ttf,.otf" style="font-size:10px"></div>
+         <div><input id="nf-file" type="text" placeholder="${T('pad in HA (bv. fonts/mijn.ttf)','path in HA (e.g. fonts/my.ttf)')}" title="${T('Pad zoals het in je ESPHome-config staat, relatief aan de config-map. Moet exact kloppen.','Path as referenced in your ESPHome config, relative to the config folder. Must match exactly.')}"></div>
+         <div><input id="nf-upload" type="file" accept=".ttf,.otf" style="font-size:10px" title="${T('Upload het TTF/OTF zodat de preview klopt en het bestand in fonts/ komt.','Upload the TTF/OTF so the preview is accurate and the file lands in fonts/.')}"></div>
        </div>
        <button class="btn sm" id="nf-add" style="margin-top:8px">+ ${T('Font toevoegen','Add font')}</button>
        <div class="hint" style="margin-top:6px">${T('Het','The')} <span class="mono">id</span> ${T('gebruik je in elementen; het','is used in elements; the')} <span class="mono">${T('pad','path')}</span> ${T('moet kloppen met je ESPHome','must match your ESPHome')} <span class="mono">fonts/</span>${T('-map.',' folder.')}</div>
@@ -2420,6 +2499,7 @@ async function openFonts(){
     if(inUse && !confirm(T(`Font "${f.id}" wordt gebruikt door elementen. Toch verwijderen?`,`Font "${f.id}" is used by elements. Delete anyway?`))) return;
     profile().fonts.splice(i,1); persist(); afterChange(); openFonts(); toast(T('Font verwijderd','Font deleted'));
   });
+  $$('#modal-body [data-editfont]').forEach(b=>b.onclick=()=>editFont(+b.dataset.editfont));
   // new-font form: toggle gfonts/local fields
   const kindSel=$('#nf-kind');
   kindSel.onchange=()=>{ const g=kindSel.value==='gfonts'; $('#nf-gfonts').style.display=g?'':'none'; $('#nf-local').style.display=g?'none':''; };
@@ -2439,6 +2519,68 @@ async function openFonts(){
     persist(); afterChange(); openFonts(); toast(T('Font toegevoegd','Font added'));
   };
 }
+
+/* rename a font id everywhere it is referenced (elements, graph axes, clock icon) */
+function renameFontId(oldId, newId){
+  if(oldId===newId) return;
+  [].concat(profile().elements||[], profile().waitElements||[]).forEach(e=>{
+    if(e.fontId===oldId) e.fontId=newId;
+    if(e.clock && e.clock.iconFontId===oldId) e.clock.iconFontId=newId;
+    if(e.graph && e.graph.axes && e.graph.axes.fontId===oldId) e.graph.axes.fontId=newId;
+    if(e.graph && e.graph.legend){ if(e.graph.legend.nameFontId===oldId) e.graph.legend.nameFontId=newId;
+      if(e.graph.legend.valueFontId===oldId) e.graph.legend.valueFontId=newId; }
+  });
+}
+
+/* edit an existing font: id (renamed across all references), size, weight, family,
+   type (gfonts/local) and file path. */
+function editFont(i){
+  const f=profile().fonts[i]; if(!f) return;
+  const isLocal = f.kind!=='gfonts';
+  openModal(T('Font bewerken','Edit font'),
+    `<div class="row tight">
+       <div style="flex:2"><label class="fld">id</label><input id="ef-id" class="mono" value="${attr(f.id)}" title="${T('Wordt overal bijgewerkt waar dit font gebruikt wordt.','Updated everywhere this font is used.')}"></div>
+       <div><label class="fld">${T('grootte','size')}</label><input id="ef-size" type="number" min="6" value="${f.size||30}" style="width:90px" title="${T('Tekenhoogte in pixels.','Glyph height in pixels.')}"></div>
+       <div><label class="fld">${T('type','type')}</label><select id="ef-kind" title="${T('Google Font of lokaal TTF/OTF.','Google Font or local TTF/OTF.')}">
+         <option value="gfonts" ${!isLocal?'selected':''}>Google Font</option>
+         <option value="local" ${isLocal?'selected':''}>${T('Lokale TTF','Local TTF')}</option></select></div>
+     </div>
+     <div class="row tight" id="ef-gfonts" style="${isLocal?'display:none':''}">
+       <div style="flex:2"><label class="fld">family</label><input id="ef-family" value="${attr(f.family||'Roboto')}" title="${T('Exacte Google-Fonts-naam.','Exact Google Fonts family name.')}"></div>
+       <div><label class="fld">weight</label><input id="ef-weight" type="number" value="${f.weight||400}" style="width:90px" title="${T('100=thin, 400=normaal, 700=bold, 900=black.','100=thin, 400=regular, 700=bold, 900=black.')}"></div>
+     </div>
+     <div class="row tight" id="ef-local" style="${isLocal?'':'display:none'}">
+       <div style="flex:2"><label class="fld">${T('pad','path')}</label><input id="ef-file" value="${attr(f.file||'fonts/font.ttf')}" title="${T('Pad zoals in je ESPHome-config.','Path as in your ESPHome config.')}"></div>
+       <div><label class="fld">${T('vervang TTF','replace TTF')}</label><input id="ef-upload" type="file" accept=".ttf,.otf" style="font-size:10px"></div>
+     </div>
+     <div class="hint" style="margin-top:6px">${T('Tip: het wisselen van type of family vervangt de bron; de elementen die dit font gebruiken blijven gekoppeld via de id.','Tip: changing the type or family swaps the source; elements using this font stay linked through its id.')}</div>`,
+    [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:openFonts},
+     {label:T('Opslaan','Save'),cls:'primary',onClick:async()=>{
+       const newId=($('#ef-id').value||'').trim();
+       if(!/^[a-z_][a-z0-9_]*$/i.test(newId)){ toast(T('Geef een geldig id (letters/cijfers/_)','Enter a valid id (letters/digits/_)')); return; }
+       if(newId!==f.id && fontById(newId)){ toast(T('Dit id bestaat al','This id already exists')); return; }
+       const newKind=$('#ef-kind').value;
+       renameFontId(f.id, newId); f.id=newId;
+       f.size=+$('#ef-size').value||f.size||30;
+       f.kind=newKind;
+       if(newKind==='gfonts'){
+         f.family=($('#ef-family').value||'Roboto').trim(); f.weight=+$('#ef-weight').value||400;
+         f.file=null; f.dataUrl=null;
+       } else {
+         f.family=null; f.weight=null;
+         f.file=($('#ef-file').value||'fonts/font.ttf').trim();
+         if(efUpload){ f.dataUrl=efUpload; } reuseFontFile(f);
+       }
+       injectGoogleFonts(); await registerUploadedFonts();
+       if(f.dataUrl && newKind!=='gfonts') await maybeUploadFont(f, (f.file||'').split('/').pop()||f.id+'.ttf');
+       persist(); afterChange(); openFonts(); toast(T('Font bijgewerkt','Font updated'));
+     }}]);
+  const kindSel=$('#ef-kind');
+  kindSel.onchange=()=>{ const g=kindSel.value==='gfonts'; $('#ef-gfonts').style.display=g?'':'none'; $('#ef-local').style.display=g?'none':''; };
+  let efUpload=null;
+  const up=$('#ef-upload'); if(up) up.onchange=e=>{ const file=e.target.files[0]; if(!file) return; const rd=new FileReader(); rd.onload=()=>{ efUpload=rd.result; if($('#ef-file') && !$('#ef-file').value) $('#ef-file').value='fonts/'+file.name; }; rd.readAsDataURL(file); };
+}
+
 /* fonts that share the same TTF filename share one upload — different sizes of
    the same file should not be requested/uploaded twice (#19/#7) */
 function _fontFileName(f){ return f.file ? f.file.split('/').pop() : null; }
@@ -2479,7 +2621,7 @@ function openProfileSettings(){
   const pinRow=(onId,valId,label,on,val,extra='')=>`
     <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
       <label class="toggle" style="font-size:12px"><input type="checkbox" id="ps-o-${onId}" data-pinon="${valId}" ${on?'checked':''}> <span class="mono">${label}</span></label>
-      <input id="${valId}" data-default="${attr(val)}" value="${on?attr(val):''}" ${on?'':'disabled'} style="width:100%">
+      <input id="${valId}" data-default="${attr(val)}" value="${attr(val)}" ${on?'':'disabled'} style="width:100%">
       ${extra}
     </div>`;
   const colTypeName={mono:T('mono (zwart/wit)','mono (black/white)'),bwr:T('BWR (zwart/wit/rood)','BWR (black/white/red)'),'7c':T('7-kleuren','7-colour')};
@@ -2507,10 +2649,10 @@ function openProfileSettings(){
      <div id="ps-yaml-body" style="display:none;margin-top:8px">
          <label class="toggle"><input type="checkbox" id="ps-o-refresh" ${o.refresh?'checked':''}> ${T('Refresh-logica (esphome on_boot + script + time)','Refresh logic (esphome on_boot + script + time)')}</label>
          <div class="row tight" style="margin:4px 0 8px">
-           <div><label class="fld">${T('Boot-prioriteit','Boot priority')}</label><input id="ps-o-prio" value="${attr(o.bootPriority)}"></div>
-           <div><label class="fld">${T('Boot-vertraging','Boot delay')}</label><input id="ps-o-delay" value="${attr(o.bootDelay)}"></div>
-           <div><label class="fld">${T('Wacht-timeout','Wait timeout')}</label><input id="ps-o-timeout" value="${attr(o.waitTimeout)}"></div>
-           <div><label class="fld">${T('Interval (min)','Interval (min)')}</label><input id="ps-o-interval" type="number" min="1" value="${o.timeInterval}" style="width:70px"></div>
+           <div><label class="fld">${T('Boot-prioriteit','Boot priority')}</label><input id="ps-o-prio" value="${attr(o.bootPriority)}" title="${T('ESPHome on_boot prioriteit. Hoger = vroeger. 600 draait ná WiFi/API (aanrader voor displays).','ESPHome on_boot priority. Higher = earlier. 600 runs after WiFi/API (recommended for displays).')}"></div>
+           <div><label class="fld">${T('Boot-vertraging','Boot delay')}</label><input id="ps-o-delay" value="${attr(o.bootDelay)}" title="${T('Wachttijd na boot vóór de eerste refresh, bv. “2s”. Geeft sensoren tijd om binnen te komen.','Wait after boot before the first refresh, e.g. “2s”. Gives sensors time to arrive.')}"></div>
+           <div><label class="fld">${T('Wacht-timeout','Wait timeout')}</label><input id="ps-o-timeout" value="${attr(o.waitTimeout)}" title="${T('Maximale wachttijd op data vóór het scherm tóch tekent, bv. “30s”.','Maximum time to wait for data before drawing anyway, e.g. “30s”.')}"></div>
+           <div><label class="fld">${T('Interval (min)','Interval (min)')}</label><input id="ps-o-interval" type="number" min="1" value="${o.timeInterval}" style="width:70px" title="${T('Hoe vaak (in minuten) het display ververst via de time-trigger.','How often (in minutes) the display refreshes via the time trigger.')}"></div>
          </div>
          <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0">
            <label class="toggle"><input type="checkbox" id="ps-o-globals" ${o.globals?'checked':''}> globals</label>
@@ -2522,14 +2664,14 @@ function openProfileSettings(){
          <hr style="border-color:var(--line);margin:10px 0">
          <label class="toggle"><input type="checkbox" id="ps-o-spi" ${o.spi?'checked':''}> ${T('SPI-bus genereren','Generate SPI bus')}</label>
          <div class="row tight" style="margin:4px 0 8px">
-           <div><label class="fld">clk_pin</label><input id="ps-o-spiclk" data-default="${attr(o.spiClk)}" value="${o.spi?attr(o.spiClk):''}" style="width:110px" ${o.spi?'':'disabled'}></div>
-           <div><label class="fld">mosi_pin</label><input id="ps-o-spimosi" data-default="${attr(o.spiMosi)}" value="${o.spi?attr(o.spiMosi):''}" style="width:110px" ${o.spi?'':'disabled'}></div>
+           <div><label class="fld">clk_pin</label><input id="ps-o-spiclk" data-default="${attr(o.spiClk)}" value="${attr(o.spiClk)}" style="width:110px" ${o.spi?'':'disabled'}></div>
+           <div><label class="fld">mosi_pin</label><input id="ps-o-spimosi" data-default="${attr(o.spiMosi)}" value="${attr(o.spiMosi)}" style="width:110px" ${o.spi?'':'disabled'}></div>
          </div>
          <label class="toggle"><input type="checkbox" id="ps-o-pins" ${o.displayPins?'checked':''}> ${T('Display-pins genereren','Generate display pins')}</label>
          <div id="ps-pins-box" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px 14px;margin:8px 0 0;${o.displayPins?'':'opacity:.45'}">
            ${pinRow('dataRateOn','ps-o-datarate','data_rate',o.dataRateOn,o.dataRate)}
-           ${pinRow('csPinOn','ps-o-cs','cs_pin',o.csPinOn,o.csPin, `<label class="toggle" style="font-size:11px"><input type="checkbox" id="ps-o-csstrap" ${o.csIgnoreStrap?'checked':''}> ignore_strap</label>`)}
-           ${pinRow('busyPinOn','ps-o-busy','busy_pin',o.busyPinOn,o.busyPin, `<label class="toggle" style="font-size:11px"><input type="checkbox" id="ps-o-busyinv" ${o.busyInverted?'checked':''}> inverted</label>`)}
+           ${pinRow('csPinOn','ps-o-cs','cs_pin',o.csPinOn,o.csPin, `<label class="toggle" style="font-size:11px"><input type="checkbox" id="ps-o-csstrap" data-pinextra="ps-o-csPinOn" ${o.csIgnoreStrap?'checked':''}> ignore_strap</label>`)}
+           ${pinRow('busyPinOn','ps-o-busy','busy_pin',o.busyPinOn,o.busyPin, `<label class="toggle" style="font-size:11px"><input type="checkbox" id="ps-o-busyinv" data-pinextra="ps-o-busyPinOn" ${o.busyInverted?'checked':''}> inverted</label>`)}
            ${pinRow('dcPinOn','ps-o-dc','dc_pin',o.dcPinOn,o.dcPin)}
            ${pinRow('resetPinOn','ps-o-reset','reset_pin',o.resetPinOn,o.resetPin)}
            ${pinRow('resetDurOn','ps-o-resetdur','reset_duration',o.resetDurOn,o.resetDuration)}
@@ -2553,15 +2695,15 @@ function openProfileSettings(){
         fonts:$('#ps-o-fonts').checked, colors:$('#ps-o-colors').checked,
         sensors:$('#ps-o-sensors').checked, textSensors:$('#ps-o-textsensors').checked,
         spi:$('#ps-o-spi').checked,
-        spiClk:$('#ps-o-spi').checked?$('#ps-o-spiclk').value:o.spiClk, spiMosi:$('#ps-o-spi').checked?$('#ps-o-spimosi').value:o.spiMosi,
+        // values are always kept in the field (greyed when off) so a deselected line is remembered
+        spiClk:$('#ps-o-spiclk').value||o.spiClk, spiMosi:$('#ps-o-spimosi').value||o.spiMosi,
         displayPins:$('#ps-o-pins').checked,
-        // per-pin: keep the stored value when the line is switched off (field is blanked in the UI)
-        dataRateOn:$('#ps-o-dataRateOn').checked, dataRate:$('#ps-o-dataRateOn').checked?$('#ps-o-datarate').value:o.dataRate,
-        csPinOn:$('#ps-o-csPinOn').checked, csPin:$('#ps-o-csPinOn').checked?$('#ps-o-cs').value:o.csPin, csIgnoreStrap:$('#ps-o-csstrap').checked,
-        dcPinOn:$('#ps-o-dcPinOn').checked, dcPin:$('#ps-o-dcPinOn').checked?$('#ps-o-dc').value:o.dcPin,
-        busyPinOn:$('#ps-o-busyPinOn').checked, busyPin:$('#ps-o-busyPinOn').checked?$('#ps-o-busy').value:o.busyPin, busyInverted:$('#ps-o-busyinv').checked,
-        resetPinOn:$('#ps-o-resetPinOn').checked, resetPin:$('#ps-o-resetPinOn').checked?$('#ps-o-reset').value:o.resetPin,
-        resetDurOn:$('#ps-o-resetDurOn').checked, resetDuration:$('#ps-o-resetDurOn').checked?$('#ps-o-resetdur').value:o.resetDuration,
+        dataRateOn:$('#ps-o-dataRateOn').checked, dataRate:$('#ps-o-datarate').value||o.dataRate,
+        csPinOn:$('#ps-o-csPinOn').checked, csPin:$('#ps-o-cs').value||o.csPin, csIgnoreStrap:$('#ps-o-csstrap').checked,
+        dcPinOn:$('#ps-o-dcPinOn').checked, dcPin:$('#ps-o-dc').value||o.dcPin,
+        busyPinOn:$('#ps-o-busyPinOn').checked, busyPin:$('#ps-o-busy').value||o.busyPin, busyInverted:$('#ps-o-busyinv').checked,
+        resetPinOn:$('#ps-o-resetPinOn').checked, resetPin:$('#ps-o-reset').value||o.resetPin,
+        resetDurOn:$('#ps-o-resetDurOn').checked, resetDuration:$('#ps-o-resetdur').value||o.resetDuration,
       });
       // adapt the colour palette to the model's colour capability (only when it changes)
       const newType=modelInfo(d.model).c;
@@ -2580,15 +2722,20 @@ function openProfileSettings(){
   { const tg=$('#ps-yaml-toggle'), body=$('#ps-yaml-body'); if(tg&&body) tg.onclick=()=>{
       const open=body.style.display!=='none'; body.style.display=open?'none':'';
       tg.textContent=(open?'▸ ':'▾ ')+T('Gegenereerde YAML-blokken','Generated YAML Blocks'); }; }
-  // enable/disable a field, blanking it when off and restoring its default when on
-  const setField=(inp, on)=>{ if(!inp) return; inp.disabled=!on; if(!on) inp.value=''; else if(!inp.value) inp.value=inp.dataset.default||''; };
-  // SPI: clk/mosi greyed + blanked when "Generate SPI bus" is off
+  // enable/disable a field — the value stays visible (greyed) so a deselected
+  // setting is remembered rather than wiped.
+  const setField=(inp, on)=>{ if(!inp) return; inp.disabled=!on; if(on && !inp.value) inp.value=inp.dataset.default||''; };
+  // SPI: clk/mosi greyed (not blanked) when "Generate SPI bus" is off
   { const spi=$('#ps-o-spi'); const sync=()=>{ setField($('#ps-o-spiclk'),spi.checked); setField($('#ps-o-spimosi'),spi.checked); }; if(spi){ spi.onchange=sync; } }
-  // display pins: each line has its own checkbox; the master greys the whole block
+  // display pins: each line has its own checkbox; the master greys the whole block.
+  // ignore_strap / inverted (data-pinextra) grey out with their pin row + the master
+  // but keep their checked state — never auto-deselected.
   const pinsMaster=$('#ps-o-pins'), pinsBox=$('#ps-pins-box');
+  const syncExtras=()=>{ const m=!pinsMaster||pinsMaster.checked;
+    $$('#ps-pins-box [data-pinextra]').forEach(x=>{ const row=$('#'+x.dataset.pinextra); x.disabled=!(m && row && row.checked); }); };
   const syncPins=()=>{ const m=pinsMaster.checked; pinsBox.style.opacity=m?'1':'.45';
-    $$('#ps-pins-box [data-pinon]').forEach(cb=>{ cb.disabled=!m; setField($('#'+cb.dataset.pinon), m&&cb.checked); }); };
-  $$('#ps-pins-box [data-pinon]').forEach(cb=>cb.onchange=()=>setField($('#'+cb.dataset.pinon), (!pinsMaster||pinsMaster.checked)&&cb.checked));
+    $$('#ps-pins-box [data-pinon]').forEach(cb=>{ cb.disabled=!m; setField($('#'+cb.dataset.pinon), m&&cb.checked); }); syncExtras(); };
+  $$('#ps-pins-box [data-pinon]').forEach(cb=>cb.onchange=()=>{ setField($('#'+cb.dataset.pinon), (!pinsMaster||pinsMaster.checked)&&cb.checked); syncExtras(); });
   if(pinsMaster){ pinsMaster.onchange=syncPins; syncPins(); }
   $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>{ $('#ps-bg').value=b.dataset.bg; });
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
@@ -2740,8 +2887,12 @@ function _elFromCall(method, A, colors, qrMap, grMap, sources){
       return mk('graph',{x,y,w:_ln0(g.width,300),h:_ln0(g.height,140),anchor:undefined,
         graph:{duration:g.duration||'1h',x_grid:g.x_grid||'',y_grid:g.y_grid==null?'':g.y_grid,border:g.border!==false,
           min_range:g.min_range==null?'':g.min_range,max_range:g.max_range==null?'':g.max_range,
-          traces:(g.traces||[]).map(t=>({sourceId:t.sensor||'',lineType:t.line_type||'SOLID',thickness:t.line_thickness==null?2:t.line_thickness,continuous:t.continuous!==false,colorId:_lcolor([String(t.color||'')],colors)})),
-          axes:{show:false,fontId:'font_klein',yTitle:'',xTitle:'',showYScale:true,showXScale:true}} }); }
+          traces:(g.traces||[]).map(t=>({sourceId:t.sensor||'',name:t.name||'',lineType:t.line_type||'SOLID',thickness:t.line_thickness==null?2:t.line_thickness,continuous:t.continuous!==false,colorId:_lcolor([String(t.color||'')],colors)})),
+          axes:{show:false,fontId:'font_klein',yTitle:'',xTitle:'',showYScale:true,showXScale:true},
+          legend: g.legend ? {show:true,x:'',y:'',nameFontId:g.legend.name_font||'font_klein',valueFontId:g.legend.value_font||'',
+            border:g.legend.border!==false,showLines:g.legend.show_lines!==false,showValues:g.legend.show_values||'AUTO',
+            showUnits:g.legend.show_units!==false,direction:g.legend.direction||'AUTO'}
+            : {show:false,x:'',y:'',nameFontId:'font_klein',valueFontId:'',border:true,showLines:true,showValues:'AUTO',showUnits:true,direction:'AUTO'}} }); }
     case 'strftime':{ const x=n(A[0]),y=n(A[1]); if(x==null||y==null)return null;
       const si=A.findIndex(a=>_lstr(a)!=null); if(si<0)return null; const fmt=_lstr(A[si]);
       const fontId=_lid(A[2])||'font_klein', align=_lalign(A);

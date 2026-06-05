@@ -3,6 +3,20 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.1.0
+- **Font editor**: edit existing fonts (id, size, weight, family, type, file). Renaming
+  an id updates every element, graph axis and legend that uses it.
+- **Graph legend**: full `legend:` support (name/value font, border, show_lines,
+  show_values, show_units, direction) drawn with `it.legend()`, plus a per-trace
+  **name** and a live legend preview on the canvas.
+- **Raw printf glyphs**: literal characters in a raw format (e.g. `°` in `%.1f°C`) are
+  now added to the font's `glyphs:`, so they no longer render as a missing-glyph box.
+- Builder ↔ raw printf now clears the other mode's leftover prefix/suffix/format.
+- Profile → Generated YAML Blocks: deselected pin/SPI values stay visible (greyed) and
+  are remembered; `ignore_strap` / `inverted` are no longer auto-deselected.
+- Tooltips on the font library (weight/family/id), boot params and the format fields.
+- Removed the invalid `STEPLINE` graph line type (ESPHome only has SOLID/DOTTED/DASHED).
+
 ## 3.0.2
 - New **app icon** and a **banner** header (shown in About, Documentation and the
   GitHub README).
