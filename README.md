@@ -2,7 +2,7 @@
 
 <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/eink_studio/icon.png" width="110" align="right" alt="E-ink Studio">
 
-![GitHub Release][releases-shield]][releases]
+![Version][version-badge]
 ![Maintained][maintained-badge]
 
 ![Supports aarch64][aarch64-badge]
@@ -13,59 +13,41 @@
 
 ## About
 
-E-ink Studio is a **WYSIWYG editor for ESPHome e-ink / e-paper displays**,
-running right inside Home Assistant. Instead of hand-writing and pixel-counting
-`it.print()` / `it.image()` lambdas, you drag elements onto a paper-accurate
-canvas, bind them to **live Home Assistant sensor values**, preview the 1-bit
-(or tri-colour red) result, and **generate ready-to-paste ESPHome YAML**.
+E-ink Studio is a **WYSIWYG editor for ESPHome e-paper displays**, running right
+inside Home Assistant. Instead of hand-writing and pixel-counting
+`it.print()` / `it.printf()` lambdas, you **drag elements onto a paper-accurate
+canvas**, bind them to **live Home Assistant sensor values**, and **generate
+ready-to-paste ESPHome YAML**.
 
 It is deliberately preview-only towards Home Assistant and ESPHome — nothing is
 written to your device config or your HA states; you copy the generated YAML
 yourself. Everything runs offline, with all libraries and fonts bundled.
 
-Design text, values, MDI icons, lines, rectangles, circles/ovals, triangles,
-Wi-Fi icons, refresh clocks, graphs and icon+value widgets. Rotate, resize, fill
-and multi-select with on-canvas handles. Manage fonts and colours, pick real HA
-entities from a searchable list, and switch light/dark and English/Dutch — all
-following Home Assistant, or fixed in the options.
+**What you get**
 
-A built-in file manager (with a text editor) gives you access to the add-on
-storage, which is also reachable over SAMBA.
+- A drag-and-drop canvas with text, **sensor values** (with format & transforms),
+  MDI icons, lines, rectangles, circles, triangles, polygons, rings, gauges,
+  QR codes, graphs, a Wi-Fi icon and a refresh clock.
+- **Live HA data** preview, value transforms (numbers, on/off labels, time, dates,
+  weekday/month names NL & EN, and a custom date/time format), prefix/suffix.
+- **Conditions (if/else)** per element, a separate **waiting-for-data** screen,
+  multi-select, alignment, undo/redo and **cut/copy/paste**.
+- **Fonts** (Google + local TTF, with preview), colours by display type, and a
+  **per-block YAML generator** with a base64 **recovery code** for round-tripping.
+- **YAML import** that reads font/color/sensor blocks and reverse-engineers the
+  display lambda back into editable elements.
+- A built-in **file manager** (tree, text editor, font preview), also over SAMBA.
+- **Light / dark** and **English / Dutch**, following Home Assistant or fixed in the
+  options. Custom 1-px tooltips throughout.
 
-## Screenshots
-
-**Editor — dark mode**
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-Editor-Screenshot.png" alt="Editor — dark mode" width="100%">
-</p>
-
-**Editor — light mode**
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-Editor-Screenshot-Lightmode.png" alt="Editor — light mode" width="100%">
-</p>
-
-**Built-in file manager**
+See the **Documentation** tab for the full feature guide and a quick start.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-File-Manager-Screenshot1.png" alt="File manager" width="100%">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-Editor-Screenshot.png" alt="E-ink Studio editor" width="100%">
 </p>
 
-**File manager — text editor**
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-File-Manager-Editor.png" alt="File manager — text editor" width="100%">
-</p>
-
-**File manager — font viewer**
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-File-Manager-Font-Viewer.png" alt="File manager — font viewer" width="100%">
-</p>
-
-[version-badge]: https://img.shields.io/github/v/release/Cl3tus/HA-Eink-Studio-App?label=version
-[maintained-badge]: https://img.shields.io/badge/maintained-yes-green.svg
+[version-badge]: https://img.shields.io/github/v/release/Cl3tus/HA-Eink-Studio-App?label=version&color=ff9800
+[maintained-badge]: https://img.shields.io/badge/maintained-yes-brightgreen.svg
 [aarch64-badge]: https://img.shields.io/badge/aarch64-yes-green.svg
 [amd64-badge]: https://img.shields.io/badge/amd64-yes-green.svg
 [armv7-badge]: https://img.shields.io/badge/armv7-yes-green.svg
