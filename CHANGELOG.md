@@ -3,6 +3,15 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.1.4
+- **NaN values now render `---`** instead of `nan`: numeric value elements emit an
+  `isnan()` guard, so an unavailable sensor shows three dashes (which every digit /
+  7-segment font has) — no more letters forced into number fonts.
+- **Graph legend tofu fixed properly**: the legend fonts now get the full printable
+  ASCII set (names/values/units are drawn by ESPHome itself), and the glyphs are
+  collected into the exact font the generator emits (name_font falls back to the
+  first font, value_font to the name font).
+
 ## 3.1.3
 - **Fix build failure** introduced in 3.1.1: the legend glyph collection no longer
   force-adds guessed unit symbols (`² ³ µ Ω …`). ESPHome hard-fails when a font lacks

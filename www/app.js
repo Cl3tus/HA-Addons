@@ -1781,6 +1781,7 @@ function valueExpr(el){
     if(el.transform==='scale') expr=`(id(${src.id}).state * ${el.transformArg&&el.transformArg.factor!=null?el.transformArg.factor:1})`;
     const dec = el.transform==='roundN'?(el.transformArg.n??1):(fmt.decimals??1);
     token=`%.${dec}f`; arg=expr;
+    const r=wrapFmt(); r.numeric=true; r.numArg=`id(${src.id}).state`; return r;
   } else {
     let expr=`id(${src.id}).state`;
     if(el.transform==='trimSeconds') expr=`id(${src.id}).state.substr(0, id(${src.id}).state.length() - 3)`;
@@ -1861,6 +1862,16 @@ function drawStmt(el, indent){
     return textNameBlock(el, I, font.id, color, anchor);
   const v=valueExpr(el);
   if(v.mode==='print') return `${I}it.print(${el.x}, ${el.y}, id(${font.id}), ${color}, TextAlign::${anchor}, "${esc(v.literal)}");`;
+  if(v.numeric){
+    // NaN-safe: an unavailable/unknown sensor prints "---" (needs only '-', which every
+    // digit/7-segment font has) instead of "nan" tofu.
+    const I2=I+'  ';
+    return `${I}if (isnan(${v.numArg})) {\n`
+         + `${I2}it.print(${el.x}, ${el.y}, id(${font.id}), ${color}, TextAlign::${anchor}, "---");\n`
+         + `${I}} else {\n`
+         + `${I2}it.printf(${el.x}, ${el.y}, id(${font.id}), ${color}, TextAlign::${anchor}, "${v.fmt}", ${v.args.join(', ')});\n`
+         + `${I}}`;
+  }
   return `${I}it.printf(${el.x}, ${el.y}, id(${font.id}), ${color}, TextAlign::${anchor}, "${v.fmt}", ${v.args.join(', ')});`;
 }
 /* emit a names[] lookup block for a weekday/month name transform */
@@ -2010,13 +2021,12 @@ function elementCode(el, baseIndent){
 }
 
 /* ---- glyph collection ---- */
-// printf renders an unavailable/NaN float as "nan" (or "inf"). Keep those letters
-// for normal text fonts so a missing sensor shows "nan" instead of tofu — but NEVER
-// for digit / 7-segment display fonts, which lack letters: ESPHome HARD-FAILS the
-// build if you list a glyph the font file doesn't contain. We also no longer guess
-// unit glyphs (°, ², µ, Ω, …) for the same reason — they vary per sensor/font.
-const NAN_GLYPHS  = 'naif';                  // letters used by "nan" / "inf"
-const NUM_GLYPHS  = ' 0123456789.,:+-';      // safe numeric glyphs for any value font
+// ESPHome HARD-FAILS the build if you list a glyph the font file doesn't contain,
+// so we never guess exotic glyphs. Value elements render "---" (not "nan") when a
+// sensor is unavailable, so number fonts only need '-'. The graph legend is drawn
+// by ESPHome itself (names/values/units we can't intercept), so its fonts get the
+// full printable-ASCII set — safe for normal text fonts, skipped for digit fonts.
+const ASCII_GLYPHS = (()=>{ let s=''; for(let c=0x20;c<=0x7e;c++) s+=String.fromCharCode(c); return s; })();
 function fontIsDigitDisplay(f){ return /digital|7.?seg|dseg|segment|lcd|dotmatrix/i.test((f&&f.file)||''); }
 function collectGlyphs(){
   const map={}; // fontId -> {chars:Set, icons:Map(hex->name), dynamic:bool}
@@ -2062,14 +2072,15 @@ function collectGlyphs(){
         }
         const lg=E.graph&&E.graph.legend;
         if(lg&&lg.show){
-          const traces=(E.graph.traces||[]).filter(t=>t.sourceId);
-          // name font: the trace labels — same default (sensor id) the generator emits
-          if(map[lg.nameFontId]){ map[lg.nameFontId].dynamic=true; traces.forEach(t=>addText(lg.nameFontId, t.name||t.sourceId||'')); }
-          // values are drawn with value_font, or with name_font when no value_font is set.
-          // Only the safe numeric glyphs — units are unknown and forcing them would
-          // fail the build on any font that lacks them.
-          const valFid = (lg.valueFontId && map[lg.valueFontId]) ? lg.valueFontId : lg.nameFontId;
-          if(map[valFid]){ map[valFid].dynamic=true; addText(valFid, NUM_GLYPHS); }
+          // resolve the SAME fonts the generator emits (name_font falls back to the
+          // first font; value_font falls back to the name font). ESPHome draws the
+          // names/values/units itself, so give these fonts the full ASCII set.
+          const nf = fontById(lg.nameFontId) || profile().fonts[0];
+          const vf = (lg.valueFontId && fontById(lg.valueFontId)) || nf;
+          [nf, vf].forEach(font=>{ if(!font || !map[font.id]) return;
+            map[font.id].dynamic=true;
+            if(!fontIsDigitDisplay(font)) for(const ch of ASCII_GLYPHS) addText(font.id, ch);
+          });
         }
       }
     });
@@ -2275,8 +2286,7 @@ function genYAML(){
 function glyphEsc(ch){ if(ch==='\\') return '\\\\'; if(ch==='"') return '\\"'; return ch; }
 function glyphBlock(f, g){
   const chars=new Set(g?g.chars:[]); const icons=g?g.icons:new Map(); const dyn=g?g.dynamic:f.dynamic;
-  if(dyn){ for(const ch of (f.baseCharset||'')) chars.add(ch);
-    if(!fontIsDigitDisplay(f)) for(const ch of NAN_GLYPHS) chars.add(ch); }
+  if(dyn) for(const ch of (f.baseCharset||'')) chars.add(ch);
   if(!chars.size && !icons.size){
     if(f.seedGlyphs && f.seedGlyphs.length){ f.seedGlyphs.forEach(c=>chars.add(c)); }
     else return ''; // full font (no glyph restriction)
