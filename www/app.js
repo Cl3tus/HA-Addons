@@ -72,6 +72,23 @@ const EINK_MODELS = [
   {v:'13.3in-k', c:'mono', d:'13.3" K model 960×680 B/W only'},
 ];
 function modelInfo(v){ return EINK_MODELS.find(m=>m.v===v) || {v, c:'bwr', d:''}; }
+/* native panel resolution (landscape W×H) for the known models, so picking a
+   model can pre-fill width/height. Not exhaustive — unknown models keep current. */
+var MODEL_RES = {
+  '1.54in':[200,200],'1.54inv2':[200,200],'1.54inv2-b':[200,200],'1.54in-m5coreink-m09':[200,200],
+  '2.13in':[250,122],'2.13in-ttgo':[250,122],'2.13in-ttgo-b73':[250,122],'2.13in-ttgo-b74':[250,122],
+  '2.13in-ttgo-b1':[250,122],'2.13in-ttgo-dke':[250,122],'2.13inv2':[250,122],'2.13inv3':[250,122],
+  '2.70in':[264,176],'2.70inv2':[264,176],'2.70in-b':[264,176],'2.70in-bv2':[264,176],
+  '2.90in':[296,128],'2.90in-dke':[296,128],'2.90inv2':[296,128],'2.90inv2-r2':[296,128],
+  '2.90in-b':[296,128],'2.90in-bV3':[296,128],'gdey029t94':[296,128],'gdew029t5':[296,128],
+  '4.20in':[400,300],'4.20in-bV2':[400,300],'gdey042t81':[400,300],'4.20in-bV2-bwr':[400,300],
+  '5.83in':[600,448],'5.83inv2':[648,480],'gdey0583t81':[648,480],
+  '7.30in-f':[800,480],
+  '7.50in':[640,384],'7.50in-bV2':[800,480],'7.50in-bV3':[800,480],'7.50in-bV3-bwr':[800,480],
+  '7.50in-bc':[800,480],'7.50inV2':[800,480],'7.50inV2alt':[800,480],'7.50inV2p':[800,480],'7.50in-hd-b':[880,528],
+  '13.3in-k':[960,680],
+};
+function modelRes(v){ return MODEL_RES[v]||null; }
 
 /* colour palette for a display colour-type */
 function mkColor(id,r,g,b,w,css){ return {id,r,g,b,w,css}; }
@@ -615,11 +632,15 @@ function buildNode(el){
   if(!node) return null;
   node._elId = el.id;
   node.draggable(true);
-  // live snap-to-grid while dragging (uses the selected grid size; hold Shift to bypass)
+  // live snap-to-grid while dragging: snap the element's VISUAL box top-left to the
+  // grid (same reference the grid lines use) so it lines up; Shift bypasses.
+  let _snapOff=null;
   node.dragBoundFunc(function(pos){
     const sn=$('#tg-snap'); if(!sn || !sn.checked || shiftDown) return pos;
+    if(_snapOff===null){ const b=node.getClientRect({relativeTo:contentLayer}); _snapOff={x:b.x-node.x(), y:b.y-node.y()}; }
     const g=gridStep();
-    return { x: Math.round(pos.x/g)*g, y: Math.round(pos.y/g)*g };
+    return { x: Math.round((pos.x+_snapOff.x)/g)*g - _snapOff.x,
+             y: Math.round((pos.y+_snapOff.y)/g)*g - _snapOff.y };
   });
   node.on('mousedown touchstart', (ev)=>{
     const e=ev && ev.evt;
@@ -666,7 +687,8 @@ function buildNode(el){
       const {ox,oy}=anchorOffset(el.anchor||'TOP_LEFT', w, h);
       el.x=Math.round(node.x()-ox); el.y=Math.round(node.y()-oy);
     }
-    if($('#tg-snap').checked && !shiftDown) snapEl(el);   // hold Shift to drop off-grid
+    // (live snapping is handled by dragBoundFunc, which aligns the visual box to
+    //  the grid; re-snapping the anchor here would undo that, so we don't)
     // group move: shift the other selected elements by the same delta
     if(_groupDrag){
       const dx=el.x-_groupDrag.ox, dy=el.y-_groupDrag.oy; _groupDrag=null;
@@ -829,11 +851,9 @@ function attachSelection(el, node){
     contentLayer.add(g); selectionVisual=g;
   } else {
     const b=node.getClientRect({relativeTo:contentLayer});
-    // same bright, slightly-filled box as the multi-select outline so a single
-    // selected text/icon stands out just as clearly
-    selectionVisual=new Konva.Rect({x:b.x-4,y:b.y-4,width:b.width+8,height:b.height+8,
-      stroke:'#ffb43a',strokeWidth:2.5,dash:[8,4],fill:'rgba(232,161,58,0.14)',
-      shadowColor:'#000',shadowBlur:2,shadowOpacity:.4,listening:false});
+    // hug the element tightly (just 1px breathing room) so the box isn't oversized
+    selectionVisual=new Konva.Rect({x:b.x-1,y:b.y-1,width:b.width+2,height:b.height+2,
+      stroke:'#ffb43a',strokeWidth:1.5,dash:[6,3],fill:'rgba(232,161,58,0.10)',listening:false});
     contentLayer.add(selectionVisual);
   }
 }
@@ -893,8 +913,10 @@ function renderEink(){
   const src=stage.toCanvas({pixelRatio:1});
   if(transformer) transformer.show();
   if(selectionVisual) selectionVisual.show();
+  // capture at the panel's native resolution; CSS (inset:0) stretches it to fill
+  // the (zoomed) frame so the preview matches the canvas exactly at any zoom
   const cv=$('#eink-canvas'); cv.width=p.device.w; cv.height=p.device.h;
-  cv.style.width=p.device.w+'px'; cv.style.height=p.device.h+'px';
+  cv.style.width=''; cv.style.height='';
   const ctx=cv.getContext('2d');
   const bg=hexToRgb(p.device.bg||'#d4d6d7');
   ctx.fillStyle=p.device.bg||'#d4d6d7'; ctx.fillRect(0,0,cv.width,cv.height);
@@ -1094,6 +1116,26 @@ function dupSel(){
     if(cp.x2!=null){cp.x2+=14;cp.y2+=14;} cp.name=(e.name||e.type)+' '+T('kopie','copy');
     arr.push(cp); newIds.push(cp.id); });
   selectedIds=new Set(newIds); selectedId=newIds[newIds.length-1]||null; afterChange();
+}
+/* clipboard: copy/cut/paste, works across the main & waiting screens */
+var _clipboard=[];
+function copySel(){
+  const ids = selectedIds.size ? [...selectedIds] : (selectedId?[selectedId]:[]);
+  if(!ids.length) return false;
+  const arr=els();
+  _clipboard = ids.map(id=>arr.find(x=>x.id===id)).filter(Boolean).map(e=>JSON.parse(JSON.stringify(e)));
+  return _clipboard.length>0;
+}
+function cutSel(){ if(copySel()) deleteSel(); }
+function pasteClip(){
+  if(!_clipboard.length) return;
+  pushUndo(); const arr=els(); const newIds=[];
+  _clipboard.forEach(e=>{ const cp=JSON.parse(JSON.stringify(e)); cp.id=uid(); cp.x=(cp.x||0)+14; cp.y=(cp.y||0)+14;
+    if(cp.x2!=null){cp.x2+=14;cp.y2+=14;} arr.push(cp); newIds.push(cp.id); });
+  // keep clipboard so repeated paste keeps offsetting from the originals
+  _clipboard = newIds.map(id=>JSON.parse(JSON.stringify(arr.find(x=>x.id===id))));
+  selectedIds=new Set(newIds); selectedId=newIds[newIds.length-1]||null; afterChange();
+  toast(T(`Geplakt: ${newIds.length}`,`Pasted: ${newIds.length}`));
 }
 
 /* point 7: align the selected element to the canvas edges/centre.
@@ -2094,7 +2136,7 @@ function genYAML(){
     const snap = btoa(unescape(encodeURIComponent(JSON.stringify({
       device:p.device, elements:p.elements, waitElements:p.waitElements||[]
     }))));
-    out+=`\n# eink-editor:v1:${snap}\n`;
+    out+=`\n# eink-editor:v${window.APP_VERSION||'1'}:${snap}\n`;
   }
   return out;
 }
@@ -2137,7 +2179,7 @@ function renderCode(){
   const h = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   // wrap ONLY the long base64 recovery string so the rest of the YAML keeps its
   // normal layout (horizontal scroll allowed); copy/download stay one line
-  const html = h(code).replace(/(# eink-editor:v1:)([A-Za-z0-9+/=]+)/,
+  const html = h(code).replace(/(# eink-editor:v[\w.]+:)([A-Za-z0-9+/=]+)/,
     (m,p1,p2)=>p1+'<span class="b64wrap">'+p2+'</span>');
   $('#code-out').innerHTML = html;
 }
@@ -2460,7 +2502,8 @@ function openProfileSettings(){
          </div>
        </div>
      <hr style="border-color:var(--line);margin:14px 0">
-     <button class="btn ghost sm danger" id="ps-delete">${T('Profiel verwijderen','Delete profile')}</button>`,
+     <button class="btn ghost sm" id="ps-dup">${T('Profiel dupliceren','Duplicate profile')}</button>
+     <button class="btn ghost sm danger" id="ps-delete" style="margin-left:8px">${T('Profiel verwijderen','Delete profile')}</button>`,
     [{label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
       p.name=$('#ps-name').value;
       d.model=$('#ps-model').value; d.rotation=+$('#ps-rot').value; d.w=+$('#ps-w').value; d.h=+$('#ps-h').value;
@@ -2492,9 +2535,14 @@ function openProfileSettings(){
       persist(); initStage(); renderProfiles(); afterChange(); closeModal();
     }}]);
   const infoEl=$('#ps-model-info');
-  const showInfo=()=>{ const mi=modelInfo($('#ps-model').value);
-    infoEl.innerHTML=`${mi.d} · ${T('kleuren','colours')}: <b>${colTypeName[mi.c]||mi.c}</b>`; };
-  $('#ps-model').onchange=showInfo; showInfo();
+  const applyRes=()=>{ const res=modelRes($('#ps-model').value); if(!res) return;
+    const rot=+$('#ps-rot').value, portrait=(rot===90||rot===270);
+    $('#ps-w').value = portrait?res[1]:res[0]; $('#ps-h').value = portrait?res[0]:res[1]; };
+  const showInfo=()=>{ const mi=modelInfo($('#ps-model').value), res=modelRes($('#ps-model').value);
+    infoEl.innerHTML=`${mi.d} · ${T('kleuren','colours')}: <b>${colTypeName[mi.c]||mi.c}</b>`+(res?` · ${res.join('×')} px`:''); };
+  $('#ps-model').onchange=()=>{ showInfo(); applyRes(); };   // pick a model → fill native w/h
+  { const rs=$('#ps-rot'); if(rs) rs.onchange=applyRes; }
+  showInfo();
   { const tg=$('#ps-yaml-toggle'), body=$('#ps-yaml-body'); if(tg&&body) tg.onclick=()=>{
       const open=body.style.display!=='none'; body.style.display=open?'none':'';
       tg.textContent=(open?'▸ ':'▾ ')+T('Gegenereerde YAML-blokken','Generated YAML Blocks'); }; }
@@ -2511,6 +2559,15 @@ function openProfileSettings(){
   $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>{ $('#ps-bg').value=b.dataset.bg; });
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
     if(confirm(T('Profiel verwijderen?','Delete profile?'))){ state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist(); boot(); closeModal(); } };
+  $('#ps-dup').onclick=()=>{
+    const cp=JSON.parse(JSON.stringify(p)); cp.id=uid('p'); cp._waitSeeded=true;
+    const base=(p.name||'profiel').replace(/\s*\(\d+\)\s*$/,'');
+    const taken=new Set(state.profiles.map(x=>x.name)); let n=1, name;
+    do{ name=`${base} (${n++})`; } while(taken.has(name));
+    cp.name=name;
+    state.profiles.push(cp); state.current=cp.id; persist(); boot(); closeModal();
+    toast(T('Profiel gedupliceerd: ','Profile duplicated: ')+name);
+  };
 }
 
 /* ---- YAML import ---- */
@@ -2545,7 +2602,7 @@ function _parseBlock(block){
 /* Studio-generated YAML carries the full editable layout as a base64 comment
    (# eink-editor:v1:…). Decode it so a round-trip restores the canvas. */
 function _readSnapshot(text){
-  const m=/#\s*eink-editor:v1:([A-Za-z0-9+/=]+)/.exec(String(text));
+  const m=/#\s*eink-editor:v[\w.]+:([A-Za-z0-9+/=]+)/.exec(String(text));
   if(!m) return null;
   try{ return JSON.parse(decodeURIComponent(escape(atob(m[1])))); }catch(e){ return null; }
 }
@@ -3085,6 +3142,12 @@ function wire(){
     if(d.classList.contains('open')) d.classList.remove('open');
     else { renderCode(); d.classList.add('open'); } };
   $('#code-close').onclick=()=>$('#code-drawer').classList.remove('open');
+  { const rz=$('#code-resizer'), drawer=$('#code-drawer');
+    if(rz) rz.addEventListener('mousedown', e=>{ e.preventDefault();
+      const rightEdge=drawer.getBoundingClientRect().right;
+      const move=ev=>{ const w=Math.max(360, Math.min(rightEdge-ev.clientX, window.innerWidth-60)); drawer.style.setProperty('--code-w', w+'px'); };
+      const up=()=>{ window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up); };
+      window.addEventListener('mousemove',move); window.addEventListener('mouseup',up); }); }
   const cb64=$('#code-b64'); if(cb64) cb64.onchange=()=>{ window.INCLUDE_SNAPSHOT=cb64.checked; renderCode(); };
   const scr=$('#screen-select'); if(scr) scr.onchange=()=>{ editScreen=scr.value; selectedId=null; selectedIds=new Set(); undoStack=[]; redoStack=[]; renderCanvas(); renderLayers(); renderInspector(); };
   $('#code-copy').onclick=()=>{ navigator.clipboard.writeText(genYAML()).then(()=>toast(T('Naar klembord gekopieerd','Copied to clipboard'))); };
@@ -3099,6 +3162,9 @@ function wire(){
 
   $('#btn-undo').onclick=undo; $('#btn-redo').onclick=redo;
   $('#btn-dup').onclick=dupSel; $('#btn-del').onclick=deleteSel;
+  { const c=$('#btn-copy-el'); if(c) c.onclick=copySel;
+    const x=$('#btn-cut-el'); if(x) x.onclick=cutSel;
+    const v=$('#btn-paste-el'); if(v) v.onclick=pasteClip; }
   $('#al-left').onclick=()=>alignSel('left'); $('#al-hcenter').onclick=()=>alignSel('hcenter'); $('#al-right').onclick=()=>alignSel('right');
   $('#al-top').onclick=()=>alignSel('top'); $('#al-vcenter').onclick=()=>alignSel('vcenter'); $('#al-bottom').onclick=()=>alignSel('bottom');
 
@@ -3115,6 +3181,9 @@ function wire(){
       } else { e.preventDefault(); setSelection(els().map(x=>x.id), null); }
     }
     else if((e.ctrlKey||e.metaKey)&&e.key==='d'){ e.preventDefault(); dupSel(); }
+    else if((e.ctrlKey||e.metaKey)&&e.key==='c'){ if(String(window.getSelection()||'')) return; e.preventDefault(); copySel(); }
+    else if((e.ctrlKey||e.metaKey)&&e.key==='x'){ if(String(window.getSelection()||'')) return; e.preventDefault(); cutSel(); }
+    else if((e.ctrlKey||e.metaKey)&&e.key==='v'){ e.preventDefault(); pasteClip(); }
     else if(e.key==='Delete'||e.key==='Backspace'){ deleteSel(); }
     else if(e.key==='Escape'){ select(null); }
     else if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){ nudge(e); }

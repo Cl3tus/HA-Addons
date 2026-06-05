@@ -1,3 +1,14 @@
+## 2.10.0
+- **Snap aligneert nu op de zichtbare box** t.o.v. het raster (live tijdens slepen), zodat elementen netjes op de rasterlijnen vallen; Shift = vrij.
+- **Selectiekader rond tekst/waarde** is strakker (geen te grote gele box meer).
+- **Add-elements**: WiFi-icoon en Grafiek van plek gewisseld.
+- **Herstelcode** begint nu met `# eink-editor:v<versie>:` (was `v1`).
+- **E-ink 1-bit preview** vult nu correct het (in/uitgezoomde) canvas — geen mismatch meer.
+- **Tooltips** (NL/EN) toegevoegd op: uitlijnknoppen, zoom −/+/passend, undo/redo/dupliceren/verwijderen (mét sneltoets), de topbalk-knoppen (Importeren, Bronnen, Fonts, Bestanden, Opslaan, Openen, Genereer YAML) en alle add-element-knoppen.
+- **Knippen/Kopiëren/Plakken op het canvas** (Ctrl+X / Ctrl+C / Ctrl+V) — werkt ook tússen hoofd- en wachtscherm. Knoppen toegevoegd in de canvasbalk bij undo/redo/dupliceren, met sneltoets-tooltips.
+- **Profiel-instellingen**: bij modelkeuze worden nu (voor bekende modellen) de **breedte/hoogte** automatisch ingevuld op de native resolutie (houdt rekening met rotatie). Plus een **"Profiel dupliceren"**-knop (kopie krijgt "(1)" erachter).
+- **YAML-venster is nu versleepbaar** breder/smaller (handvat aan de linkerrand).
+
 ## 2.9.8
 - **Fix: prefix/suffix bij het "Aangepast format" (datum/tijd) werden niet in de gegenereerde code meegenomen** (alleen in de preview). De `it.printf` gebruikt nu de prefix + suffix (incl. automatische spatie voor de suffix), net als bij gewone waarden.
 

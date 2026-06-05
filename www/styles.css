@@ -338,7 +338,9 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
   transition: width .18s ease; overflow: hidden; z-index: 30;
   display: flex; flex-direction: column;
 }
-#code-drawer.open { width: min(820px, 80%); }
+#code-drawer.open { width: var(--code-w, min(820px, 80%)); }
+#code-resizer { position: absolute; left: 0; top: 0; bottom: 0; width: 7px; cursor: ew-resize; z-index: 6; }
+#code-resizer:hover { background: var(--accent); opacity: .5; }
 #code-drawer header {
   display: flex; align-items: center; gap: 8px; padding: 10px 12px;
   border-bottom: 1px solid var(--line); flex: none;
