@@ -2,14 +2,12 @@
 
 <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/eink_studio/icon.png" width="110" align="right" alt="E-ink Studio">
 
-![Version][version-badge]
-![Maintained][maintained-badge]
+[![GitHub release](https://img.shields.io/badge/version-3.0.0-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App/releases)
+[![Project Stage](https://img.shields.io/badge/project%20stage-experimental-yellow.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/releases)
+[![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main)
 
-![Supports aarch64][aarch64-badge]
-![Supports amd64][amd64-badge]
-![Supports armv7][armv7-badge]
-![Supports armhf][armhf-badge]
-![Supports i386][i386-badge]
+![Supports aarch64](https://img.shields.io/badge/aarch64-yes-green.svg)
+![Supports amd64](https://img.shields.io/badge/amd64-yes-green.svg)
 
 ## About
 
