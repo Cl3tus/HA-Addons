@@ -1,3 +1,6 @@
+## 2.10.4
+- **base64-herstelcode** start nu weer op dezelfde regel als de `# eink-editor:v…:`-prefix; alleen de vervolgregels wrappen links uitgelijnd.
+
 ## 2.10.3
 - **base64-herstelcode** staat nu op een eigen regel en wrapt vanaf de linkerkant — geen ingesprongen "trap"/witruimte meer onder de `# eink-editor:v…:`-prefix.
 

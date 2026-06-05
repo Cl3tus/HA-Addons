@@ -2204,8 +2204,10 @@ function renderCode(){
   const h = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   // wrap ONLY the long base64 recovery string so the rest of the YAML keeps its
   // normal layout (horizontal scroll allowed); copy/download stay one line
-  const html = h(code).replace(/(# eink-editor:v[\w.]+:)([A-Za-z0-9+/=]+)/,
-    (m,p1,p2)=>p1+'<span class="b64wrap">'+p2+'</span>');
+  // wrap the whole recovery line (prefix + base64) so the string stays on the
+  // same first line and continuation lines align to the left edge
+  const html = h(code).replace(/(# eink-editor:v[\w.]+:[A-Za-z0-9+/=]+)/,
+    (m)=>'<span class="b64wrap">'+m+'</span>');
   const pre=$('#code-out'); pre.innerHTML = html;
   _fitB64();
 }
