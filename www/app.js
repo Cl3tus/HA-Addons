@@ -1468,6 +1468,8 @@ function textCustomBlock(el, I, fontId, color, anchor){
     case '{mon}':return `std::string(mo_${sid}[mi_${sid}])`; case '{month}':return `std::string(mol_${sid}[mi_${sid}])`;
     default:return `std::string("${esc(seg)}")`; } };
   const concat = segs.length ? segs.map(cpp).join(' + ') : 'std::string("")';
+  const fmt=el.format||{};
+  const f = (fmt.prefix||fmt.suffix) ? `${escFmt(fmt.prefix||'')}%s${escFmt(_suffixOut(fmt.suffix))}` : '%s';
   let out=`${I}{\n`;
   out+=`${I}  std::string ${s} = id(${src.id}).state;\n`;
   out+=`${I}  std::string out_${sid};\n`;
@@ -1488,7 +1490,7 @@ function textCustomBlock(el, I, fontId, color, anchor){
   }
   out+=`${I}    out_${sid} = ${concat};\n`;
   out+=`${I}  }\n`;
-  out+=`${I}  it.printf(${el.x}, ${el.y}, id(${fontId}), ${color}, TextAlign::${anchor}, "%s", out_${sid}.c_str());\n`;
+  out+=`${I}  it.printf(${el.x}, ${el.y}, id(${fontId}), ${color}, TextAlign::${anchor}, "${f}", out_${sid}.c_str());\n`;
   out+=`${I}}`;
   return out;
 }

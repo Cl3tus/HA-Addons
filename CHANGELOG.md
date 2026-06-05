@@ -1,3 +1,6 @@
+## 2.9.8
+- **Fix: prefix/suffix bij het "Aangepast format" (datum/tijd) werden niet in de gegenereerde code meegenomen** (alleen in de preview). De `it.printf` gebruikt nu de prefix + suffix (incl. automatische spatie voor de suffix), net als bij gewone waarden.
+
 ## 2.9.7
 - **Genereer YAML**-knop togglet nu: nog een keer drukken sluit het venster weer.
 - **Alleen de base64-herstelcode breekt af** in het YAML-venster; de rest van de code houdt zijn normale opmaak (horizontale scrollbar mag). Kopiëren/downloaden blijft één regel.
