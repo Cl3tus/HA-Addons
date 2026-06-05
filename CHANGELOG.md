@@ -3,6 +3,18 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.1.1
+- **Graph legend tofu fixed**: each trace now always gets a `name:` when the legend
+  is on, and those glyphs (plus numbers/units) are added to the legend's fonts — no
+  more boxes.
+- **`nan` glyphs**: dynamic fonts always include the `nan`/`inf` letters, so an
+  unavailable sensor shows `nan` instead of a missing-glyph box.
+- **Font sources**: added **Web font (URL)** (`type: web`) next to Google Fonts and
+  local TTF, with a browse link per source (Google Fonts / Fontsource).
+- **Font editor**: the bundled MDI icon font is now editable too (size only).
+- Add-font form: labels above size / family / weight and a **Font Source** label.
+- Legend X/Y note that they are pixel numbers, not text.
+
 ## 3.1.0
 - **Font editor**: edit existing fonts (id, size, weight, family, type, file). Renaming
   an id updates every element, graph axis and legend that uses it.
