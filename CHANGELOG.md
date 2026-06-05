@@ -1,3 +1,6 @@
+## 2.10.3
+- **base64-herstelcode** staat nu op een eigen regel en wrapt vanaf de linkerkant — geen ingesprongen "trap"/witruimte meer onder de `# eink-editor:v…:`-prefix.
+
 ## 2.10.2
 - **Snap aligneert nu de zichtbare pixels** (ink) van het element op de rasterlijnen — voor elke rastergrootte. Selectiekaders zijn ook duidelijker (dikker, oranje, lichte schaduw).
 - **base64-herstelcode** breekt nu af op de **zichtbare breedte** van het YAML-venster (niet op de bredere scrollbreedte van lange regels), dus geen lange horizontale balk meer voor die regel.
