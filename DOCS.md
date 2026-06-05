@@ -7,7 +7,7 @@ bind it to live Home Assistant values, and generate the ESPHome `lambda:` + the
 matching YAML blocks. No more hand-counting pixels.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-Editor-Screenshot.png" alt="E-ink Studio editor" width="100%">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-Editor-Screenshot-Dark-Light.png" alt="E-ink Studio editor — dark & light" width="100%">
 </p>
 
 ---
@@ -60,7 +60,9 @@ with **Ctrl/Shift-click**, or tick the checkboxes in the **Layers** list.
 
 In the layers list, **T** marks a text element and **#** marks a value.
 
-<!-- 📸 SCREENSHOT WANTED: palette-layers.png — close-up of the left panel (palette + layers) -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Palette-Layers.png" alt="Element palette and layers" width="100%">
+</p>
 
 ### Moving, aligning & snapping
 
@@ -99,7 +101,9 @@ Select a **Value** element → inspector → **Source** + **Format & transform**
 > `YYYY-MM-DD HH:MM:SS`) as Home Assistant provides. Set a realistic **sample**
 > value on the source to see the live preview.
 
-<!-- 📸 SCREENSHOT WANTED: inspector-value.png — the inspector for a Value element (Source + Format & transform) -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Inspector-Value.png" alt="Inspector — value element" width="100%">
+</p>
 
 ---
 
@@ -110,7 +114,9 @@ Click **○ Live** to fetch the current states (read-only, via the Supervisor AP
 - **↻** refreshes now; the dropdown sets **auto-refresh** (off / 1–30 min / custom).
 - When Live is on, value elements and condition previews follow the real states.
 
-<!-- 📸 SCREENSHOT WANTED: sources-picker.png — the Sources modal / HA entity picker -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Sources-Picker.png" alt="Value sources picker" width="100%">
+</p>
 
 ---
 
@@ -154,7 +160,9 @@ Open the **⚙** next to the profile picker.
     on/off.
 - **Duplicate profile** (the copy gets `(1)`, `(2)`, …) and **Delete profile**.
 
-<!-- 📸 SCREENSHOT WANTED: profile-yaml-blocks.png — Profile settings with "Generated YAML Blocks" expanded -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Profile-Yaml-Blocks.png" alt="Profile settings — generated YAML blocks" width="100%">
+</p>
 
 ---
 
@@ -186,7 +194,9 @@ display:
                 "%.1f °C", id(aquarium_temp).state);
 ```
 
-<!-- 📸 SCREENSHOT WANTED: generate-yaml.png — the Generate YAML drawer -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Generate-YAML.png" alt="Generate YAML drawer" width="100%">
+</p>
 
 ---
 
@@ -201,7 +211,9 @@ Paste an existing ESPHome config:
   was and wasn't imported, and which **YAML blocks** are present.
 - A YAML the studio generated itself (with the recovery code) is restored **1-to-1**.
 
-<!-- 📸 SCREENSHOT WANTED: import-summary.png — the import dialog and/or the import summary popup -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Import-Summary.png" alt="YAML import summary" width="100%">
+</p>
 
 ---
 
