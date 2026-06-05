@@ -238,7 +238,18 @@ async function previewFontInline(f){
                        : 'AaBbCc Gg 0123 .,:%/°€';
   const sz=Math.max(14,Math.min(f.size||30,56));
   host.style.display='block';
-  host.innerHTML=`<div class="fld" style="margin-bottom:4px">${esc(f.id)} — ${f.size}px · ${esc(fam)}</div>`+
+  if(isMdi){
+    // real MDI icons via the bundled .mdi webfont classes (a few fun ones)
+    const fun=['rocket-launch','robot-happy','heart','weather-sunny','coffee','cat','ghost','pac-man','music-note','star'];
+    const isz=Math.max(22,Math.min(f.size||30,64));
+    host.innerHTML=`<div class="fld" style="margin-bottom:2px">Preview</div>`
+      +`<div class="hint" style="margin:0 0 6px">${esc(f.id)} (${f.size}px)</div>`
+      +`<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;line-height:1">`
+      +fun.map(n=>`<span class="mdi mdi-${n}" style="font-size:${isz}px" title="mdi-${n}"></span>`).join('')
+      +`</div>`;
+    return;
+  }
+  host.innerHTML=`<div class="fld" style="margin-bottom:4px">Preview · ${esc(f.id)} — ${f.size}px · ${esc(fam)}</div>`+
     `<div style="font-family:'${fam.replace(/'/g,'')}', sans-serif;font-size:${sz}px;line-height:1.25;word-break:break-word">${sample}</div>`;
 }
 var _previewLoaded=new Set();
@@ -2465,16 +2476,25 @@ async function openFonts(){
     : fontHasBytes(f) ? `<span class="tag" style="color:var(--ok)">${T('geüpload','uploaded')}</span>`
     : onServer(f) ? `<span class="tag" style="color:var(--ok)" title="${T('Bestand staat al in de fonts/-map','File is already in the fonts/ folder')}">${T('in fonts/','in fonts/')}</span>`
     : `<span class="tag" style="color:var(--red)">${T('upload nodig','upload needed')}</span>`;
-  const frows=profile().fonts.map((f,i)=>`<tr>
+  // group rows by source/status: uploaded-or-local, Google, Web, MDI (in that order)
+  const fontCat=f=>/materialdesignicons/i.test(f.file||'')?3:(f.kind==='gfonts'?1:(f.kind==='web'?2:0));
+  const catLabel=[T('Lokale / geüploade fonts','Local / uploaded fonts'),'Google Fonts',T('Web-fonts','Web Fonts'),T('Icoon-fonts (MDI)','Icon fonts (MDI)')];
+  const oneRow=(f,i)=>`<tr>
     <td class="mono">${previewable(f)?`<a href="#" class="font-prev" data-prev="${i}" title="${T('Klik voor voorbeeld','Click to preview')}">${f.id}</a>`:f.id}</td>
     <td class="mono" style="font-size:10px;word-break:break-all">${f.kind==='gfonts'?`gfonts: ${attr(f.family)} ${f.weight}`:(f.kind==='web'?`web: ${attr(f.url||'')}`:attr(f.file||''))}</td>
     <td>${f.size}px</td>
     <td>${statusTag(f)}</td>
-    <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?`<input type="file" accept=".ttf,.otf" data-font="${i}" style="font-size:10px">`:''}</td>
-    <td style="white-space:nowrap"><button class="btn ghost sm" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Grootte aanpassen','Adjust size'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}">✎</button>
+    <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?`<input type="file" accept=".ttf,.otf,.woff,.pcf,.bdf" data-font="${i}" style="font-size:10px">`:''}</td>
+    <td style="white-space:nowrap"><button class="btn ghost sm" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}">✎</button>
         <button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">✕</button></td>
-  </tr>`).join('');
-  openModal('Fonts',
+  </tr>`;
+  const ordered=profile().fonts.map((f,i)=>({f,i})).sort((a,b)=>fontCat(a.f)-fontCat(b.f) || a.i-b.i);
+  let frows='', lastCat=-1;
+  ordered.forEach(({f,i})=>{ const c=fontCat(f);
+    if(c!==lastCat){ lastCat=c; frows+=`<tr class="font-group"><td colspan="6" style="padding-top:10px;font-weight:600;color:var(--accent);font-size:11px">${catLabel[c]}</td></tr>`; }
+    frows+=oneRow(f,i);
+  });
+  openModal('Font Editor',
     `<h4 style="margin:0 0 8px;color:var(--accent)">Fonts</h4>
      <table class="tbl"><thead><tr><th>id</th><th>${T('bron','source')}</th><th>${T('grootte','size')}</th><th>status</th><th>upload</th><th></th></tr></thead><tbody>${frows}</tbody></table>
      <div class="hint" style="margin:6px 0 0">${T('Tip: klik op een geladen font-id voor een voorbeeld.','Tip: click a loaded font id for a preview.')}</div>
@@ -2484,7 +2504,7 @@ async function openFonts(){
        <div class="row tight">
          <div style="flex:2"><label class="fld">id</label><input id="nf-id" type="text" class="mono" placeholder="${T('bv. font_groot','e.g. font_large')}" title="${T('De id waarmee je dit font in elementen kiest en die in de YAML verschijnt. Letters, cijfers en _.','The id you select this font by in elements and that appears in the YAML. Letters, digits and _.')}"></div>
          <div><label class="fld">${T('grootte (size)','size')}</label><input id="nf-size" type="number" placeholder="size" value="30" style="width:90px" title="${T('Tekenhoogte in pixels (font size).','Glyph height in pixels (font size).')}"></div>
-         <div><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt: Google Fonts, een lokaal TTF/OTF-bestand, of een download-URL.','Where the font comes from: Google Fonts, a local TTF/OTF file, or a download URL.')}"><option value="gfonts">Google Font</option><option value="local">${T('Lokale TTF','Local TTF')}</option><option value="web">${T('Web-font (URL)','Web font (URL)')}</option></select></div>
+         <div><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt: een lokaal font-bestand, Google Fonts, of een download-URL.','Where the font comes from: a local font file, Google Fonts, or a download URL.')}"><option value="local">${T('Lokale fonts','Local Fonts')}</option><option value="gfonts">Google Fonts</option><option value="web">${T('Web-fonts','Web Fonts')}</option></select></div>
        </div>
        <div class="row tight" id="nf-gfonts">
          <div style="flex:2"><label class="fld">family</label><input id="nf-family" type="text" placeholder="${T('bv.','e.g.')} Roboto" title="${T('Exacte Google-Fonts-naam, bv. “Roboto”, “Noto Sans Display”.','Exact Google Fonts family name, e.g. “Roboto”, “Noto Sans Display”.')}"></div>
@@ -2493,8 +2513,9 @@ async function openFonts(){
        <div class="hint" id="nf-gfonts-link" style="margin-top:4px">↗ <a href="https://fonts.google.com/" target="_blank" rel="noopener">${T('Bekijk en kies een Google Font','Browse and pick a Google Font')}</a> ${T('(opent in nieuw tabblad)','(opens in a new tab)')}</div>
        <div class="row tight" id="nf-local" style="display:none">
          <div style="flex:2"><label class="fld">${T('pad','path')}</label><input id="nf-file" type="text" placeholder="${T('bv. fonts/mijn.ttf','e.g. fonts/my.ttf')}" title="${T('Pad zoals het in je ESPHome-config staat, relatief aan de config-map. Moet exact kloppen.','Path as referenced in your ESPHome config, relative to the config folder. Must match exactly.')}"></div>
-         <div><label class="fld">upload</label><input id="nf-upload" type="file" accept=".ttf,.otf" style="font-size:10px" title="${T('Upload het TTF/OTF zodat de preview klopt en het bestand in fonts/ komt.','Upload the TTF/OTF so the preview is accurate and the file lands in fonts/.')}"></div>
+         <div><label class="fld">upload</label><input id="nf-upload" type="file" accept=".ttf,.otf,.woff,.pcf,.bdf" style="font-size:10px" title="${T('Upload het fontbestand zodat de preview klopt en het in fonts/ komt.','Upload the font file so the preview is accurate and it lands in fonts/.')}"></div>
        </div>
+       <div class="hint" id="nf-local-note" style="display:none;margin-top:4px">${T('Toegestane formaten','Allowed formats')}: <span class="mono">.ttf .otf .woff .pcf .bdf</span></div>
        <div class="row tight" id="nf-web" style="display:none">
          <div style="flex:2"><label class="fld">URL</label><input id="nf-url" type="text" class="mono" placeholder="https://…/Font.ttf" title="${T('Directe download-URL naar een .ttf/.otf/.woff. ESPHome haalt het font op tijdens de build (type: web).','Direct download URL to a .ttf/.otf/.woff. ESPHome fetches the font at build time (type: web).')}"></div>
        </div>
@@ -2524,6 +2545,7 @@ async function openFonts(){
     $('#nf-gfonts').style.display     = k==='gfonts'?'':'none';
     $('#nf-gfonts-link').style.display= k==='gfonts'?'':'none';
     $('#nf-local').style.display      = k==='local'?'':'none';
+    $('#nf-local-note').style.display = k==='local'?'':'none';
     $('#nf-web').style.display        = k==='web'?'':'none';
     $('#nf-web-link').style.display   = k==='web'?'':'none';
   };
@@ -2567,14 +2589,20 @@ function editFont(i){
   const f=profile().fonts[i]; if(!f) return;
   const isMdi = /materialdesignicons/i.test(f.file||'');
   if(isMdi){
-    openModal(T('Icoon-font — grootte','Icon font — size'),
+    openModal(T('Icoon-font','Icon font'),
       `<div class="row tight">
-         <div style="flex:2"><label class="fld">id</label><input class="mono" value="${attr(f.id)}" disabled title="${T('De MDI-font-id ligt vast.','The MDI font id is fixed.')}"></div>
+         <div style="flex:2"><label class="fld">id</label><input id="ef-id" class="mono" value="${attr(f.id)}" title="${T('Wordt overal bijgewerkt waar dit icoon-font gebruikt wordt.','Updated everywhere this icon font is used.')}"></div>
          <div><label class="fld">${T('grootte (px)','size (px)')}</label><input id="ef-size" type="number" min="6" value="${f.size||30}" style="width:90px" title="${T('Tekenhoogte in pixels.','Glyph height in pixels.')}"></div>
        </div>
-       <div class="hint" style="margin-top:6px">${T('Van de meegebundelde Material Design Icons-font kun je alleen de grootte aanpassen.','For the bundled Material Design Icons font you can only change the size.')}</div>`,
+       <div class="hint" style="margin-top:6px">${T('Van de meegebundelde Material Design Icons-font kun je de id en de grootte aanpassen; de bron ligt vast.','For the bundled Material Design Icons font you can change the id and the size; the source is fixed.')}</div>`,
       [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:openFonts},
-       {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{ f.size=+$('#ef-size').value||f.size||30; persist(); afterChange(); openFonts(); toast(T('Grootte bijgewerkt','Size updated')); }}]);
+       {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
+         const newId=($('#ef-id').value||'').trim();
+         if(!/^[a-z_][a-z0-9_]*$/i.test(newId)){ toast(T('Geef een geldig id (letters/cijfers/_)','Enter a valid id (letters/digits/_)')); return; }
+         if(newId!==f.id && fontById(newId)){ toast(T('Dit id bestaat al','This id already exists')); return; }
+         renameFontId(f.id, newId); f.id=newId;
+         f.size=+$('#ef-size').value||f.size||30;
+         persist(); afterChange(); openFonts(); toast(T('Font bijgewerkt','Font updated')); }}]);
     return;
   }
   const kind0 = f.kind==='gfonts'?'gfonts':(f.kind==='web'?'web':'local');
@@ -2582,10 +2610,10 @@ function editFont(i){
     `<div class="row tight">
        <div style="flex:2"><label class="fld">id</label><input id="ef-id" class="mono" value="${attr(f.id)}" title="${T('Wordt overal bijgewerkt waar dit font gebruikt wordt.','Updated everywhere this font is used.')}"></div>
        <div><label class="fld">${T('grootte','size')}</label><input id="ef-size" type="number" min="6" value="${f.size||30}" style="width:90px" title="${T('Tekenhoogte in pixels.','Glyph height in pixels.')}"></div>
-       <div><label class="fld">Font Source</label><select id="ef-kind" title="${T('Google Font, lokaal TTF/OTF of een download-URL.','Google Font, local TTF/OTF or a download URL.')}">
-         <option value="gfonts" ${kind0==='gfonts'?'selected':''}>Google Font</option>
-         <option value="local" ${kind0==='local'?'selected':''}>${T('Lokale TTF','Local TTF')}</option>
-         <option value="web" ${kind0==='web'?'selected':''}>${T('Web-font (URL)','Web font (URL)')}</option></select></div>
+       <div><label class="fld">Font Source</label><select id="ef-kind" title="${T('Lokaal font-bestand, Google Fonts of een download-URL.','Local font file, Google Fonts or a download URL.')}">
+         <option value="local" ${kind0==='local'?'selected':''}>${T('Lokale fonts','Local Fonts')}</option>
+         <option value="gfonts" ${kind0==='gfonts'?'selected':''}>Google Fonts</option>
+         <option value="web" ${kind0==='web'?'selected':''}>${T('Web-fonts','Web Fonts')}</option></select></div>
      </div>
      <div class="row tight" id="ef-gfonts" style="${kind0==='gfonts'?'':'display:none'}">
        <div style="flex:2"><label class="fld">family</label><input id="ef-family" value="${attr(f.family||'Roboto')}" title="${T('Exacte Google-Fonts-naam.','Exact Google Fonts family name.')}"></div>
@@ -2594,8 +2622,9 @@ function editFont(i){
      <div class="hint" id="ef-gfonts-link" style="${kind0==='gfonts'?'':'display:none'};margin-top:4px">↗ <a href="https://fonts.google.com/" target="_blank" rel="noopener">${T('Bekijk Google Fonts','Browse Google Fonts')}</a></div>
      <div class="row tight" id="ef-local" style="${kind0==='local'?'':'display:none'}">
        <div style="flex:2"><label class="fld">${T('pad','path')}</label><input id="ef-file" value="${attr(f.file||'fonts/font.ttf')}" title="${T('Pad zoals in je ESPHome-config.','Path as in your ESPHome config.')}"></div>
-       <div><label class="fld">${T('vervang TTF','replace TTF')}</label><input id="ef-upload" type="file" accept=".ttf,.otf" style="font-size:10px"></div>
+       <div><label class="fld">${T('vervang font','replace font')}</label><input id="ef-upload" type="file" accept=".ttf,.otf,.woff,.pcf,.bdf" style="font-size:10px"></div>
      </div>
+     <div class="hint" id="ef-local-note" style="${kind0==='local'?'':'display:none'};margin-top:4px">${T('Toegestane formaten','Allowed formats')}: <span class="mono">.ttf .otf .woff .pcf .bdf</span></div>
      <div class="row tight" id="ef-web" style="${kind0==='web'?'':'display:none'}">
        <div style="flex:2"><label class="fld">URL</label><input id="ef-url" class="mono" value="${attr(f.url||'')}" placeholder="https://…/Font.ttf" title="${T('Directe download-URL (type: web).','Direct download URL (type: web).')}"></div>
      </div>
@@ -2628,7 +2657,7 @@ function editFont(i){
   const kindSel=$('#ef-kind');
   kindSel.onchange=()=>{ const k=kindSel.value;
     $('#ef-gfonts').style.display=k==='gfonts'?'':'none'; $('#ef-gfonts-link').style.display=k==='gfonts'?'':'none';
-    $('#ef-local').style.display=k==='local'?'':'none';
+    $('#ef-local').style.display=k==='local'?'':'none'; $('#ef-local-note').style.display=k==='local'?'':'none';
     $('#ef-web').style.display=k==='web'?'':'none'; $('#ef-web-link').style.display=k==='web'?'':'none'; };
   let efUpload=null;
   const up=$('#ef-upload'); if(up) up.onchange=e=>{ const file=e.target.files[0]; if(!file) return; const rd=new FileReader(); rd.onload=()=>{ efUpload=rd.result; if($('#ef-file') && !$('#ef-file').value) $('#ef-file').value='fonts/'+file.name; }; rd.readAsDataURL(file); };

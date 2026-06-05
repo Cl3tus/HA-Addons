@@ -3,6 +3,14 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.1.2
+- Font editor titled **“Font Editor”**; fonts are grouped by source (local/uploaded,
+  Google, Web, MDI) under each other.
+- The bundled **MDI** icon font is now editable (id + size) and its preview shows
+  **real MDI icons** under a **Preview** heading.
+- **Font Source** dropdown reordered & renamed: Local Fonts · Google Fonts · Web Fonts,
+  with a note that `.ttf .otf .woff .pcf .bdf` are allowed.
+
 ## 3.1.1
 - **Graph legend tofu fixed**: each trace now always gets a `name:` when the legend
   is on, and those glyphs (plus numbers/units) are added to the legend's fonts — no
