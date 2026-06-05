@@ -2,7 +2,7 @@
 
 <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/eink_studio/icon.png" width="110" align="right" alt="E-ink Studio">
 
-[![GitHub Release][releases-shield]][releases]
+![GitHub Release][releases-shield]][releases]
 ![Maintained][maintained-badge]
 
 ![Supports aarch64][aarch64-badge]
