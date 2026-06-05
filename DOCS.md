@@ -221,7 +221,7 @@ Paste an existing ESPHome config:
 
 Open **📁 Files** (or `files.html`):
 
-- Collapsible **tree** (expand a folder to see its files inline).
+- **Tree** view, **fully expanded by default** (collapse a folder to hide its files).
 - **Multi-select** with row checkboxes; upload, download, rename, move, delete.
 - Built-in **text editor** (undo/redo) and **font preview** (double-click a TTF).
 - The same storage is reachable over **SAMBA** (see below).

@@ -3,6 +3,11 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.0.1
+- File manager: the tree now starts **fully expanded** (every folder open) on load.
+- Supported architectures trimmed to **aarch64** and **amd64** (matches the badges).
+- Docs: embedded all screenshots and a dark/light hero image.
+
 ## 3.0.0
 First stable release. Highlights of everything that landed during 2.x:
 

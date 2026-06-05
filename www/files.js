@@ -8,6 +8,7 @@ let entries     = [];
 let selected    = new Set();   // full paths of selected entries (works across the tree)
 let rowIndex    = new Map();   // fullPath -> entry (for all rendered rows)
 let expandedPaths = new Set(); // folder paths that are expanded (kept across refresh)
+let didInitialExpand = false;  // on first load, expand every folder once
 
 // ---------------------------------------------------------------- API  (relative URLs – required for HA Ingress)
 
@@ -220,6 +221,7 @@ async function navigate(path) {
     renderBreadcrumb(data.path ?? '');
     renderTable(entries);
     await restoreExpansion();
+    if (!didInitialExpand) { didInitialExpand = true; await expandAll(); }
   } catch (e) {
     toast(_t('Fout bij laden: ', 'Loading error: ') + e.message, true);
   }
@@ -310,6 +312,21 @@ async function restoreExpansion() {
   for (const r of rows) {
     const c = r.querySelector('.fe-chev');
     if (c && !r._expanded) await toggleExpand(r, c, r.dataset.path, 0);
+  }
+}
+
+// expand every folder in the tree (used once on first load so the whole tree is
+// open by default). Keeps looping until no collapsed folder rows remain — each
+// pass reveals the next level, which the next pass then expands.
+async function expandAll() {
+  for (let guard = 0; guard < 100; guard++) {
+    const rows = $$('#fe-tbody tr[data-path]')
+      .filter(r => r._isDir && !r._expanded);
+    if (!rows.length) return;
+    for (const r of rows) {
+      const c = r.querySelector('.fe-chev');
+      if (c) await toggleExpand(r, c, r.dataset.path, r._depth || 0);
+    }
   }
 }
 

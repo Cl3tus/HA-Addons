@@ -2,7 +2,7 @@
 
 <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/eink_studio/icon.png" width="110" align="right" alt="E-ink Studio">
 
-[![GitHub release](https://img.shields.io/badge/version-3.0.0-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App/releases)
+[![GitHub release](https://img.shields.io/badge/version-3.0.1-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App/releases)
 [![Project Stage](https://img.shields.io/badge/project%20stage-experimental-yellow.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/releases)
 [![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main)
 
