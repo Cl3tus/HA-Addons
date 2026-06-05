@@ -1,3 +1,14 @@
+## 2.10.1
+- **Snap** snapt nu de **eigen x/y** van het element (zoals in de inspector) naar het raster — voorspelbaarder dan via de (te grote) tekstbox.
+- **Selectiekader** rond tekst/waarde hugt nu de **echte gerenderde pixels** (ink-bounds) i.p.v. de font-metriekbox, en is weer goed zichtbaar.
+- **E-ink 1-bit preview verwijderd.**
+- **Fonts-tooltip** is nu "Fonts beheren" (zonder "colors").
+- **Profiel dupliceren** houdt de instellingen open en ververst meteen naar de nieuwe kopie; namen lopen op ((1), (2), …).
+- **Knippen/plakken tussen schermen** plakt nu op **dezelfde positie** als je naar een ander scherm plakt (zelfde scherm = kleine offset).
+- **Uitlijning** verplaatst nu de **hele selectie** (groep) i.p.v. alleen het hoofd-element.
+- **Tooltips** hebben nu een consistente **1px-rand** (eigen tooltip i.p.v. de OS-tooltip).
+- YAML-venster iets smaller standaard + trailing witruimte weggehaald.
+
 ## 2.10.0
 - **Snap aligneert nu op de zichtbare box** t.o.v. het raster (live tijdens slepen), zodat elementen netjes op de rasterlijnen vallen; Shift = vrij.
 - **Selectiekader rond tekst/waarde** is strakker (geen te grote gele box meer).

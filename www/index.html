@@ -16,7 +16,7 @@
 <script src="vendor/konva.min.js"></script>
 <script src="vendor/js-yaml.min.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=2.10.0">
+<link rel="stylesheet" href="styles.css?v=2.10.1">
 </head>
 <body>
 <div id="app">
@@ -42,7 +42,7 @@
     <div class="topbar-sep"></div>
     <button class="btn ghost" id="btn-sources" data-i18n-title="Waardebronnen (sensoren) beheren"><span class="mdi mdi-database"></span> <span data-i18n="Bronnen">Bronnen</span></button>
     <div class="topbar-sep"></div>
-    <button class="btn ghost" id="btn-fonts" data-i18n-title="Fonts & kleuren beheren"><span class="mdi mdi-format-font"></span> Fonts</button>
+    <button class="btn ghost" id="btn-fonts" data-i18n-title="Fonts beheren"><span class="mdi mdi-format-font"></span> Fonts</button>
     <a href="files.html" class="btn ghost" data-i18n-title="Bestandsbeheer" title="Bestandsbeheer"><span class="mdi mdi-folder-outline"></span> <span data-i18n="Bestanden">Bestanden</span></a>
     <div class="topbar-sep"></div>
     <button class="btn ghost" id="btn-live" data-i18n-title="Live data" title="Live data">○ Live</button>
@@ -120,7 +120,6 @@
         <option value="40">40 px</option>
       </select>
       <label class="toggle"><input type="checkbox" id="tg-snap" checked> Snap</label>
-      <label class="toggle"><input type="checkbox" id="tg-eink"> <span data-i18n="E-ink 1-bit preview">E-ink 1-bit preview</span></label>
       <div class="topbar-spacer" style="flex:1"></div>
       <div class="topbar-sep"></div>
       <div class="grp" id="align-grp">
@@ -146,7 +145,6 @@
     <div id="stage-wrap">
       <div id="stage-frame">
         <div id="konva-host"></div>
-        <canvas id="eink-canvas"></canvas>
       </div>
     </div>
 
@@ -184,8 +182,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=2.10.0"></script>
-<script src="lang.js?v=2.10.0"></script>
-<script src="theme.js?v=2.10.0"></script>
+<script src="app.js?v=2.10.1"></script>
+<script src="lang.js?v=2.10.1"></script>
+<script src="theme.js?v=2.10.1"></script>
 </body>
 </html>

@@ -632,15 +632,13 @@ function buildNode(el){
   if(!node) return null;
   node._elId = el.id;
   node.draggable(true);
-  // live snap-to-grid while dragging: snap the element's VISUAL box top-left to the
-  // grid (same reference the grid lines use) so it lines up; Shift bypasses.
-  let _snapOff=null;
+  // live snap-to-grid while dragging: snap the element's OWN x/y (the same value
+  // shown in the inspector) to the grid, so it lands predictably. Shift bypasses.
+  node.on('dragstart.snap', ()=>{ node._sdx=node.x()-(el.x||0); node._sdy=node.y()-(el.y||0); });
   node.dragBoundFunc(function(pos){
     const sn=$('#tg-snap'); if(!sn || !sn.checked || shiftDown) return pos;
-    if(_snapOff===null){ const b=node.getClientRect({relativeTo:contentLayer}); _snapOff={x:b.x-node.x(), y:b.y-node.y()}; }
-    const g=gridStep();
-    return { x: Math.round((pos.x+_snapOff.x)/g)*g - _snapOff.x,
-             y: Math.round((pos.y+_snapOff.y)/g)*g - _snapOff.y };
+    const g=gridStep(), dx=node._sdx||0, dy=node._sdy||0;
+    return { x: Math.round((pos.x-dx)/g)*g + dx, y: Math.round((pos.y-dy)/g)*g + dy };
   });
   node.on('mousedown touchstart', (ev)=>{
     const e=ev && ev.evt;
@@ -850,10 +848,10 @@ function attachSelection(el, node){
     g.add(rh);
     contentLayer.add(g); selectionVisual=g;
   } else {
-    const b=node.getClientRect({relativeTo:contentLayer});
-    // hug the element tightly (just 1px breathing room) so the box isn't oversized
-    selectionVisual=new Konva.Rect({x:b.x-1,y:b.y-1,width:b.width+2,height:b.height+2,
-      stroke:'#ffb43a',strokeWidth:1.5,dash:[6,3],fill:'rgba(232,161,58,0.10)',listening:false});
+    const b=(el.type==='text'||el.type==='icon') ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
+    // hug the actual ink with a small margin; bright enough to clearly see
+    selectionVisual=new Konva.Rect({x:b.x-3,y:b.y-3,width:b.width+6,height:b.height+6,
+      stroke:'#ffb43a',strokeWidth:2,dash:[6,3],fill:'rgba(232,161,58,0.12)',listening:false});
     contentLayer.add(selectionVisual);
   }
 }
@@ -867,6 +865,20 @@ function selectNode(el, node){
 
 /* dashed, non-interactive outline around a node (used to show extra multi-selected items) */
 let _selOutlines={};
+/* tight bounding box around the actual drawn pixels (ink), not the font-metric
+   box — keeps the selection rectangle hugging the visible glyphs */
+function inkBounds(node){
+  const b=node.getClientRect({relativeTo:contentLayer});
+  try{
+    const cv=node.toCanvas({pixelRatio:1}); const W=cv.width, H=cv.height;
+    if(!W||!H) return b;
+    const data=cv.getContext('2d').getImageData(0,0,W,H).data;
+    let minX=W,minY=H,maxX=-1,maxY=-1;
+    for(let y=0;y<H;y++){ const row=y*W*4; for(let x=0;x<W;x++){ if(data[row+x*4+3]>16){ if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; } } }
+    if(maxX<0) return b;
+    return { x:b.x+minX, y:b.y+minY, width:maxX-minX+1, height:maxY-minY+1 };
+  }catch(e){ return b; }
+}
 function outlineNode(node){
   const b=node.getClientRect({relativeTo:contentLayer});
   // bright, slightly filled box so multi-selected items stand out clearly
@@ -892,7 +904,6 @@ function renderCanvas(){
     ids.forEach(id=>{ const n=contentLayer.getChildren(x=>x._elId===id)[0]; if(n) _selOutlines[id]=outlineNode(n); });
   }
   contentLayer.draw();
-  if($('#tg-eink').checked) renderEink(); else $('#stage-frame').classList.remove('eink-on');
 }
 
 /* during live graph resize: redraw element nodes but keep current selection visuals */
@@ -1118,22 +1129,25 @@ function dupSel(){
   selectedIds=new Set(newIds); selectedId=newIds[newIds.length-1]||null; afterChange();
 }
 /* clipboard: copy/cut/paste, works across the main & waiting screens */
-var _clipboard=[];
+var _clipboard=[], _clipScreen=null;
 function copySel(){
   const ids = selectedIds.size ? [...selectedIds] : (selectedId?[selectedId]:[]);
   if(!ids.length) return false;
   const arr=els();
   _clipboard = ids.map(id=>arr.find(x=>x.id===id)).filter(Boolean).map(e=>JSON.parse(JSON.stringify(e)));
+  _clipScreen = editScreen;
   return _clipboard.length>0;
 }
 function cutSel(){ if(copySel()) deleteSel(); }
 function pasteClip(){
   if(!_clipboard.length) return;
+  // same screen → offset so it doesn't overlap; another screen → keep exact position
+  const off = (editScreen===_clipScreen) ? 14 : 0;
   pushUndo(); const arr=els(); const newIds=[];
-  _clipboard.forEach(e=>{ const cp=JSON.parse(JSON.stringify(e)); cp.id=uid(); cp.x=(cp.x||0)+14; cp.y=(cp.y||0)+14;
-    if(cp.x2!=null){cp.x2+=14;cp.y2+=14;} arr.push(cp); newIds.push(cp.id); });
-  // keep clipboard so repeated paste keeps offsetting from the originals
-  _clipboard = newIds.map(id=>JSON.parse(JSON.stringify(arr.find(x=>x.id===id))));
+  _clipboard.forEach(e=>{ const cp=JSON.parse(JSON.stringify(e)); cp.id=uid(); cp.x=(cp.x||0)+off; cp.y=(cp.y||0)+off;
+    if(cp.x2!=null){cp.x2+=off;cp.y2+=off;} arr.push(cp); newIds.push(cp.id); });
+  // next paste offsets from these (so repeated paste on the same screen keeps stepping)
+  _clipboard = newIds.map(id=>JSON.parse(JSON.stringify(arr.find(x=>x.id===id)))); _clipScreen=editScreen;
   selectedIds=new Set(newIds); selectedId=newIds[newIds.length-1]||null; afterChange();
   toast(T(`Geplakt: ${newIds.length}`,`Pasted: ${newIds.length}`));
 }
@@ -1141,21 +1155,27 @@ function pasteClip(){
 /* point 7: align the selected element to the canvas edges/centre.
    Works on the element's rendered bounding box, then shifts the element by a delta. */
 function alignSel(how){
-  const el=selected(); if(!el){ toast(T('Selecteer eerst een element','Select an element first')); return; }
+  const ids = selectedIds.size ? [...selectedIds] : (selectedId?[selectedId]:[]);
+  if(!ids.length){ toast(T('Selecteer eerst een element','Select an element first')); return; }
   const p=profile();
-  const node=contentLayer.getChildren(n=>n._elId===el.id)[0];
-  if(!node) return;
-  const b=node.getClientRect({relativeTo:contentLayer});
+  // combined bounding box of the whole selection (so the group moves as one)
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity, found=false;
+  ids.forEach(id=>{ const n=contentLayer.getChildren(x=>x._elId===id)[0]; if(!n) return;
+    const b=n.getClientRect({relativeTo:contentLayer});
+    minX=Math.min(minX,b.x); minY=Math.min(minY,b.y); maxX=Math.max(maxX,b.x+b.width); maxY=Math.max(maxY,b.y+b.height); found=true; });
+  if(!found) return;
+  const bw=maxX-minX, bh=maxY-minY;
   let dx=0, dy=0;
-  if(how==='left')    dx=-b.x;
-  if(how==='right')   dx=(p.device.w-(b.x+b.width));
-  if(how==='hcenter') dx=(p.device.w/2-(b.x+b.width/2));
-  if(how==='top')     dy=-b.y;
-  if(how==='bottom')  dy=(p.device.h-(b.y+b.height));
-  if(how==='vcenter') dy=(p.device.h/2-(b.y+b.height/2));
+  if(how==='left')    dx=-minX;
+  if(how==='right')   dx=(p.device.w-maxX);
+  if(how==='hcenter') dx=(p.device.w/2-(minX+bw/2));
+  if(how==='top')     dy=-minY;
+  if(how==='bottom')  dy=(p.device.h-maxY);
+  if(how==='vcenter') dy=(p.device.h/2-(minY+bh/2));
   pushUndo();
-  el.x=Math.round(el.x+dx); el.y=Math.round(el.y+dy);
-  if(el.type==='line'){ el.x2=Math.round(el.x2+dx); el.y2=Math.round(el.y2+dy); }
+  ids.forEach(id=>{ const e=els().find(x=>x.id===id); if(!e) return;
+    e.x=Math.round((e.x||0)+dx); e.y=Math.round((e.y||0)+dy);
+    if(e.type==='line'){ e.x2=Math.round(e.x2+dx); e.y2=Math.round(e.y2+dy); } });
   afterChange();
 }
 
@@ -2175,7 +2195,7 @@ function haSensor(s){
 }
 
 function renderCode(){
-  const code = genYAML();
+  const code = genYAML().replace(/\s+$/,'\n');   // trim trailing blank space
   const h = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   // wrap ONLY the long base64 recovery string so the rest of the YAML keeps its
   // normal layout (horizontal scroll allowed); copy/download stay one line
@@ -2563,9 +2583,12 @@ function openProfileSettings(){
     const cp=JSON.parse(JSON.stringify(p)); cp.id=uid('p'); cp._waitSeeded=true;
     const base=(p.name||'profiel').replace(/\s*\(\d+\)\s*$/,'');
     const taken=new Set(state.profiles.map(x=>x.name)); let n=1, name;
-    do{ name=`${base} (${n++})`; } while(taken.has(name));
+    do{ name=`${base} (${n++})`; } while(taken.has(name));   // (1), (2), … skipping existing
     cp.name=name;
-    state.profiles.push(cp); state.current=cp.id; persist(); boot(); closeModal();
+    state.profiles.push(cp); state.current=cp.id; persist();
+    renderProfiles(); initStage(); selectedId=null; selectedIds=new Set();
+    renderCanvas(); renderLayers(); renderInspector();
+    openProfileSettings();   // keep the dialog open, now showing the new copy
     toast(T('Profiel gedupliceerd: ','Profile duplicated: ')+name);
   };
 }
@@ -3158,7 +3181,6 @@ function wire(){
   $('#zoom-fit').onclick=fitZoom;
   $('#tg-grid').onchange=()=>drawGrid();
   $('#grid-size').onchange=e=>{ profile().device.grid=+e.target.value; persist(); drawGrid(); };
-  $('#tg-eink').onchange=renderCanvas;
 
   $('#btn-undo').onclick=undo; $('#btn-redo').onclick=redo;
   $('#btn-dup').onclick=dupSel; $('#btn-del').onclick=deleteSel;
@@ -3377,3 +3399,29 @@ async function startup(){
 
 try{ startup(); }
 catch(e){ showFatal('Opstartfout: '+e.message); throw e; }
+
+/* custom tooltips: take over the native `title` so every tooltip has the same
+   1px border. The title is moved to data-tt (suppressing the OS tooltip). */
+(function(){
+  let tip=null, cur=null, timer=null, lastE=null;
+  function ensure(){ if(!tip){ tip=document.createElement('div'); tip.id='app-tooltip'; document.body.appendChild(tip); } return tip; }
+  function hide(){ clearTimeout(timer); if(tip) tip.classList.remove('show'); cur=null; }
+  function place(e){ if(!e||!tip) return; const pad=14, r=tip.getBoundingClientRect();
+    let x=e.clientX+pad, y=e.clientY+pad;
+    if(x+r.width>window.innerWidth-4) x=e.clientX-r.width-pad;
+    if(y+r.height>window.innerHeight-4) y=e.clientY-r.height-pad;
+    tip.style.left=Math.max(4,x)+'px'; tip.style.top=Math.max(4,y)+'px'; }
+  document.addEventListener('mouseover', e=>{
+    const el=e.target.closest && e.target.closest('[title],[data-tt]'); if(!el || el===cur) return;
+    let text=el.getAttribute('title');
+    if(text){ el.setAttribute('data-tt', text); el.removeAttribute('title'); }   // freshest (handles lang switch)
+    else text=el.getAttribute('data-tt');
+    if(!text){ return; }
+    cur=el; const t=ensure(); t.textContent=text; lastE=e;
+    clearTimeout(timer); timer=setTimeout(()=>{ t.classList.add('show'); place(lastE); }, 300);
+  });
+  document.addEventListener('mousemove', e=>{ lastE=e; if(cur && tip && tip.classList.contains('show')) place(e); });
+  document.addEventListener('mouseout', e=>{ if(cur && e.target.closest && e.target.closest('[data-tt]')===cur) hide(); });
+  document.addEventListener('mousedown', hide);
+  window.addEventListener('blur', hide);
+})();

@@ -93,7 +93,7 @@
     /* --- tooltips: topbar --- */
     'ESPHome-YAML importeren': 'Import ESPHome YAML',
     'Waardebronnen (sensoren) beheren': 'Manage value sources (sensors)',
-    'Fonts & kleuren beheren': 'Manage fonts & colours',
+    'Fonts beheren': 'Manage fonts',
     'Project opslaan': 'Save project',
     'Project openen': 'Open project',
     'Genereer de ESPHome-YAML': 'Generate the ESPHome YAML',
