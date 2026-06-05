@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
 <link rel="stylesheet" href="vendor/fonts.css">
 <link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
-<link rel="stylesheet" href="styles.css?v=2.10.1">
+<link rel="stylesheet" href="styles.css?v=2.10.2">
 <style>
   body { overflow: hidden; }
 
@@ -273,13 +273,13 @@
 
   <!-- ===== TOOLBAR ===== -->
   <div id="fe-toolbar">
-    <button class="btn sm" id="btn-upload">⇧ <span data-i18n="Uploaden">Uploaden</span></button>
-    <button class="btn ghost sm" id="btn-mkdir">+ <span data-i18n="Nieuwe map">Nieuwe map</span></button>
+    <button class="btn sm" id="btn-upload" data-i18n-title="Bestanden uploaden naar deze map">⇧ <span data-i18n="Uploaden">Uploaden</span></button>
+    <button class="btn ghost sm" id="btn-mkdir" data-i18n-title="Nieuwe map aanmaken">+ <span data-i18n="Nieuwe map">Nieuwe map</span></button>
     <div class="topbar-sep"></div>
-    <button class="btn ghost sm" id="btn-rename" disabled>✎ <span data-i18n="Hernoemen">Hernoemen</span></button>
-    <button class="btn ghost sm" id="btn-move" disabled>→ <span data-i18n="Verplaatsen">Verplaatsen</span></button>
-    <button class="btn ghost sm" id="btn-download" disabled>⇩ <span data-i18n="Downloaden">Downloaden</span></button>
-    <button class="btn ghost sm danger" id="btn-delete" disabled>🗑 <span data-i18n="Verwijderen">Verwijderen</span></button>
+    <button class="btn ghost sm" id="btn-rename" data-i18n-title="Geselecteerd item hernoemen" disabled>✎ <span data-i18n="Hernoemen">Hernoemen</span></button>
+    <button class="btn ghost sm" id="btn-move" data-i18n-title="Verplaatsen naar een andere map" disabled>→ <span data-i18n="Verplaatsen">Verplaatsen</span></button>
+    <button class="btn ghost sm" id="btn-download" data-i18n-title="Bestand downloaden" disabled>⇩ <span data-i18n="Downloaden">Downloaden</span></button>
+    <button class="btn ghost sm danger" id="btn-delete" data-i18n-title="Geselecteerde items verwijderen (Del)" disabled>🗑 <span data-i18n="Verwijderen">Verwijderen</span></button>
     <div class="topbar-spacer"></div>
     <button class="btn ghost sm" id="btn-theme-fe" data-i18n-title="Thema" title="Thema">◐ Dark</button>
     <button class="btn ghost sm" id="btn-lang-fe" data-lang-toggle onclick="toggleLang()" title="Taal / Language">EN</button>
@@ -365,8 +365,8 @@
 <!-- Toast -->
 <div class="toast" id="fe-toast"></div>
 
-<script src="files.js?v=2.10.1"></script>
-<script src="lang.js?v=2.10.1"></script>
-<script src="theme.js?v=2.10.1"></script>
+<script src="files.js?v=2.10.2"></script>
+<script src="lang.js?v=2.10.2"></script>
+<script src="theme.js?v=2.10.2"></script>
 </body>
 </html>

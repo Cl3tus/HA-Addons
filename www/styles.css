@@ -353,7 +353,7 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
 }
 /* only the base64 recovery string wraps (no giant horizontal scrollbar for it);
    the rest of the YAML keeps pre formatting and may scroll horizontally */
-#code-out .b64wrap { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; }
+#code-out .b64wrap { display: inline-block; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; }
 .code-tag { color: var(--accent); }
 .code-key { color: #79c0ff; }
 .code-str { color: #a7e0a0; }

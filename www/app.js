@@ -632,13 +632,17 @@ function buildNode(el){
   if(!node) return null;
   node._elId = el.id;
   node.draggable(true);
-  // live snap-to-grid while dragging: snap the element's OWN x/y (the same value
-  // shown in the inspector) to the grid, so it lands predictably. Shift bypasses.
-  node.on('dragstart.snap', ()=>{ node._sdx=node.x()-(el.x||0); node._sdy=node.y()-(el.y||0); });
+  // live snap-to-grid while dragging: align the element's VISIBLE box top-left to
+  // the nearest grid line (works for any grid size). The offset between the node
+  // position and its visible box is captured at dragstart (render position) so the
+  // maths stays correct. Shift bypasses.
+  node.on('dragstart.snap', ()=>{
+    const b=(el.type==='text'||el.type==='icon') ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
+    node._sbx=b.x-node.x(); node._sby=b.y-node.y(); });
   node.dragBoundFunc(function(pos){
     const sn=$('#tg-snap'); if(!sn || !sn.checked || shiftDown) return pos;
-    const g=gridStep(), dx=node._sdx||0, dy=node._sdy||0;
-    return { x: Math.round((pos.x-dx)/g)*g + dx, y: Math.round((pos.y-dy)/g)*g + dy };
+    const g=gridStep(), ox=node._sbx||0, oy=node._sby||0;
+    return { x: Math.round((pos.x+ox)/g)*g - ox, y: Math.round((pos.y+oy)/g)*g - oy };
   });
   node.on('mousedown touchstart', (ev)=>{
     const e=ev && ev.evt;
@@ -849,9 +853,10 @@ function attachSelection(el, node){
     contentLayer.add(g); selectionVisual=g;
   } else {
     const b=(el.type==='text'||el.type==='icon') ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
-    // hug the actual ink with a small margin; bright enough to clearly see
+    // hug the actual ink with a small margin; bold + clearly visible
     selectionVisual=new Konva.Rect({x:b.x-3,y:b.y-3,width:b.width+6,height:b.height+6,
-      stroke:'#ffb43a',strokeWidth:2,dash:[6,3],fill:'rgba(232,161,58,0.12)',listening:false});
+      stroke:'#ff9800',strokeWidth:3,dash:[7,4],fill:'rgba(255,152,0,0.16)',
+      shadowColor:'#000',shadowBlur:3,shadowOpacity:.5,listening:false});
     contentLayer.add(selectionVisual);
   }
 }
@@ -880,10 +885,10 @@ function inkBounds(node){
   }catch(e){ return b; }
 }
 function outlineNode(node){
-  const b=node.getClientRect({relativeTo:contentLayer});
+  const b=(node._elId && (()=>{const e=els().find(x=>x.id===node._elId);return e&&(e.type==='text'||e.type==='icon');})()) ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
   // bright, slightly filled box so multi-selected items stand out clearly
   const o=new Konva.Rect({x:b.x-4,y:b.y-4,width:b.width+8,height:b.height+8,
-    stroke:'#ffb43a',strokeWidth:2.5,dash:[8,4],fill:'rgba(232,161,58,0.14)',
+    stroke:'#ff9800',strokeWidth:3,dash:[8,4],fill:'rgba(255,152,0,0.16)',
     shadowColor:'#000',shadowBlur:2,shadowOpacity:.4,listening:false});
   contentLayer.add(o);
   return o;
@@ -2201,7 +2206,14 @@ function renderCode(){
   // normal layout (horizontal scroll allowed); copy/download stay one line
   const html = h(code).replace(/(# eink-editor:v[\w.]+:)([A-Za-z0-9+/=]+)/,
     (m,p1,p2)=>p1+'<span class="b64wrap">'+p2+'</span>');
-  $('#code-out').innerHTML = html;
+  const pre=$('#code-out'); pre.innerHTML = html;
+  _fitB64();
+}
+/* constrain the base64 span to the visible code width so it wraps there (not at
+   the much wider scroll width of long YAML lines) */
+function _fitB64(){
+  const pre=$('#code-out'); if(!pre) return; const span=pre.querySelector('.b64wrap');
+  if(span) span.style.maxWidth = Math.max(120, pre.clientWidth - 28) + 'px';
 }
 
 /* ============================================================
@@ -3163,12 +3175,12 @@ function wire(){
 
   $('#btn-code').onclick=()=>{ const d=$('#code-drawer');
     if(d.classList.contains('open')) d.classList.remove('open');
-    else { renderCode(); d.classList.add('open'); } };
+    else { renderCode(); d.classList.add('open'); setTimeout(_fitB64,220); } };   // re-fit after the open animation
   $('#code-close').onclick=()=>$('#code-drawer').classList.remove('open');
   { const rz=$('#code-resizer'), drawer=$('#code-drawer');
     if(rz) rz.addEventListener('mousedown', e=>{ e.preventDefault();
       const rightEdge=drawer.getBoundingClientRect().right;
-      const move=ev=>{ const w=Math.max(360, Math.min(rightEdge-ev.clientX, window.innerWidth-60)); drawer.style.setProperty('--code-w', w+'px'); };
+      const move=ev=>{ const w=Math.max(360, Math.min(rightEdge-ev.clientX, window.innerWidth-60)); drawer.style.setProperty('--code-w', w+'px'); _fitB64(); };
       const up=()=>{ window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up); };
       window.addEventListener('mousemove',move); window.addEventListener('mouseup',up); }); }
   const cb64=$('#code-b64'); if(cb64) cb64.onchange=()=>{ window.INCLUDE_SNAPSHOT=cb64.checked; renderCode(); };

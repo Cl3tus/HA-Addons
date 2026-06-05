@@ -1,3 +1,8 @@
+## 2.10.2
+- **Snap aligneert nu de zichtbare pixels** (ink) van het element op de rasterlijnen — voor elke rastergrootte. Selectiekaders zijn ook duidelijker (dikker, oranje, lichte schaduw).
+- **base64-herstelcode** breekt nu af op de **zichtbare breedte** van het YAML-venster (niet op de bredere scrollbreedte van lange regels), dus geen lange horizontale balk meer voor die regel.
+- **Custom tooltips overal**: ook in het **bestandsbeheer** (en de profielinstellingen) zijn de OS-tooltips vervangen door de styled 1px-tooltips; extra tooltips toegevoegd op de bestandsbeheer-knoppen.
+
 ## 2.10.1
 - **Snap** snapt nu de **eigen x/y** van het element (zoals in de inspector) naar het raster — voorspelbaarder dan via de (te grote) tekstbox.
 - **Selectiekader** rond tekst/waarde hugt nu de **echte gerenderde pixels** (ink-bounds) i.p.v. de font-metriekbox, en is weer goed zichtbaar.

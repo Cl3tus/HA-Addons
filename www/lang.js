@@ -90,6 +90,13 @@
     'Vernieuwen': 'Refresh',
     'Vernieuwen (F5)': 'Refresh (F5)',
     'Alles selecteren': 'Select all',
+    'Bestanden uploaden naar deze map': 'Upload files to this folder',
+    'Nieuwe map aanmaken': 'Create a new folder',
+    'Geselecteerd item hernoemen': 'Rename the selected item',
+    'Verplaatsen naar een andere map': 'Move to another folder',
+    'Bestand downloaden': 'Download file',
+    'Geselecteerde items verwijderen (Del)': 'Delete selected items (Del)',
+    'Sleep om breder/smaller te maken': 'Drag to resize wider/narrower',
     /* --- tooltips: topbar --- */
     'ESPHome-YAML importeren': 'Import ESPHome YAML',
     'Waardebronnen (sensoren) beheren': 'Manage value sources (sensors)',

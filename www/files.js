@@ -774,3 +774,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+/* custom tooltips: replace the native title with a styled 1px-border tooltip */
+(function(){
+  let tip=null, cur=null, timer=null, lastE=null;
+  function ensure(){ if(!tip){ tip=document.createElement('div'); tip.id='app-tooltip'; document.body.appendChild(tip); } return tip; }
+  function hide(){ clearTimeout(timer); if(tip) tip.classList.remove('show'); cur=null; }
+  function place(e){ if(!e||!tip) return; const pad=14, r=tip.getBoundingClientRect();
+    let x=e.clientX+pad, y=e.clientY+pad;
+    if(x+r.width>window.innerWidth-4) x=e.clientX-r.width-pad;
+    if(y+r.height>window.innerHeight-4) y=e.clientY-r.height-pad;
+    tip.style.left=Math.max(4,x)+'px'; tip.style.top=Math.max(4,y)+'px'; }
+  document.addEventListener('mouseover', e=>{
+    const el=e.target.closest && e.target.closest('[title],[data-tt]'); if(!el || el===cur) return;
+    let text=el.getAttribute('title');
+    if(text){ el.setAttribute('data-tt', text); el.removeAttribute('title'); }
+    else text=el.getAttribute('data-tt');
+    if(!text){ return; }
+    cur=el; const t=ensure(); t.textContent=text; lastE=e;
+    clearTimeout(timer); timer=setTimeout(()=>{ t.classList.add('show'); place(lastE); }, 300);
+  });
+  document.addEventListener('mousemove', e=>{ lastE=e; if(cur && tip && tip.classList.contains('show')) place(e); });
+  document.addEventListener('mouseout', e=>{ if(cur && e.target.closest && e.target.closest('[data-tt]')===cur) hide(); });
+  document.addEventListener('mousedown', hide);
+  window.addEventListener('blur', hide);
+})();
