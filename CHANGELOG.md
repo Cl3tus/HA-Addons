@@ -3,6 +3,13 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.1.3
+- **Fix build failure** introduced in 3.1.1: the legend glyph collection no longer
+  force-adds guessed unit symbols (`² ³ µ Ω …`). ESPHome hard-fails when a font lacks
+  a listed glyph, so a legend value font like GothamRnd broke the config.
+- `nan`/`inf` glyphs are still added to text fonts, but **never** to digit/7-segment
+  display fonts (which lack letters and would also fail the build).
+
 ## 3.1.2
 - Font editor titled **“Font Editor”**; fonts are grouped by source (local/uploaded,
   Google, Web, MDI) under each other.

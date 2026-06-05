@@ -2010,11 +2010,14 @@ function elementCode(el, baseIndent){
 }
 
 /* ---- glyph collection ---- */
-// printf renders an unavailable/NaN float as "nan" (or "inf"); always keep those
-// letters so a missing sensor shows "nan" instead of tofu boxes.
-const NAN_GLYPHS  = 'naif';                       // n a i f  (+ '-' already in base)
-const NUM_GLYPHS  = ' 0123456789.,:+-naif';        // value/legend numeric text
-const UNIT_GLYPHS = '°%/³²·µΩ CFKWVAhkLmsglpHbdBrxu'; // common unit characters
+// printf renders an unavailable/NaN float as "nan" (or "inf"). Keep those letters
+// for normal text fonts so a missing sensor shows "nan" instead of tofu — but NEVER
+// for digit / 7-segment display fonts, which lack letters: ESPHome HARD-FAILS the
+// build if you list a glyph the font file doesn't contain. We also no longer guess
+// unit glyphs (°, ², µ, Ω, …) for the same reason — they vary per sensor/font.
+const NAN_GLYPHS  = 'naif';                  // letters used by "nan" / "inf"
+const NUM_GLYPHS  = ' 0123456789.,:+-';      // safe numeric glyphs for any value font
+function fontIsDigitDisplay(f){ return /digital|7.?seg|dseg|segment|lcd|dotmatrix/i.test((f&&f.file)||''); }
 function collectGlyphs(){
   const map={}; // fontId -> {chars:Set, icons:Map(hex->name), dynamic:bool}
   profile().fonts.forEach(f=>map[f.id]={chars:new Set(), icons:new Map(), dynamic:f.dynamic});
@@ -2062,9 +2065,11 @@ function collectGlyphs(){
           const traces=(E.graph.traces||[]).filter(t=>t.sourceId);
           // name font: the trace labels — same default (sensor id) the generator emits
           if(map[lg.nameFontId]){ map[lg.nameFontId].dynamic=true; traces.forEach(t=>addText(lg.nameFontId, t.name||t.sourceId||'')); }
-          // values are drawn with value_font, or with name_font when no value_font is set
+          // values are drawn with value_font, or with name_font when no value_font is set.
+          // Only the safe numeric glyphs — units are unknown and forcing them would
+          // fail the build on any font that lacks them.
           const valFid = (lg.valueFontId && map[lg.valueFontId]) ? lg.valueFontId : lg.nameFontId;
-          if(map[valFid]){ map[valFid].dynamic=true; addText(valFid, NUM_GLYPHS); if(lg.showUnits!==false) addText(valFid, UNIT_GLYPHS); }
+          if(map[valFid]){ map[valFid].dynamic=true; addText(valFid, NUM_GLYPHS); }
         }
       }
     });
@@ -2270,7 +2275,8 @@ function genYAML(){
 function glyphEsc(ch){ if(ch==='\\') return '\\\\'; if(ch==='"') return '\\"'; return ch; }
 function glyphBlock(f, g){
   const chars=new Set(g?g.chars:[]); const icons=g?g.icons:new Map(); const dyn=g?g.dynamic:f.dynamic;
-  if(dyn){ for(const ch of (f.baseCharset||'')) chars.add(ch); for(const ch of NAN_GLYPHS) chars.add(ch); }
+  if(dyn){ for(const ch of (f.baseCharset||'')) chars.add(ch);
+    if(!fontIsDigitDisplay(f)) for(const ch of NAN_GLYPHS) chars.add(ch); }
   if(!chars.size && !icons.size){
     if(f.seedGlyphs && f.seedGlyphs.length){ f.seedGlyphs.forEach(c=>chars.add(c)); }
     else return ''; // full font (no glyph restriction)
