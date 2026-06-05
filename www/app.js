@@ -1374,7 +1374,6 @@ function renderInspector(){
     h+=g(T('Grafiek — traces (stijlen)','Graph — traces (styles)'),`
       ${(gr.traces||[]).map((t,i)=>`<div class="cond-box">
         <div class="row"><div><label class="fld">Sensor</label><select data-trace="${i}.sourceId">${srcOpts(t.sourceId,true)}</select></div></div>
-        <div class="row"><div><label class="fld">${T('Naam (legenda)','Name (legend)')}</label><input data-trace="${i}.name" type="text" value="${attr(t.name)}" placeholder="${T('bv. Buiten','e.g. Outside')}" title="${T('Label voor deze trace in de legenda. Leeg = ESPHome gebruikt de sensornaam.','Label for this trace in the legend. Empty = ESPHome uses the sensor name.')}"></div></div>
         <div class="row tight"><div><label class="fld">${T('Lijntype','Line type')}</label><select data-trace="${i}.lineType">
           ${['SOLID','DOTTED','DASHED'].map(o=>`<option ${t.lineType===o?'selected':''}>${o}</option>`).join('')}</select></div>
           <div><label class="fld">${T('Dikte','Thickness')}</label><input data-trace="${i}.thickness" type="number" min="1" max="10" value="${t.thickness??2}"></div></div>
@@ -1393,6 +1392,8 @@ function renderInspector(){
         <div><label class="fld">${T('X-as titel','X-axis title')}</label><input data-axes="xTitle" type="text" value="${attr(ax.xTitle)}" placeholder="${T('bv. tijd','e.g. time')}"></div></div>
       <label class="toggle"><input type="checkbox" data-axes="showYScale" ${ax.showYScale!==false?'checked':''}> ${T('Y-schaal tonen (min/max)','Show Y scale (min/max)')}</label>
       <label class="toggle"><input type="checkbox" data-axes="showXScale" ${ax.showXScale!==false?'checked':''}> ${T('X-schaal tonen (0 … −duur)','Show X scale (0 … −duration)')}</label>
+      <div class="row" style="margin-top:6px"><div><label class="fld">${T('Duur (X-as) — aantal uren','Duration (X-axis) — hours')}</label><input data-graph="duration" class="mono" type="text" value="${attr(gr.duration||'1h')}" title="${T('Zelfde waarde als bij Algemeen. Bepaalt de X-as: van −duur (begin) tot 0 (nu). Bv. 1h, 6h, 24h.','Same value as under General. Sets the X axis: from −duration (start) to 0 (now). E.g. 1h, 6h, 24h.')}"></div></div>
+      <div class="hint">${T('De X-schaal loopt van','The X scale runs from')} <span class="mono">−${attr(gr.duration||'1h')}</span> ${T('(begin) tot','(start) to')} <span class="mono">0</span> ${T('(nu).','(now).')}</div>
       <div class="hint">${T('Y-schaalwaarden (min/midden/max) verschijnen alleen als je hierboven bij “Algemeen” een vaste','Y scale values (min/mid/max) only appear if you set a fixed')} <b>Y-min ${T('én','and')} Y-max</b> ${T('hebt ingevuld. Bij auto-schaal kent de editor de werkelijke grenzen niet.','under “General”. With auto-scale the editor cannot know the real bounds.')}</div>`:`
       <div class="hint">ESPHome's <span class="mono">graph:</span> ${T('tekent zelf geen astitels of schaalwaarden. Zet dit aan om ze als tekst rond de grafiek te genereren.','does not draw axis titles or scale values itself. Enable this to generate them as text around the graph.')}</div>`}`);
 
@@ -1400,6 +1401,12 @@ function renderInspector(){
     h+=g(T('Grafiek — legenda','Graph — legend'),`
       <label class="toggle"><input type="checkbox" data-legend="show" ${lg.show?'checked':''}> ${T('Legenda tekenen (it.legend)','Draw legend (it.legend)')}</label>
       ${lg.show?`
+      <label class="fld" style="margin-top:6px">${T('Labels (legenda-tekst per trace)','Labels (legend text per trace)')}</label>
+      ${(gr.traces||[]).map((t,i)=> t.sourceId ? `<div class="row tight" style="align-items:center;margin-bottom:4px">
+        <div class="mono hint" style="flex:0 0 90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0" title="${attr(t.sourceId)}">${attr(t.sourceId)}</div>
+        <div style="flex:1"><input data-trace="${i}.name" type="text" value="${attr(t.name)}" placeholder="${attr(t.sourceId)}" title="${T('Eigen tekst voor de legenda. Leeg = de sensor-id hiernaast.','Custom legend text. Empty = the sensor id shown beside it.')}"></div>
+      </div>` : '').join('')}
+      <div class="hint" style="margin-bottom:6px">${T('Leeg laten toont de sensor-id (bv.','Leave empty to show the sensor id (e.g.')} <span class="mono">cubewatt</span>).</div>
       <div class="row tight"><div><label class="fld">${T('Naam-font','Name font')}</label><select data-legend="nameFontId" title="${T('Verplicht. Font voor de trace-namen in de legenda.','Required. Font for the trace names in the legend.')}">${fontOpts(lg.nameFontId)}</select></div>
         <div><label class="fld">${T('Waarde-font','Value font')}</label><select data-legend="valueFontId" title="${T('Optioneel. Font voor de actuele waarden. Leeg = geen waarden.','Optional. Font for the current values. Empty = no values.')}"><option value="" ${lg.valueFontId?'':'selected'}>${T('(geen)','(none)')}</option>${fontOpts(lg.valueFontId)}</select></div></div>
       <div class="row tight"><div><label class="fld">${T('Waarden tonen','Show values')}</label><select data-legend="showValues" title="${T('NONE=geen, AUTO=automatisch, BESIDE=naast de naam, BELOW=onder de naam.','NONE=none, AUTO=automatic, BESIDE=next to name, BELOW=below name.')}">${['NONE','AUTO','BESIDE','BELOW'].map(o=>`<option ${(lg.showValues||'AUTO')===o?'selected':''}>${o}</option>`).join('')}</select></div>
@@ -1410,7 +1417,7 @@ function renderInspector(){
       <label class="toggle"><input type="checkbox" data-legend="border" ${lg.border!==false?'checked':''}> ${T('Rand om legenda','Legend border')}</label>
       <label class="toggle"><input type="checkbox" data-legend="showLines" ${lg.showLines!==false?'checked':''}> ${T('Lijnvoorbeelden tonen','Show line samples')}</label>
       <label class="toggle"><input type="checkbox" data-legend="showUnits" ${lg.showUnits!==false?'checked':''}> ${T('Eenheden tonen','Show units')}</label>
-      <div class="hint">${T('De legenda wordt los geplaatst met','The legend is placed separately with')} <span class="mono">it.legend(x, y, …)</span>. ${T('Geef je traces hierboven een naam voor nette labels.','Give your traces a name above for tidy labels.')}</div>
+      <div class="hint">${T('De legenda wordt los geplaatst met','The legend is placed separately with')} <span class="mono">it.legend(x, y, …)</span>.</div>
       `:`<div class="hint">${T('Toont sensornamen, lijnstijlen en (optioneel) actuele waarden in een apart kader.','Shows sensor names, line styles and (optionally) current values in a separate box.')}</div>`}`);
   }
 
@@ -2320,12 +2327,15 @@ function haSensor(s){
 function renderCode(){
   const code = genYAML().replace(/\s+$/,'\n');   // trim trailing blank space
   const h = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  // wrap ONLY the long base64 recovery string so the rest of the YAML keeps its
-  // normal layout (horizontal scroll allowed); copy/download stay one line
-  // wrap the whole recovery line (prefix + base64) so the string stays on the
-  // same first line and continuation lines align to the left edge
-  const html = h(code).replace(/(# eink-editor:v[\w.]+:[A-Za-z0-9+/=]+)/,
-    (m)=>'<span class="b64wrap">'+m+'</span>');
+  // one <span class="cl"> per line so a CSS ::before counter can show line numbers
+  // that are NOT part of the text (never selected/copied). The long base64 recovery
+  // line is wrapped so it folds within the visible width.
+  const b64re = /(# eink-editor:v[\w.]+:[A-Za-z0-9+/=]+)/;
+  const html = code.replace(/\n$/,'').split('\n').map(line=>{
+    let inner = h(line);
+    if(b64re.test(line)) inner = inner.replace(b64re, m=>'<span class="b64wrap">'+m+'</span>');
+    return '<span class="cl">'+inner+'</span>';
+  }).join('');
   const pre=$('#code-out'); pre.innerHTML = html;
   _fitB64();
 }
@@ -3168,6 +3178,18 @@ function renderProfiles(){
 var SERVER_STORAGE=false;
 function pname(){ return (profile().name||'profiel').replace(/[^A-Za-z0-9._-]+/g,'_'); }
 function pslug(p){ return (p.name||'profiel').replace(/[^A-Za-z0-9._-]+/g,'_'); }
+/* write the generated YAML to projects/<profile>.yaml so it shows up in the file
+   manager and over SAMBA (profiles/ already holds the editable design JSON, so
+   projects/ is free to hold the human-readable generated output). */
+async function saveGeneratedYaml(silent){
+  if(!SERVER_STORAGE) return;
+  const file='projects/'+pname()+'.yaml';
+  try{
+    const r=await fetch('api/fs/write',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:file, content:genYAML()})});
+    if(r.ok && !silent) toast(T('Opgeslagen in ','Saved to ')+file);
+  }catch(e){}
+}
 
 /* ---- server-side profile sync ---- */
 var _profileSyncTimer=null;
@@ -3426,7 +3448,7 @@ function wire(){
 
   $('#btn-code').onclick=()=>{ const d=$('#code-drawer');
     if(d.classList.contains('open')) d.classList.remove('open');
-    else { renderCode(); d.classList.add('open'); setTimeout(_fitB64,220); } };   // re-fit after the open animation
+    else { renderCode(); saveGeneratedYaml(true); d.classList.add('open'); setTimeout(_fitB64,220); } };   // re-fit after the open animation
   $('#code-close').onclick=()=>$('#code-drawer').classList.remove('open');
   { const rz=$('#code-resizer'), drawer=$('#code-drawer');
     if(rz) rz.addEventListener('mousedown', e=>{ e.preventDefault();
@@ -3437,7 +3459,7 @@ function wire(){
   const cb64=$('#code-b64'); if(cb64) cb64.onchange=()=>{ window.INCLUDE_SNAPSHOT=cb64.checked; renderCode(); };
   const scr=$('#screen-select'); if(scr) scr.onchange=()=>{ editScreen=scr.value; selectedId=null; selectedIds=new Set(); undoStack=[]; redoStack=[]; renderCanvas(); renderLayers(); renderInspector(); };
   $('#code-copy').onclick=()=>{ navigator.clipboard.writeText(genYAML()).then(()=>toast(T('Naar klembord gekopieerd','Copied to clipboard'))); };
-  $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); toast(T('YAML gedownload','YAML downloaded')); };
+  $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); saveGeneratedYaml(false); toast(T('YAML gedownload','YAML downloaded')); };
 
   $('#zoom-in').onclick=()=>{ zoom=clamp(zoom+0.1,0.3,2); applyZoom(); };
   $('#zoom-out').onclick=()=>{ zoom=clamp(zoom-0.1,0.3,2); applyZoom(); };

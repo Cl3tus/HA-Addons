@@ -3,6 +3,17 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.1.5
+- The generated YAML is now also saved to **`projects/<profile>.yaml`** (visible in
+  the file manager / over SAMBA) when you open the code drawer or download — the
+  editable design JSON already lives in `profiles/`.
+- **Line numbers** in the generated-YAML drawer (a non-selectable gutter, so they're
+  never copied or downloaded).
+- **Legend labels** are now editable per trace right in the *Graph — legend* section
+  (empty = the sensor id, e.g. `cubewatt`).
+- The graph **duration (hours)** is mirrored into *Graph — axes & labels* with a note
+  that the X-scale runs from −duration (start) to 0 (now).
+
 ## 3.1.4
 - **NaN values now render `---`** instead of `nan`: numeric value elements emit an
   `isnan()` guard, so an unavailable sensor shows three dashes (which every digit /
