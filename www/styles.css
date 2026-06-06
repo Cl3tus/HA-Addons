@@ -118,8 +118,11 @@ body.chrome-hidden #topbar { display: none; }
     linear-gradient(var(--red) 0 0) 0 5px/60% 2px no-repeat,
     linear-gradient(var(--ink) 0 0) 0 10px/80% 2px no-repeat;
 }
+.brand .brand-text { display: flex; flex-direction: column; line-height: 1.12; }
 .brand b { font-weight: 600; letter-spacing: .2px; }
 .brand span { color: var(--txt-dim); font-size: 11px; font-family: var(--mono); }
+.brand #brand-version { color: var(--txt-faint); }
+.brand #brand-version:not(:empty)::after { content: " · "; }
 
 .topbar-sep { width: 1px; height: 22px; background: var(--line); }
 .topbar-spacer { flex: 1; }
@@ -366,6 +369,10 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
 /* base64 on its own block so wrapped lines align to the left edge (no staircase
    indent under the "# eink-editor:vX:" prefix) */
 #code-out .b64wrap { display: inline-block; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; }
+/* fence off the base64 recovery line: a gap + divider + dim so manual selection has
+   a clear place to stop before grabbing the (usually unwanted) recovery code */
+#code-out .cl-b64 { margin-top: 18px; padding-top: 12px; border-top: 1px dashed var(--line); }
+#code-out .cl-b64 .b64wrap { color: var(--txt-faint); opacity: .7; }
 .code-tag { color: var(--accent); }
 .code-key { color: #79c0ff; }
 .code-str { color: #a7e0a0; }

@@ -101,8 +101,8 @@
     'ESPHome-YAML importeren': 'Import ESPHome YAML',
     'Waardebronnen (sensoren) beheren': 'Manage value sources (sensors)',
     'Fonts beheren': 'Manage fonts',
-    'Project opslaan': 'Save project',
-    'Project openen': 'Open project',
+    'Profiel opslaan (profiles/)': 'Save profile (profiles/)',
+    'Profiel openen (profiles/)': 'Open profile (profiles/)',
     'Genereer de ESPHome-YAML': 'Generate the ESPHome YAML',
     /* --- tooltips: palette --- */
     'Statische tekst': 'Static text',

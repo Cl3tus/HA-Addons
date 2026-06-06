@@ -429,8 +429,10 @@ function setupMarquee(){
       if(el.visible===false) return;
       const n=contentLayer.getChildren(x=>x._elId===el.id)[0]; if(!n) return;
       const b=n.getClientRect({relativeTo:contentLayer});
-      const overlap = !(b.x>box.x+box.width || b.x+b.width<box.x || b.y>box.y+box.height || b.y+b.height<box.y);
-      if(overlap) hit.add(el.id);
+      // only select elements FULLY inside the marquee (not partial overlaps), so a
+      // big background rectangle isn't grabbed when you select things on top of it
+      const contained = b.x>=box.x && b.y>=box.y && (b.x+b.width)<=(box.x+box.width) && (b.y+b.height)<=(box.y+box.height);
+      if(contained) hit.add(el.id);
     });
     setSelection([...hit], [...hit][hit.size-1]);
   };
@@ -1831,8 +1833,10 @@ function drawStmt(el, indent){
     return `${I}it.${fn}(${v.join(', ')}, ${color});`;
   }
   if(el.type==='polygon'){
+    // ESPHome signature: regular_polygon(x, y, radius, edges, variation, rotation_degrees, color)
+    // — the 5th arg is the VARIATION enum, the rotation is the 6th (a float in degrees).
     const fn=el.filled?'filled_regular_polygon':'regular_polygon';
-    return `${I}it.${fn}(${el.x}, ${el.y}, ${el.r||60}, ${Math.max(3,el.sides||6)}, ${el.rotation||0}, ${color});`;
+    return `${I}it.${fn}(${el.x}, ${el.y}, ${el.r||60}, ${Math.max(3,el.sides||6)}, VARIATION_POINTY_TOP, ${el.rotation||0}, ${color});`;
   }
   if(el.type==='ring'){
     return `${I}it.filled_ring(${el.x}, ${el.y}, ${el.r||50}, ${el.inner||30}, ${color});`;
@@ -2128,6 +2132,22 @@ function outputDefaults(){
 }
 function outCfg(p){ return Object.assign(outputDefaults(), (p||profile()).output||{}); }
 
+/* font ids actually referenced by an element (main + waiting screens). Used to skip
+   unused fonts in the export and to flag them in the Font Editor. */
+function usedFontIds(p){
+  p=p||profile(); const used=new Set();
+  // the built-in "waiting for data" fallback prints with the first font
+  if(p.waitEnabled!==false && !(p.waitElements&&p.waitElements.length) && p.fonts[0]) used.add(p.fonts[0].id);
+  [].concat(p.elements||[], p.waitElements||[]).forEach(e=>{
+    if(e.fontId) used.add(e.fontId);
+    if(e.clock && e.clock.iconFontId) used.add(e.clock.iconFontId);
+    if(e.graph && e.graph.axes && e.graph.axes.fontId) used.add(e.graph.axes.fontId);
+    if(e.graph && e.graph.legend){ if(e.graph.legend.nameFontId) used.add(e.graph.legend.nameFontId);
+      if(e.graph.legend.valueFontId) used.add(e.graph.legend.valueFontId); }
+  });
+  return used;
+}
+
 function genYAML(){
   const p=profile(), d=p.device, gl=collectGlyphs();
   let out='';
@@ -2162,10 +2182,13 @@ function genYAML(){
     out+=`spi:\n  clk_pin: ${o.spiClk}\n  mosi_pin: ${o.spiMosi}\n\n`;
   }
 
-  // fonts
+  // fonts — only the ones actually used by an element (an unused font, especially an
+  // icon font with no glyphs, would make ESPHome fail with "unable to determine height")
   if(o.fonts){
+    const used=usedFontIds();
+    const emit=p.fonts.filter(f=>used.has(f.id));
     out+=`font:\n`;
-    p.fonts.forEach(f=>{
+    emit.forEach(f=>{
       if(f.kind==='gfonts'){
         out+=`  - file:\n      type: gfonts\n      family: ${f.family}\n      weight: ${f.weight}\n    id: ${f.id}\n    size: ${f.size}\n`;
       } else if(f.kind==='web'){
@@ -2265,19 +2288,21 @@ function genYAML(){
   }
   out+=`    update_interval: never\n    lambda: |-\n`;
   const L='      ';
+  // draw in LAYER order (array order = the layers panel, bottom→top) so the z-order
+  // you see on the canvas and set in the layers list is exactly what ESPHome draws.
   if(p.waitEnabled===false){
     // waiting screen disabled — draw the main screen unconditionally
-    orderedFor(p.elements||[]).forEach(el=>{ const code=elementCode(el, L); if(code) out+=code+'\n'; });
+    (p.elements||[]).forEach(el=>{ const code=elementCode(el, L); if(code) out+=code+'\n'; });
   } else {
     out+=`${L}if (id(initial_data_received) == false) {\n`;
     const waitEls=p.waitElements||[];
     if(waitEls.length){
-      orderedFor(waitEls).forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
+      waitEls.forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
     } else {
       out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), color_text, TextAlign::CENTER, "${T('WACHTEN OP DATA...','WAITING FOR DATA...')}");\n`;
     }
     out+=`${L}} else {\n`;
-    orderedFor(p.elements||[]).forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
+    (p.elements||[]).forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
     out+=`${L}}\n`;
   }
 
@@ -2314,6 +2339,8 @@ function glyphBlock(f, g){
     return out;
   }
   // regular font: compact single-line array, e.g. glyphs: ['A', 'Q', 'U']
+  // never emit an empty "glyphs: []" — ESPHome then can't determine the font height
+  if(!plain.length) return '';
   return `    glyphs: [${plain.map(glyphQ1).join(', ')}]\n`;
 }
 /* single-quoted YAML scalar (a literal ' is doubled; backslash stays literal) */
@@ -2340,8 +2367,11 @@ function renderCode(){
   const b64re = /(# eink-editor:v[\w.]+:[A-Za-z0-9+/=]+)/;
   const html = code.replace(/\n$/,'').split('\n').map(line=>{
     let inner = h(line);
-    if(b64re.test(line)) inner = inner.replace(b64re, m=>'<span class="b64wrap">'+m+'</span>');
-    return '<span class="cl">'+inner+'</span>';
+    const isB64 = b64re.test(line);
+    if(isB64) inner = inner.replace(b64re, m=>'<span class="b64wrap">'+m+'</span>');
+    // mark the recovery line so it's visually fenced off (a clear "stop here" point
+    // when you drag-select the YAML, since you usually don't want the base64 too)
+    return '<span class="cl'+(isB64?' cl-b64':'')+'">'+inner+'</span>';
   }).join('');
   const pre=$('#code-out'); pre.innerHTML = html;
   _fitB64();
@@ -2502,6 +2532,7 @@ async function refreshServerFonts(){
 }
 async function openFonts(){
   await refreshServerFonts();
+  const used=usedFontIds();
   const onServer=f=>{ const n=_fontFileName(f); return !!(n && SERVER_FONTS.has(n)); };
   const previewable=f=>(f.kind==='gfonts'||/materialdesignicons/i.test(f.file||'')||fontHasBytes(f)||onServer(f));
   const statusTag=f=>/materialdesignicons/i.test(f.file||'') ? '<span class="tag">MDI</span>'
@@ -2517,6 +2548,9 @@ async function openFonts(){
     <td class="mono" style="font-size:10px;word-break:break-all">${f.kind==='gfonts'?`gfonts: ${attr(f.family)} ${f.weight}`:(f.kind==='web'?`web: ${attr(f.url||'')}`:attr(f.file||''))}</td>
     <td>${f.size}px</td>
     <td>${statusTag(f)}</td>
+    <td style="white-space:nowrap">${used.has(f.id)
+      ? `<span class="tag" style="color:var(--ok)">${T('in gebruik','in use')}</span>`
+      : `<span class="tag" style="color:var(--txt-faint)" title="${T('Geen element gebruikt dit font; het komt niet in de YAML.','No element uses this font; it is left out of the YAML.')}">${T('ongebruikt','unused')}</span>`}</td>
     <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?`<input type="file" accept=".ttf,.otf,.woff,.pcf,.bdf" data-font="${i}" style="font-size:10px">`:''}</td>
     <td style="white-space:nowrap"><button class="btn ghost sm" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}">✎</button>
         <button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">✕</button></td>
@@ -2524,12 +2558,14 @@ async function openFonts(){
   const ordered=profile().fonts.map((f,i)=>({f,i})).sort((a,b)=>fontCat(a.f)-fontCat(b.f) || a.i-b.i);
   let frows='', lastCat=-1;
   ordered.forEach(({f,i})=>{ const c=fontCat(f);
-    if(c!==lastCat){ lastCat=c; frows+=`<tr class="font-group"><td colspan="6" style="padding-top:10px;font-weight:600;color:var(--accent);font-size:11px">${catLabel[c]}</td></tr>`; }
+    if(c!==lastCat){ lastCat=c; frows+=`<tr class="font-group"><td colspan="7" style="padding-top:10px;font-weight:600;color:var(--accent);font-size:11px">${catLabel[c]}</td></tr>`; }
     frows+=oneRow(f,i);
   });
+  const unused=profile().fonts.filter(f=>!used.has(f.id));
   openModal('Font Editor',
     `<h4 style="margin:0 0 8px;color:var(--accent)">Fonts</h4>
-     <table class="tbl"><thead><tr><th>id</th><th>${T('bron','source')}</th><th>${T('grootte','size')}</th><th>status</th><th>upload</th><th></th></tr></thead><tbody>${frows}</tbody></table>
+     <table class="tbl"><thead><tr><th>id</th><th>${T('bron','source')}</th><th>${T('grootte','size')}</th><th>status</th><th>${T('gebruik','usage')}</th><th>upload</th><th></th></tr></thead><tbody>${frows}</tbody></table>
+     ${unused.length?`<div class="hint" style="margin:6px 0 0;color:var(--txt-dim)">⚠ ${T('Ongebruikte fonts (niet in de YAML):','Unused fonts (left out of the YAML):')} <span class="mono">${unused.map(f=>attr(f.id)).join(', ')}</span> — ${T('je kunt ze hier verwijderen.','you can delete them here.')}</div>`:''}
      <div class="hint" style="margin:6px 0 0">${T('Tip: klik op een geladen font-id voor een voorbeeld.','Tip: click a loaded font id for a preview.')}</div>
      <div id="nf-preview" style="display:none;margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)"></div>
      <div class="src-box" style="margin-top:10px">
@@ -2742,7 +2778,8 @@ function openProfileSettings(){
   const colTypeName={mono:T('mono (zwart/wit)','mono (black/white)'),bwr:T('BWR (zwart/wit/rood)','BWR (black/white/red)'),'7c':T('7-kleuren','7-colour')};
   const modelOpts=EINK_MODELS.map(m=>`<option value="${attr(m.v)}" ${d.model===m.v?'selected':''}>${m.v} — ${m.d}</option>`).join('');
   openModal(T('Profiel-instellingen','Profile settings'),
-    `<div class="row"><div><label class="fld">${T('Profielnaam','Profile name')}</label><input id="ps-name" value="${attr(p.name)}"></div></div>
+    `${state.profiles.length>1?`<div class="row"><div><label class="fld">${T('Profiel (wisselen)','Profile (switch)')}</label><select id="ps-switch" style="width:100%">${state.profiles.map(x=>`<option value="${attr(x.id)}" ${x.id===p.id?'selected':''}>${attr(x.name)}</option>`).join('')}</select></div></div>`:''}
+     <div class="row"><div><label class="fld">${T('Profielnaam','Profile name')}</label><input id="ps-name" value="${attr(p.name)}"></div></div>
      <div class="row"><div><label class="fld">Model</label><select id="ps-model" style="width:100%">${modelOpts}</select></div></div>
      <div class="hint" id="ps-model-info"></div>
      <div class="row"><div><label class="fld">${T('Rotatie','Rotation')}</label><select id="ps-rot">${[0,90,180,270].map(r=>`<option ${d.rotation===r?'selected':''}>${r}</option>`).join('')}</select></div>
@@ -2831,6 +2868,10 @@ function openProfileSettings(){
     $('#ps-w').value = portrait?res[1]:res[0]; $('#ps-h').value = portrait?res[0]:res[1]; };
   const showInfo=()=>{ const mi=modelInfo($('#ps-model').value), res=modelRes($('#ps-model').value);
     infoEl.innerHTML=`${mi.d} · ${T('kleuren','colours')}: <b>${colTypeName[mi.c]||mi.c}</b>`+(res?` · ${res.join('×')} px`:''); };
+  { const sw=$('#ps-switch'); if(sw) sw.onchange=e=>{ // switch to another profile without leaving the dialog
+      state.current=e.target.value; persist(); renderProfiles(); initStage();
+      selectedId=null; selectedIds=new Set(); renderCanvas(); renderLayers(); renderInspector();
+      openProfileSettings(); }; }
   $('#ps-model').onchange=()=>{ showInfo(); applyRes(); };   // pick a model → fill native w/h
   { const rs=$('#ps-rot'); if(rs) rs.onchange=applyRes; }
   showInfo();
@@ -2990,7 +3031,9 @@ function _elFromCall(method, A, colors, qrMap, grMap, sources){
       return mk('rect',{x,y,w,h,filled:method.charAt(0)==='f',anchor:undefined}); }
     case 'circle': case 'filled_circle':{ const x=n(A[0]),y=n(A[1]),r=n(A[2]); if([x,y,r].some(v=>v==null))return null;
       return mk('circle',{x,y,r,filled:method.charAt(0)==='f',anchor:undefined}); }
-    case 'regular_polygon': case 'filled_regular_polygon':{ const x=n(A[0]),y=n(A[1]),r=n(A[2]),s=n(A[3]),rot=n(A[4]); if([x,y,r,s].some(v=>v==null))return null;
+    case 'regular_polygon': case 'filled_regular_polygon':{ const x=n(A[0]),y=n(A[1]),r=n(A[2]),s=n(A[3]); if([x,y,r,s].some(v=>v==null))return null;
+      // rotation is at arg 4 (old format) or arg 5 (new: ..., VARIATION_*, rotation, color)
+      const rot=(n(A[4])!=null)?n(A[4]):(n(A[5])||0);
       return mk('polygon',{x,y,r,sides:Math.max(3,s),rotation:rot||0,filled:method.charAt(0)==='f',anchor:undefined}); }
     case 'filled_ring':{ const x=n(A[0]),y=n(A[1]),r=n(A[2]),inner=n(A[3]); if([x,y,r,inner].some(v=>v==null))return null;
       return mk('ring',{x,y,r,inner,anchor:undefined}); }
@@ -3301,7 +3344,8 @@ async function serverSaveProject(){
       method:'PUT', headers:{'Content-Type':'application/json'},
       body:JSON.stringify(profile()) });
     if(!r.ok) throw new Error('http '+r.status);
-    toast(T('Opgeslagen in profiles/ ('+pname()+')','Saved to profiles/ ('+pname()+')'));
+    const fn='profiles/'+pslug(profile())+'.json';
+    toast(T('Opgeslagen: '+fn,'Saved: '+fn));
   }catch(e){ console.warn(e); toast(T('Opslaan op server mislukt — gedownload als bestand','Server save failed — downloaded as file')); fileSaveProject(); }
 }
 async function serverOpenProject(){
@@ -3699,7 +3743,7 @@ async function boot(){
   // Check add-on API + live data (fire-and-forget to keep boot fast)
   fetch('api/info').then(r=>r.json()).then(info=>{
     if(!info) return;
-    if(info.version) window.APP_VERSION=info.version;
+    if(info.version){ window.APP_VERSION=info.version; const bv=$('#brand-version'); if(bv) bv.textContent='v'+info.version; }
     if(info.app){ SERVER_STORAGE=true; syncProfilesToServer(); }
     // Apply add-on language/theme options BEFORE any toast fires
     if(info.language){ window.ADDON_LANGUAGE=info.language; if(window.haRefreshLang) window.haRefreshLang(); }
@@ -3713,7 +3757,7 @@ async function startup(){
   // One-time: detect add-on, apply language/theme, load profiles from storage
   try{
     const info=await fetch('api/info').then(r=>r.json());
-    if(info && info.version) window.APP_VERSION=info.version;
+    if(info && info.version){ window.APP_VERSION=info.version; const bv=$('#brand-version'); if(bv) bv.textContent='v'+info.version; }
     if(info && info.app){
       SERVER_STORAGE=true;
       if(info.language){ window.ADDON_LANGUAGE=info.language; if(window.haRefreshLang) window.haRefreshLang(); }

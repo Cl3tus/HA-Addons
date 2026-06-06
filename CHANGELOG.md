@@ -3,6 +3,25 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.2.0
+- **Fix build error** on rotated polygons: `regular_polygon` now uses the correct
+  ESPHome signature (`VARIATION_POINTY_TOP` + rotation degrees).
+- **Layer order = draw order**: the generated lambda now emits elements in the
+  layers-panel order, so reordering layers changes z-order on the canvas *and* in
+  the YAML (drag the ⠿ handle in Layers).
+- **Marquee select** now only grabs elements **fully inside** the box — a big
+  background rectangle is no longer caught when selecting things on top of it.
+- **Font usage**: only fonts actually used by an element are written to the YAML
+  (fixes the "unable to determine height" error from unused icon fonts); the Font
+  Editor shows an **in use / unused** column and lists unused fonts.
+- **Profile switch dropdown** in Profile settings (no need to go back to the top bar).
+- Version number shown (grey) under "E-ink Studio".
+- Save toast/tooltips now say **profile** and show `profiles/<name>.json`.
+- The base64 recovery line in the YAML drawer is fenced off (gap + divider + dimmed)
+  so manual selection has a clear place to stop.
+- Note: ESPHome's `line/rectangle/circle/triangle` are 1px only — outline thickness
+  is not configurable, so it is left as-is.
+
 ## 3.1.8
 - **No more tofu on typed text**: Google-Fonts and Web fonts now always include the
   full printable-ASCII set (ESPHome downloads them in full anyway), plus any special
