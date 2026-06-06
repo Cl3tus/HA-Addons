@@ -3101,8 +3101,9 @@ function _importReport({resources, drawn, skipped}){
   openModal(T('Import-overzicht','Import summary'), h, [{label:T('Sluiten','Close'),cls:'primary',onClick:closeModal}]);
 }
 
-function doImport(){
-  const text=$('#imp-area').value;
+function doImport(textArg){
+  // when used as a button onClick it receives the event; only a real string is a payload
+  const text=(typeof textArg==='string')?textArg:$('#imp-area').value;
   if(!text || !text.trim()){ toast(T('Niets bruikbaars gevonden','Nothing usable found')); return; }
   // parse only the blocks the studio understands; everything else is ignored
   const doc={};
@@ -3190,6 +3191,29 @@ async function saveGeneratedYaml(silent){
     if(r.ok && !silent) toast(T('Opgeslagen in ','Saved to ')+file);
   }catch(e){}
 }
+/* browse projects/ for a saved .yaml and import it back into the editor (the
+   generated YAML carries the recovery code, so the design is fully restored) */
+async function openGeneratedYaml(){
+  if(!SERVER_STORAGE){ toast(T('Alleen in de add-on beschikbaar','Only available in the add-on')); return; }
+  let files=[];
+  try{ const r=await fetch('api/fs/list?path=projects'); const j=await r.json();
+    files=(j.entries||[]).filter(e=>e.type==='file' && /\.ya?ml$/i.test(e.name)).map(e=>e.name); }
+  catch(e){ toast(T('Kon lijst niet laden','Could not load list')); return; }
+  const rows = files.length
+    ? files.map(n=>`<div class="row" style="align-items:center"><div class="mono" style="flex:1">${attr(n)}</div>
+        <button class="btn sm" data-openyaml="${attr(n)}">${T('Openen','Open')}</button></div>`).join('')
+    : `<div class="hint">${T('Nog geen YAML in projects/. Druk op Opslaan om deze YAML te bewaren.','No YAML in projects/ yet. Press Save to store this YAML.')}</div>`;
+  openModal(T('YAML openen (projects/)','Open YAML (projects/)'),
+    rows + `<div class="hint" style="margin-top:10px">${T('Openen zet het ontwerp terug via de herstelcode in de YAML.','Opening restores the design via the recovery code in the YAML.')}</div>`,
+    [{label:T('Sluiten','Close'),onClick:closeModal}]);
+  $$('#modal-body [data-openyaml]').forEach(b=>b.onclick=async()=>{
+    try{ const r=await fetch('api/fs/read?path='+encodeURIComponent('projects/'+b.dataset.openyaml));
+      const j=await r.json();
+      if(j.error || j.content==null){ toast(T('Kon bestand niet lezen','Could not read file')); return; }
+      doImport(j.content);   // restores the design + closes this modal + re-renders
+    }catch(e){ toast(T('Openen mislukt','Open failed')); }
+  });
+}
 
 /* ---- server-side profile sync ---- */
 var _profileSyncTimer=null;
@@ -3252,36 +3276,46 @@ async function reconcileProfilesFromServer(){
 window.addEventListener('pageshow', e=>{ if(e.persisted) reconcileProfilesFromServer(); });
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) reconcileProfilesFromServer(); });
 
+/* unique profile name so opening/loading never collides with an existing one
+   (which would clash on the server slug) */
+function _uniqueProfileName(base){
+  base=base||'profiel';
+  const taken=new Set(state.profiles.map(x=>x.name));
+  if(!taken.has(base)) return base;
+  const stem=base.replace(/\s*\(\d+\)\s*$/,''); let n=1, name;
+  do{ name=`${stem} (${n++})`; }while(taken.has(name));
+  return name;
+}
+// Save/Open operate on the JSON design folder (profiles/). The generated YAML lives
+// separately in projects/ (see saveGeneratedYaml + the code drawer's Open/Save).
 async function serverSaveProject(){
   try{
-    const r=await fetch('api/projects/'+encodeURIComponent(pname()), {
+    const r=await fetch('api/profiles/'+encodeURIComponent(pslug(profile())), {
       method:'PUT', headers:{'Content-Type':'application/json'},
       body:JSON.stringify(profile()) });
     if(!r.ok) throw new Error('http '+r.status);
-    toast(T('Opgeslagen in add-on ('+pname()+')','Saved in add-on ('+pname()+')'));
+    toast(T('Opgeslagen in profiles/ ('+pname()+')','Saved to profiles/ ('+pname()+')'));
   }catch(e){ console.warn(e); toast(T('Opslaan op server mislukt — gedownload als bestand','Server save failed — downloaded as file')); fileSaveProject(); }
 }
 async function serverOpenProject(){
   let list=[];
-  try{ const r=await fetch('api/projects'); list=(await r.json()).projects||[]; }
+  try{ const r=await fetch('api/profiles'); list=(await r.json()).profiles||[]; }
   catch(e){ toast(T('Kon serverlijst niet laden','Could not load server list')); return; }
   const rows = list.length
-    ? list.map(n=>`<div class="row" style="align-items:center"><div class="mono" style="flex:1">${n}</div>
-        <button class="btn sm" data-open="${attr(n)}">${T('Openen','Open')}</button>
-        <button class="btn ghost sm danger" data-del="${attr(n)}">✕</button></div>`).join('')
-    : `<div class="hint">${T('Nog geen projecten in de add-on opgeslagen.','No projects saved in the add-on yet.')}</div>`;
-  openModal(T('Project openen (add-on)','Open project (add-on)'), rows + `<div class="hint" style="margin-top:10px">${T('Of laad een bestand:','Or load a file:')}</div>
+    ? list.map(n=>`<div class="row" style="align-items:center"><div class="mono" style="flex:1">${attr(n)}</div>
+        <button class="btn sm" data-open="${attr(n)}">${T('Openen','Open')}</button></div>`).join('')
+    : `<div class="hint">${T('Nog geen ontwerpen opgeslagen.','No designs saved yet.')}</div>`;
+  openModal(T('Ontwerp openen (profiles/)','Open design (profiles/)'), rows + `<div class="hint" style="margin-top:10px">${T('Of laad een bestand:','Or load a file:')}</div>
     <button class="btn sm" id="open-file" style="margin-top:6px">${T('Bestand kiezen…','Choose file…')}</button>`,
     [{label:T('Sluiten','Close'),onClick:closeModal}]);
   $$('#modal-body [data-open]').forEach(b=>b.onclick=async()=>{
-    try{ const r=await fetch('api/projects/'+encodeURIComponent(b.dataset.open));
-      const p=await r.json(); p.id=uid('p'); state.profiles.push(p); state.current=p.id; persist(); closeModal(); boot(); toast(T('Geopend: ','Opened: ')+b.dataset.open);
+    // already loaded locally (the folder mirrors local state) → just switch to it
+    const existing=state.profiles.find(x=>pslug(x)===b.dataset.open);
+    if(existing){ state.current=existing.id; persist(); closeModal(); boot(); toast(T('Geopend: ','Opened: ')+existing.name); return; }
+    try{ const r=await fetch('api/profiles/'+encodeURIComponent(b.dataset.open));
+      const p=await r.json(); p.id=uid('p'); p.name=_uniqueProfileName(p.name||b.dataset.open);
+      state.profiles.push(p); state.current=p.id; persist(); closeModal(); boot(); toast(T('Geopend: ','Opened: ')+p.name);
     }catch(e){ toast(T('Openen mislukt','Open failed')); }
-  });
-  $$('#modal-body [data-del]').forEach(b=>b.onclick=async()=>{
-    if(!confirm(T('Verwijder serverproject "'+b.dataset.del+'"?','Delete server project "'+b.dataset.del+'"?'))) return;
-    await fetch('api/projects/'+encodeURIComponent(b.dataset.del), {method:'DELETE'});
-    serverOpenProject();
   });
   $('#open-file').onclick=fileOpenProject;
 }
@@ -3294,7 +3328,7 @@ function fileSaveProject(){
 function fileOpenProject(){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
   inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const rd=new FileReader();
-    rd.onload=()=>{ try{ const p=JSON.parse(rd.result); p.id=uid('p'); state.profiles.push(p); state.current=p.id; persist(); closeModal&&closeModal(); boot(); toast(T('Project geladen','Project loaded')); }catch(e){ toast(T('Ongeldig bestand','Invalid file')); } };
+    rd.onload=()=>{ try{ const p=JSON.parse(rd.result); p.id=uid('p'); p.name=_uniqueProfileName(p.name); state.profiles.push(p); state.current=p.id; persist(); closeModal&&closeModal(); boot(); toast(T('Project geladen','Project loaded')); }catch(e){ toast(T('Ongeldig bestand','Invalid file')); } };
     rd.readAsText(f); };
   inp.click();
 }
@@ -3460,6 +3494,8 @@ function wire(){
   const scr=$('#screen-select'); if(scr) scr.onchange=()=>{ editScreen=scr.value; selectedId=null; selectedIds=new Set(); undoStack=[]; redoStack=[]; renderCanvas(); renderLayers(); renderInspector(); };
   $('#code-copy').onclick=()=>{ navigator.clipboard.writeText(genYAML()).then(()=>toast(T('Naar klembord gekopieerd','Copied to clipboard'))); };
   $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); saveGeneratedYaml(false); toast(T('YAML gedownload','YAML downloaded')); };
+  { const cs=$('#code-save'); if(cs) cs.onclick=()=>{ if(!SERVER_STORAGE){ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); toast(T('Geen add-on opslag — gedownload','No add-on storage — downloaded')); return; } saveGeneratedYaml(false); }; }
+  { const co=$('#code-open'); if(co) co.onclick=openGeneratedYaml; }
 
   $('#zoom-in').onclick=()=>{ zoom=clamp(zoom+0.1,0.3,2); applyZoom(); };
   $('#zoom-out').onclick=()=>{ zoom=clamp(zoom-0.1,0.3,2); applyZoom(); };

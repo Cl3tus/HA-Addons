@@ -3,6 +3,14 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.1.7
+- The main **Save / Open** now use the JSON **`profiles/`** folder (the editable
+  design), not `projects/`. Open switches to a design if it's already loaded, else
+  pulls it in.
+- The **Generate YAML** drawer gained **Open** and **Save** buttons working on the
+  **`projects/`** folder: Save writes `projects/<profile>.yaml`, Open browses saved
+  `.yaml` files and restores the design from the recovery code.
+
 ## 3.1.6
 - Lighter line-number gutter in the generated-YAML drawer for better readability.
 
