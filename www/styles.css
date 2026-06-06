@@ -177,10 +177,18 @@ input:disabled, select:disabled { opacity: .45; cursor: not-allowed; }
 input[type=number] { width: 100%; -moz-appearance: textfield; appearance: textfield; }
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-/* opt-in: show the up/down stepper arrows (e.g. polygon sides) */
-input.spin[type=number] { -moz-appearance: auto; appearance: auto; }
-input.spin[type=number]::-webkit-outer-spin-button,
-input.spin[type=number]::-webkit-inner-spin-button { -webkit-appearance: inner-spin-button; opacity: 1; }
+/* custom up/down stepper (native arrows are unreliable in the dark HA iframe) */
+.stepper { display: inline-flex; align-items: stretch; width: 100%; }
+.stepper > input { flex: 1; min-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.stepper .step-col { display: flex; flex-direction: column; width: 18px; flex: none; }
+.stepper .step-btn {
+  flex: 1; padding: 0; line-height: 1; font-size: 8px; cursor: pointer;
+  background: var(--bg-2); color: var(--txt-dim); border: 1px solid var(--line);
+  border-left: none; display: flex; align-items: center; justify-content: center;
+}
+.stepper .step-btn:first-child { border-top-right-radius: 6px; border-bottom: none; }
+.stepper .step-btn:last-child { border-bottom-right-radius: 6px; }
+.stepper .step-btn:hover { background: var(--line); color: var(--txt); }
 label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--txt-dim); margin: 0 0 4px; }
 
 /* ---------- Side panels ---------- */
@@ -358,9 +366,9 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
   color: #c8d0dd; tab-size: 2; white-space: pre;
   counter-reset: cl;
 }
-/* one block per line + a gutter line-number drawn as a ::before pseudo-element,
-   so the numbers are never part of the selectable/copyable text */
-#code-out .cl { display: block; counter-increment: cl; }
+/* one inline span per line (real newlines between them so copy keeps blank lines) +
+   a gutter line-number drawn as a ::before pseudo-element that is never copied */
+#code-out .cl { counter-increment: cl; }
 #code-out .cl::before {
   content: counter(cl);
   display: inline-block; width: 3ch; margin-right: 1.1em;
@@ -372,10 +380,13 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
 /* base64 on its own block so wrapped lines align to the left edge (no staircase
    indent under the "# eink-editor:vX:" prefix) */
 #code-out .b64wrap { display: inline-block; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; }
-/* fence off the base64 recovery line: a gap + divider + dim so manual selection has
-   a clear place to stop before grabbing the (usually unwanted) recovery code */
-#code-out .cl-b64 { margin-top: 18px; padding-top: 12px; border-top: 1px dashed var(--line); }
-#code-out .cl-b64 .b64wrap { color: var(--txt-faint); opacity: .7; }
+/* dim the base64 recovery line (it sits after a blank line) as a "stop here" cue
+   when manually selecting — you usually don't want the recovery code copied too */
+#code-out .cl-b64 .b64wrap { color: var(--txt-faint); opacity: .65; }
+/* while the YAML drawer is open, only its text is selectable — so a drag-copy can't
+   accidentally pick up other parts of the page */
+body.code-open { user-select: none; -webkit-user-select: none; }
+body.code-open #code-out, body.code-open input, body.code-open textarea { user-select: text; -webkit-user-select: text; }
 .code-tag { color: var(--accent); }
 .code-key { color: #79c0ff; }
 .code-str { color: #a7e0a0; }

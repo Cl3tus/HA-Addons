@@ -3,6 +3,17 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.2.2
+- Generated-YAML drawer: copying now keeps the **blank lines** between blocks, and
+  while the drawer is open only its text is selectable (a drag-copy can't grab the
+  rest of the page).
+- **▲/▼ stepper buttons** on the polygon **sides** and the **radius** fields (the
+  field stays editable; sides stay ≥ 3).
+- **Font Editor is transactional**: changes apply only on **Save**; **Cancel** or the
+  **✕** discards them (so an accidental delete is no longer permanent).
+- New **“+ MDI icon font”** button to re-add the bundled Material Design Icons font
+  if it was deleted.
+
 ## 3.2.1
 - Polygon **sides** field now shows up/down stepper arrows; minimum 3, no upper cap.
 - **Drag-select over a big backdrop element** now rubber-bands the objects on top of

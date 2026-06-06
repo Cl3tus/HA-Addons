@@ -1676,7 +1676,26 @@ function branchEditor(el,key,title,cls){
 function attr(v){ return v==null?'':String(v).replace(/"/g,'&quot;'); }
 
 /* ---- inspector event binding ---- */
+/* add ▲/▼ stepper buttons to radius/size number fields (the field stays editable) */
+function addSteppers(host){
+  const sel='input[type=number].spin, input[type=number][data-k="r"], input[type=number][data-k="inner"], input[type=number][data-k="rx"], input[type=number][data-k="ry"], input[type=number][data-k="sides"]';
+  host.querySelectorAll(sel).forEach(inp=>{
+    if(inp._stepped || !inp.parentNode) return; inp._stepped=true;
+    const wrap=document.createElement('span'); wrap.className='stepper';
+    inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    const col=document.createElement('span'); col.className='step-col';
+    const mk=(dir,glyph)=>{ const b=document.createElement('button'); b.type='button'; b.className='step-btn'; b.textContent=glyph; b.tabIndex=-1;
+      b.onclick=()=>{ const step=+inp.step||1; let v=(+inp.value||0)+dir*step;
+        if(inp.min!=='' && inp.min!=null) v=Math.max(+inp.min, v);
+        if(inp.max!=='' && inp.max!=null) v=Math.min(+inp.max, v);
+        inp.value=v; inp.dispatchEvent(new Event('change',{bubbles:true})); };
+      return b; };
+    col.appendChild(mk(1,'▲')); col.appendChild(mk(-1,'▼'));
+    wrap.appendChild(col);
+  });
+}
 function bindInspector(host, el){
+  addSteppers(host);
   // generic top-level keys
   host.querySelectorAll('[data-k]').forEach(inp=>{
     const isNum = inp.type==='number'||inp.type==='range';
@@ -2383,10 +2402,10 @@ function renderCode(){
     let inner = h(line);
     const isB64 = b64re.test(line);
     if(isB64) inner = inner.replace(b64re, m=>'<span class="b64wrap">'+m+'</span>');
-    // mark the recovery line so it's visually fenced off (a clear "stop here" point
-    // when you drag-select the YAML, since you usually don't want the base64 too)
+    // mark the recovery line so it's visually dimmed (a "stop here" cue when you
+    // drag-select the YAML, since you usually don't want the base64 too)
     return '<span class="cl'+(isB64?' cl-b64':'')+'">'+inner+'</span>';
-  }).join('');
+  }).join('\n');   // real newlines between lines so blank lines survive copy/paste
   const pre=$('#code-out'); pre.innerHTML = html;
   _fitB64();
 }
@@ -2425,13 +2444,15 @@ async function openIconPicker(cb){
 /* ============================================================
    MODALS
    ============================================================ */
-function openModal(title, body, footerBtns){
+let _modalClose=null;   // optional callback when the modal is dismissed (✕ / backdrop / any close)
+function openModal(title, body, footerBtns, onClose){
   $('#modal-title').textContent=title; $('#modal-body').innerHTML=body;
   const f=$('#modal-footer'); f.innerHTML='';
   (footerBtns||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'ghost'); el.textContent=b.label; el.onclick=b.onClick; f.appendChild(el); });
+  _modalClose = onClose||null;
   $('#modal-back').classList.add('open');
 }
-function closeModal(){ $('#modal-back').classList.remove('open'); }
+function closeModal(){ const f=_modalClose; _modalClose=null; if(f){ try{ f(); }catch(e){} } $('#modal-back').classList.remove('open'); }
 $('#modal-x').onclick=closeModal;
 let _modalDownOnBack=false;
 $('#modal-back').addEventListener('mousedown', e=>{ _modalDownOnBack = (e.target===$('#modal-back')); });
@@ -2544,8 +2565,13 @@ async function refreshServerFonts(){
   if(!SERVER_STORAGE) return;
   try{ const r=await fetch('api/fonts'); if(r.ok){ const j=await r.json(); SERVER_FONTS=new Set(j.fonts||[]); } }catch(e){}
 }
+var _fontsSnapshot=null;   // fonts state when the editor opened (for Cancel / ✕ revert)
+function _revertFontsIfUnsaved(){
+  if(_fontsSnapshot){ profile().fonts=_fontsSnapshot; _fontsSnapshot=null; persist(); afterChange(); renderInspector(); }
+}
 async function openFonts(){
   await refreshServerFonts();
+  if(_fontsSnapshot===null) _fontsSnapshot=JSON.parse(JSON.stringify(profile().fonts));   // snapshot once per session
   const used=usedFontIds();
   const onServer=f=>{ const n=_fontFileName(f); return !!(n && SERVER_FONTS.has(n)); };
   const previewable=f=>(f.kind==='gfonts'||/materialdesignicons/i.test(f.file||'')||fontHasBytes(f)||onServer(f));
@@ -2604,10 +2630,13 @@ async function openFonts(){
        </div>
        <div class="hint" id="nf-web-link" style="display:none;margin-top:4px">↗ <a href="https://fontsource.org/" target="_blank" rel="noopener">${T('Zoek een download-URL op Fontsource','Find a download URL on Fontsource')}</a> ${T('(of plak een directe link naar een .ttf/.otf)','(or paste a direct link to a .ttf/.otf)')}</div>
        <button class="btn sm" id="nf-add" style="margin-top:8px">+ ${T('Font toevoegen','Add font')}</button>
+       <button class="btn sm ghost" id="nf-add-mdi" style="margin-top:8px;margin-left:6px" title="${T('Voeg een Material Design Icons-icoonfont toe (de meegebundelde TTF).','Add a Material Design Icons icon font (the bundled TTF).')}">+ ${T('MDI-icoonfont','MDI icon font')}</button>
        <div class="hint" style="margin-top:6px">${T('Het','The')} <span class="mono">id</span> ${T('gebruik je in elementen; het','is used in elements; the')} <span class="mono">${T('pad','path')}</span> ${T('moet kloppen met je ESPHome','must match your ESPHome')} <span class="mono">fonts/</span>${T('-map.',' folder.')}</div>
      </div>
-     <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')}</div>`,
-    [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ persist(); closeModal(); }}]);
+     <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')} ${T('Wijzigingen gelden pas na Opslaan.','Changes apply only after Save.')}</div>`,
+    [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:()=>{ _revertFontsIfUnsaved(); closeModal(); }},
+     {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{ _fontsSnapshot=null; persist(); afterChange(); closeModal(); toast(T('Fonts opgeslagen','Fonts saved')); }}],
+    _revertFontsIfUnsaved);   // ✕ / backdrop also revert unsaved font changes
   // click a loaded font id → inline preview
   $$('#modal-body [data-prev]').forEach(a=>a.onclick=ev=>{ ev.preventDefault(); previewFontInline(profile().fonts[+a.dataset.prev]); });
   // existing uploads
@@ -2651,6 +2680,14 @@ async function openFonts(){
     if(f.dataUrl) await maybeUploadFont(f, (f.file||'').split('/').pop()||f.id+'.ttf');
     persist(); afterChange(); openFonts(); toast(T('Font toegevoegd','Font added'));
   };
+  // re-add the bundled Material Design Icons font (handy if it was deleted by mistake)
+  { const mb=$('#nf-add-mdi'); if(mb) mb.onclick=async()=>{
+      let id='font_mdi', n=2; while(fontById(id)) id='font_mdi_'+(n++);
+      const f={ id, size:48, kind:'local', file:'fonts/materialdesignicons-webfont.ttf', dynamic:false, baseCharset:'', dataUrl:null, seedGlyphs:[] };
+      profile().fonts.push(f);
+      await registerUploadedFonts();
+      persist(); afterChange(); openFonts(); toast(T('MDI-icoonfont toegevoegd: ','MDI icon font added: ')+id);
+    }; }
 }
 
 /* rename a font id everywhere it is referenced (elements, graph axes, clock icon) */
@@ -2685,7 +2722,8 @@ function editFont(i){
          if(newId!==f.id && fontById(newId)){ toast(T('Dit id bestaat al','This id already exists')); return; }
          renameFontId(f.id, newId); f.id=newId;
          f.size=+$('#ef-size').value||f.size||30;
-         persist(); afterChange(); openFonts(); toast(T('Font bijgewerkt','Font updated')); }}]);
+         persist(); afterChange(); openFonts(); toast(T('Font bijgewerkt','Font updated')); }}],
+      _revertFontsIfUnsaved);
     return;
   }
   const kind0 = f.kind==='gfonts'?'gfonts':(f.kind==='web'?'web':'local');
@@ -2736,7 +2774,8 @@ function editFont(i){
        injectGoogleFonts(); await registerUploadedFonts();
        if(f.dataUrl && newKind==='local') await maybeUploadFont(f, (f.file||'').split('/').pop()||f.id+'.ttf');
        persist(); afterChange(); openFonts(); toast(T('Font bijgewerkt','Font updated'));
-     }}]);
+     }}],
+    _revertFontsIfUnsaved);
   const kindSel=$('#ef-kind');
   kindSel.onchange=()=>{ const k=kindSel.value;
     $('#ef-gfonts').style.display=k==='gfonts'?'':'none'; $('#ef-gfonts-link').style.display=k==='gfonts'?'':'none';
@@ -3556,8 +3595,9 @@ function wire(){
 
   $('#btn-code').onclick=()=>{ const d=$('#code-drawer');
     if(d.classList.contains('open')) d.classList.remove('open');
-    else { renderCode(); saveGeneratedYaml(true); d.classList.add('open'); setTimeout(_fitB64,220); } };   // re-fit after the open animation
-  $('#code-close').onclick=()=>$('#code-drawer').classList.remove('open');
+    else { renderCode(); saveGeneratedYaml(true); d.classList.add('open'); setTimeout(_fitB64,220); }   // re-fit after the open animation
+    document.body.classList.toggle('code-open', d.classList.contains('open')); };
+  $('#code-close').onclick=()=>{ $('#code-drawer').classList.remove('open'); document.body.classList.remove('code-open'); };
   { const rz=$('#code-resizer'), drawer=$('#code-drawer');
     if(rz) rz.addEventListener('mousedown', e=>{ e.preventDefault();
       const rightEdge=drawer.getBoundingClientRect().right;
