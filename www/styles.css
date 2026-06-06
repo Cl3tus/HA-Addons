@@ -358,7 +358,7 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
 #code-out .cl::before {
   content: counter(cl);
   display: inline-block; width: 3ch; margin-right: 1.1em;
-  text-align: right; color: var(--txt-faint); opacity: .5;
+  text-align: right; color: #8a93a3; opacity: .8;
   user-select: none; -webkit-user-select: none; pointer-events: none;
 }
 /* only the base64 recovery string wraps (no giant horizontal scrollbar for it);

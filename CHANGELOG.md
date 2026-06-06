@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.1.6
+- Lighter line-number gutter in the generated-YAML drawer for better readability.
+
 ## 3.1.5
 - The generated YAML is now also saved to **`projects/<profile>.yaml`** (visible in
   the file manager / over SAMBA) when you open the code drawer or download — the
