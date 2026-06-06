@@ -618,8 +618,8 @@ function buildNode(el){
     if(hasIcon) iconNode=new Konva.Text({text:mdiChar(E.clock.iconHex), fontFamily:previewFamily(ifont), fontSize:ifont.size, fill:color.css});
     const midH=Math.max(txtNode.height(), iconNode?iconNode.height():0);
     if(iconNode){ iconNode.x(0); iconNode.y((midH-iconNode.height())/2); g.add(iconNode); }
-    const gap=hasIcon?(E.clock.iconGap||40):0;
-    txtNode.x(gap); txtNode.y((midH-txtNode.height())/2); g.add(txtNode);
+    const {offX,offY}=hasIcon?clockOffsets(E):{offX:0,offY:0};
+    txtNode.x(offX); txtNode.y((midH-txtNode.height())/2 + offY); g.add(txtNode);
     // anchor by group bbox
     const b=g.getClientRect(); const {ox,oy}=anchorOffset(E.anchor||'TOP_CENTER', b.width, b.height);
     g.x(E.x+ox); g.y(E.y+oy); node=g;
@@ -694,6 +694,15 @@ function buildNode(el){
     // an unselected near-full-canvas backdrop: don't move it — let the event bubble to
     // the stage so a drag becomes a marquee (a plain click selects it in finish()).
     if(!isSelected(el.id) && isBackdropNode(node)){ node.draggable(false); _marqueeOnNode=el.id; return; }
+    // click-through: first click = topmost; clicking the same spot again steps to the
+    // element below it (cycling through everything stacked under the pointer)
+    const pick=cyclePick(el);
+    if(pick && pick.el.id!==el.id && pick.node){
+      selectNode(pick.el, pick.node);
+      node.draggable(false);                 // hand the drag to the chosen (lower) node
+      try{ pick.node.startDrag(); }catch(_){}
+      ev.cancelBubble=true; return;
+    }
     selectNode(el, node);
   });
   node.on('dragstart', ()=>{ pushUndo(); if(selectionVisual) selectionVisual.hide();
@@ -817,28 +826,37 @@ function qrModuleCount(text, ecc){
 }
 /* QR preview — renders the REAL QR (correct modules) at modules × scale so both the
    look and the size match the device. Falls back to a placeholder if the lib fails. */
+function _isLightCss(css){
+  let r,g,b; const h=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(css||'').trim());
+  if(h){ r=parseInt(h[1],16); g=parseInt(h[2],16); b=parseInt(h[3],16); }
+  else { const m=/(\d+)\D+(\d+)\D+(\d+)/.exec(String(css||'')); if(!m) return false; r=+m[1]; g=+m[2]; b=+m[3]; }
+  return (0.299*r+0.587*g+0.114*b) > 150;
+}
 function qrPreviewNode(E, css){
   const scale = Math.max(1, E.scale||4);
+  // if the QR colour is light/white, invert the preview (dark background) so it stays
+  // readable on the grey canvas — on a real B/W panel the QR is white-on-black then.
+  const light=_isLightCss(css), bg=light?'#1d1d1b':'#fff', fg=css;
   const q = buildQR(E.text, E.ecc);
   const g = new Konva.Group({x:E.x, y:E.y});
   if(q){
     const n=q.getModuleCount(), size=n*scale;
-    g.add(new Konva.Rect({x:0,y:0,width:size,height:size,fill:'#fff',stroke:css,strokeWidth:1}));
+    g.add(new Konva.Rect({x:0,y:0,width:size,height:size,fill:bg,stroke:fg,strokeWidth:1}));
     g.add(new Konva.Shape({width:size,height:size,listening:false, sceneFunc:(ctx)=>{
-      ctx.fillStyle=css;
+      ctx.fillStyle=fg;
       for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(q.isDark(r,c)) ctx.fillRect(c*scale, r*scale, scale, scale);
     }}));
     return g;
   }
   // fallback placeholder (data too long or lib missing) — still sized correctly
   const QR_MODULES = qrModuleCount(E.text, E.ecc), size=QR_MODULES*scale, m=scale;
-  g.add(new Konva.Rect({x:0,y:0,width:size,height:size,fill:'#fff',stroke:css,strokeWidth:1}));
-  const finder=(fx,fy)=>{ g.add(new Konva.Rect({x:fx*m,y:fy*m,width:7*m,height:7*m,fill:css}));
-    g.add(new Konva.Rect({x:(fx+1)*m,y:(fy+1)*m,width:5*m,height:5*m,fill:'#fff'}));
-    g.add(new Konva.Rect({x:(fx+2)*m,y:(fy+2)*m,width:3*m,height:3*m,fill:css})); };
+  g.add(new Konva.Rect({x:0,y:0,width:size,height:size,fill:bg,stroke:fg,strokeWidth:1}));
+  const finder=(fx,fy)=>{ g.add(new Konva.Rect({x:fx*m,y:fy*m,width:7*m,height:7*m,fill:fg}));
+    g.add(new Konva.Rect({x:(fx+1)*m,y:(fy+1)*m,width:5*m,height:5*m,fill:bg}));
+    g.add(new Konva.Rect({x:(fx+2)*m,y:(fy+2)*m,width:3*m,height:3*m,fill:fg})); };
   finder(0,0); finder(QR_MODULES-7,0); finder(0,QR_MODULES-7);
   for(let i=9;i<QR_MODULES-2;i+=2){ for(let j=9;j<QR_MODULES-2;j+=2){
-    if((i*j)%3===0) g.add(new Konva.Rect({x:i*m,y:j*m,width:m,height:m,fill:css})); } }
+    if((i*j)%3===0) g.add(new Konva.Rect({x:i*m,y:j*m,width:m,height:m,fill:fg})); } }
   return g;
 }
 
@@ -943,6 +961,25 @@ function selectNode(el, node){
   attachSelection(el, node);
   contentLayer.draw();
   renderLayers(); renderInspector();
+}
+/* click-through stacked elements: clicking the same spot repeatedly steps to the next
+   element below the one currently chosen (top → bottom, then wraps). */
+let _cycleAt=null;
+function cyclePick(topEl){
+  const rp=stage && stage.getRelativePointerPosition(); if(!rp) return null;
+  // every visible element whose box contains the pointer, top of z-order first
+  const ids=[];
+  els().slice().reverse().forEach(e=>{ if(e.visible===false) return;
+    const n=contentLayer.getChildren(x=>x._elId===e.id)[0]; if(!n) return;
+    const b=n.getClientRect({relativeTo:contentLayer});
+    if(rp.x>=b.x && rp.x<=b.x+b.width && rp.y>=b.y && rp.y<=b.y+b.height) ids.push(e.id);
+  });
+  if(ids.length<2) { _cycleAt=null; return null; }   // nothing stacked → normal select
+  const same=_cycleAt && Math.abs(_cycleAt.x-rp.x)<5 && Math.abs(_cycleAt.y-rp.y)<5 && _cycleAt.ids.join()===ids.join();
+  const idx = same ? (_cycleAt.idx+1)%ids.length : 0;
+  _cycleAt={x:rp.x, y:rp.y, ids, idx};
+  const id=ids[idx], e=els().find(x=>x.id===id), n=contentLayer.getChildren(x=>x._elId===id)[0];
+  return e&&n ? {el:e, node:n} : null;
 }
 
 /* dashed, non-interactive outline around a node (used to show extra multi-selected items) */
@@ -1062,15 +1099,19 @@ function layerClick(id, e){
 }
 
 let _dragLayerId=null;
-/* move element src so it renders just above target in the layer list */
-function moveLayerBefore(srcId, targetId){
+/* drop src above/below target in the displayed (top→bottom) layer list, then write
+   the new order back to the elements array (which is bottom→top). */
+function moveLayerTo(srcId, targetId, before){
   if(srcId===targetId) return;
-  const arr=els();
-  const from=arr.findIndex(e=>e.id===srcId); if(from<0) return;
+  let order = els().slice().reverse().map(e=>e.id);   // display order (top→bottom)
+  order = order.filter(id=>id!==srcId);
+  let ti = order.indexOf(targetId); if(ti<0) return;
+  order.splice(before?ti:ti+1, 0, srcId);
+  const map=new Map(els().map(e=>[e.id,e]));
+  const newArr = order.reverse().map(id=>map.get(id)).filter(Boolean);   // back to array order
+  if(newArr.length!==els().length) return;
   pushUndo();
-  const [it]=arr.splice(from,1);
-  const to=arr.findIndex(e=>e.id===targetId); if(to<0){ arr.push(it); }
-  else arr.splice(to,0,it);   // visual list is reversed → lands just below the target row
+  const arr=els(); arr.length=0; newArr.forEach(e=>arr.push(e));
   afterChange();
 }
 function renderLayers(){
@@ -1088,11 +1129,14 @@ function renderLayers(){
       <span class="lvis" title="${T('Zichtbaarheid','Visibility')}">${el.visible===false?'🚫':'👁'}</span>`;
     // drag-to-reorder via the handle
     const handle=row.querySelector('.lmove'); handle.draggable=true;
+    const clearDrop=()=>$$('.layer.drop-before,.layer.drop-after').forEach(r=>r.classList.remove('drop-before','drop-after'));
     handle.ondragstart=e=>{ _dragLayerId=el.id; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',el.id);}catch(_){} };
-    handle.ondragend=()=>{ _dragLayerId=null; $$('.layer.drop-over').forEach(r=>r.classList.remove('drop-over')); };
-    row.ondragover=e=>{ if(_dragLayerId && _dragLayerId!==el.id){ e.preventDefault(); row.classList.add('drop-over'); } };
-    row.ondragleave=()=>row.classList.remove('drop-over');
-    row.ondrop=e=>{ e.preventDefault(); row.classList.remove('drop-over'); if(_dragLayerId) moveLayerBefore(_dragLayerId, el.id); _dragLayerId=null; };
+    handle.ondragend=()=>{ _dragLayerId=null; clearDrop(); };
+    row.ondragover=e=>{ if(!_dragLayerId || _dragLayerId===el.id) return; e.preventDefault();
+      const r=row.getBoundingClientRect(); const before=(e.clientY-r.top) < r.height/2;
+      clearDrop(); row.classList.add(before?'drop-before':'drop-after'); row._dropBefore=before; };
+    row.ondragleave=()=>row.classList.remove('drop-before','drop-after');
+    row.ondrop=e=>{ e.preventDefault(); const before=row._dropBefore!==false; clearDrop(); if(_dragLayerId) moveLayerTo(_dragLayerId, el.id, before); _dragLayerId=null; };
     const nameEl=row.querySelector('.lname');
     let clickTimer=null;
     nameEl.onclick=(e)=>{ if(clickTimer) return; clickTimer=setTimeout(()=>{ clickTimer=null; layerClick(el.id, e); }, 220); };
@@ -1125,6 +1169,17 @@ function typeGlyph(el){
 /* ============================================================
    ADD ELEMENTS
    ============================================================ */
+/* ensure at least one Material Design Icons font exists (size 30) so icon/clock/wifi
+   elements never show a missing-glyph box; returns a usable MDI font id. */
+function ensureMdiFont(){
+  const ex=profile().fonts.find(x=>/materialdesignicons/i.test(x.file||''));
+  if(ex) return ex.id;
+  let id='font_mdi', n=2; while(fontById(id)) id='font_mdi_'+(n++);
+  profile().fonts.push({id, size:30, kind:'local', file:'fonts/materialdesignicons-webfont.ttf', dynamic:false, baseCharset:'', dataUrl:null, seedGlyphs:[]});
+  try{ registerUploadedFonts(); }catch(e){}
+  return id;
+}
+function mdiFontFor(preferId){ const f=fontById(preferId); return (f && /materialdesignicons/i.test(f.file||'')) ? preferId : ensureMdiFont(); }
 function addElement(type, pos){
   pushUndo();
   const p=profile();
@@ -1147,7 +1202,7 @@ function addElement(type, pos){
         : {kind:'static',text:'Tekst',sourceId:'',expr:''},
       format:{mode:'builder',decimals:1,prefix:'',suffix:'',raw:'%s'}, transform:'none', transformArg:{} });
   } else if(type==='icon'){
-    Object.assign(base,{ fontId:'font_mdi_large', iconName:'thermometer-water', iconHex:'F1A80' });
+    Object.assign(base,{ fontId:mdiFontFor('font_mdi_large'), iconName:'thermometer-water', iconHex:'F1A80' });
   } else if(type==='line'){
     Object.assign(base,{ x:cx-80,y:cy,x2:cx+80,y2:cy, colorId:'color_text', anchor:undefined });
   } else if(type==='rect'){
@@ -1161,11 +1216,11 @@ function addElement(type, pos){
   } else if(type==='ring'){
     Object.assign(base,{ x:cx,y:cy, r:50, inner:30, colorId:'color_text', anchor:undefined });
   } else if(type==='gauge'){
-    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, percent:50, rotation:270, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, percent:50, colorId:'color_text', anchor:undefined });
   } else if(type==='qr'){
     Object.assign(base,{ x:cx-50,y:cy-50, text:'https://home-assistant.io', scale:4, ecc:'LOW', colorId:'color_text', anchor:undefined });
   } else if(type==='wifi'){
-    Object.assign(base,{ fontId:'font_mdi_small', anchor:'TOP_CENTER', colorId:'color_text',
+    Object.assign(base,{ fontId:mdiFontFor('font_mdi_small'), anchor:'CENTER', colorId:'color_text',
       // signal thresholds (dBm) -> MDI icon, strongest first
       wifi:{ sourceId:'', levels:[
         {min:-50, icon:'wifi-strength-4', hex:'F0928'},
@@ -1174,8 +1229,9 @@ function addElement(type, pos){
         {min:-70, icon:'wifi-strength-1', hex:'F091F'},
         {min:-999, icon:'wifi-strength-alert-outline', hex:'F092B'} ] } });
   } else if(type==='clock'){
-    Object.assign(base,{ fontId:'font_mdi_small', anchor:'TOP_CENTER', colorId:'color_text',
-      clock:{ strftime:'%H:%M', icon:true, iconName:'recycle', iconHex:'F044C', iconFontId:'font_mdi_small', iconGap:40 } });
+    const mdi=mdiFontFor('font_mdi_small');
+    Object.assign(base,{ fontId:'font_klein', anchor:'CENTER', colorId:'color_text',
+      clock:{ strftime:'%H:%M', icon:true, iconName:'recycle', iconHex:'F044C', iconFontId:mdi } });
   } else if(type==='graph'){
     Object.assign(base,{ x:cx-150,y:cy, w:300,h:140, colorId:'color_text', anchor:undefined,
       graph:{ duration:'1h', x_grid:'10min', y_grid:5, border:true,
@@ -1334,6 +1390,7 @@ function renderInspector(){
           ${['LOW','MEDIUM','QUARTILE','HIGH'].map(o=>`<option ${(el.ecc||'LOW')===o?'selected':''}>${o}</option>`).join('')}
         </select></div></div>
       <div class="row"><div><label class="fld">${T('Inhoud (tekst/URL)','Content (text/URL)')}</label><input data-k="text" type="text" value="${attr(el.text)}"></div></div>
+      <div class="row"><div><label class="fld">${T('ID (YAML)','ID (YAML)')}</label><input data-k="qrCustomId" type="text" class="mono" value="${attr(el.qrCustomId)}" placeholder="${attr(qrId(el))}" title="${T('Eigen id voor het qr_code:-component in de YAML. Leeg = automatisch.','Custom id for the qr_code: component in the YAML. Empty = auto-generated.')}"></div></div>
       ${(()=>{ const mods=qrModuleCount(el.text,el.ecc), px=mods*Math.max(1,el.scale||4);
         return `<div class="hint">${T('Geschatte grootte','Estimated size')}: <b>${mods}×${mods}</b> ${T('modules','modules')} = <b>${px}×${px} px</b> ${T('op het device.','on the device.')}</div>`; })()}
       <div class="hint">${T('ECC: LOW ~7%, MEDIUM ~15%, QUARTILE ~25%, HIGH ~30% fouttolerantie. Het patroon is een plaatshouder, maar de grootte klopt met het device.','ECC: LOW ~7%, MEDIUM ~15%, QUARTILE ~25%, HIGH ~30% error tolerance. The pattern is a placeholder, but the size matches the device.')}</div>`);
@@ -1403,9 +1460,9 @@ function renderInspector(){
       ${c.icon?`<div class="row" style="align-items:center;margin-top:6px">
         <div style="flex:none"><span class="mdi mdi-${c.iconName||'refresh'}" style="font-size:24px"></span></div>
         <div><button class="btn sm" id="pick-clock-icon">${T('Icoon kiezen…','Choose icon…')}</button></div>
-        <div><label class="fld">${T('Tekst-offset (px)','Text offset (px)')}</label><input data-clock="iconGap" type="number" value="${c.iconGap??40}"></div>
-      </div>
-      <div class="row"><div><label class="fld">${T('Icoon-font','Icon font')}</label><select data-clock="iconFontId">${fontOpts(c.iconFontId)}</select></div></div>`:''}`);
+        <div><label class="fld">${T('Icoon-font','Icon font')}</label><select data-clock="iconFontId">${fontOpts(c.iconFontId)}</select></div></div>
+      <div class="row tight"><div><label class="fld">${T('Tekst-offset X','Text offset X')}</label><input data-clock="offX" class="spin" type="number" value="${attr(c.offX)}" placeholder="${clockOffsets(el).autoX} (auto)" title="${T('Horizontale afstand van de tekst t.o.v. het icoon. Leeg = automatisch op de iconbreedte.','Horizontal text distance from the icon. Empty = auto from the icon width.')}"></div>
+        <div><label class="fld">${T('Tekst-offset Y','Text offset Y')}</label><input data-clock="offY" class="spin" type="number" value="${attr(c.offY)}" placeholder="0" title="${T('Verticale verschuiving. 0 = verticaal gecentreerd op het icoon.','Vertical shift. 0 = vertically centred on the icon.')}"></div></div>`:''}`);
   }
 
   // graph smart element
@@ -1413,10 +1470,9 @@ function renderInspector(){
     const gr=el.graph||{traces:[]};
     const ax=gr.axes||{};
     h+=g(T('Grafiek — algemeen','Graph — general'),`
-      <div class="row tight"><div><label class="fld">${T('Duur (X-as)','Duration (X-axis)')}</label><input data-graph="duration" class="mono" type="text" value="${attr(gr.duration||'1h')}"></div>
-        <div><label class="fld">${T('X-raster','X grid')}</label><input data-graph="x_grid" class="mono" type="text" value="${attr(gr.x_grid||'10min')}"></div></div>
-      <div class="row tight"><div><label class="fld">${T('Y-raster','Y grid')}</label><input data-graph="y_grid" type="number" step="any" value="${gr.y_grid??5}"></div>
-        <div><label class="fld">Y-min</label><input data-graph="min_range" type="number" step="any" value="${attr(gr.min_range)}" placeholder="auto"></div>
+      <div class="row tight"><div><label class="fld">${T('X-raster','X grid')}</label><input data-graph="x_grid" class="mono" type="text" value="${attr(gr.x_grid||'10min')}"></div>
+        <div><label class="fld">${T('Y-raster','Y grid')}</label><input data-graph="y_grid" type="number" step="any" value="${gr.y_grid??5}"></div></div>
+      <div class="row tight"><div><label class="fld">Y-min</label><input data-graph="min_range" type="number" step="any" value="${attr(gr.min_range)}" placeholder="auto"></div>
         <div><label class="fld">Y-max</label><input data-graph="max_range" type="number" step="any" value="${attr(gr.max_range)}" placeholder="auto"></div></div>
       <div class="hint">${T('Y-min/Y-max leeg = ESPHome schaalt automatisch. Vul beide voor een vaste Y-schaal.','Y-min/Y-max empty = ESPHome auto-scales. Fill both for a fixed Y scale.')}</div>
       <label class="toggle" style="margin-top:6px"><input type="checkbox" data-graph="border" ${gr.border!==false?'checked':''}> ${T('Rand tekenen','Draw border')}</label>`);
@@ -1426,9 +1482,9 @@ function renderInspector(){
         <div class="row"><div><label class="fld">Sensor</label><select data-trace="${i}.sourceId">${srcOpts(t.sourceId,true)}</select></div></div>
         <div class="row tight"><div><label class="fld">${T('Lijntype','Line type')}</label><select data-trace="${i}.lineType">
           ${['SOLID','DOTTED','DASHED'].map(o=>`<option ${t.lineType===o?'selected':''}>${o}</option>`).join('')}</select></div>
-          <div><label class="fld">${T('Dikte','Thickness')}</label><input data-trace="${i}.thickness" type="number" min="1" max="10" value="${t.thickness??2}"></div></div>
-        <div class="row tight"><div><label class="fld">${T('Kleur','Colour')}</label><select data-trace="${i}.colorId">${profile().colors.map(c=>`<option value="${c.id}" ${t.colorId===c.id?'selected':''}>${c.id}</option>`).join('')}</select></div>
-          <div style="display:flex;align-items:flex-end"><label class="toggle"><input type="checkbox" data-trace="${i}.continuous" ${t.continuous!==false?'checked':''}> ${T('Continu','Continuous')}</label></div></div>
+          <div><label class="fld">${T('Dikte','Thickness')}</label><input data-trace="${i}.thickness" class="spin" type="number" min="1" max="10" value="${t.thickness??2}"></div></div>
+        <div><label class="fld">${T('Kleur','Colour')}</label><div class="swatches">${profile().colors.map(c=>`<div class="swatch ${t.colorId===c.id?'on':''}" data-trace-color="${i}.${c.id}" style="background:${c.css}" title="${c.id}"></div>`).join('')}</div></div>
+        <label class="toggle"><input type="checkbox" data-trace="${i}.continuous" ${t.continuous!==false?'checked':''}> ${T('Continu','Continuous')}</label>
         ${(gr.traces.length>1)?`<button class="btn ghost sm danger" data-trace-del="${i}">${T('Trace verwijderen','Remove trace')}</button>`:''}
       </div>`).join('')}
       <button class="btn sm" id="trace-add" style="margin-top:8px">+ ${T('Trace toevoegen','Add trace')}</button>
@@ -1451,12 +1507,13 @@ function renderInspector(){
     h+=g(T('Grafiek — legenda','Graph — legend'),`
       <label class="toggle"><input type="checkbox" data-legend="show" ${lg.show?'checked':''}> ${T('Legenda tekenen (it.legend)','Draw legend (it.legend)')}</label>
       ${lg.show?`
-      <label class="fld" style="margin-top:6px">${T('Labels (legenda-tekst per trace)','Labels (legend text per trace)')}</label>
+      <label class="fld" style="margin-top:6px">${T('Labels per trace','Per-trace labels')}</label>
+      <div class="row tight" style="margin-bottom:2px"><div class="fld" style="flex:0 0 90px;margin:0">Source</div><div class="fld" style="flex:1;margin:0">${T('Label (legenda-ID)','Label (legend ID)')}</div></div>
       ${(gr.traces||[]).map((t,i)=> t.sourceId ? `<div class="row tight" style="align-items:center;margin-bottom:4px">
         <div class="mono hint" style="flex:0 0 90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0" title="${attr(t.sourceId)}">${attr(t.sourceId)}</div>
-        <div style="flex:1"><input data-trace="${i}.name" type="text" value="${attr(t.name)}" placeholder="${attr(t.sourceId)}" title="${T('Eigen tekst voor de legenda. Leeg = de sensor-id hiernaast.','Custom legend text. Empty = the sensor id shown beside it.')}"></div>
+        <div style="flex:1"><input data-trace="${i}.name" type="text" value="${attr(t.name)}" placeholder="${T('eigen label…','custom label…')}" title="${T('De legenda-tekst (ID) voor deze trace. Leeg = de sensor-id links.','The legend text (ID) for this trace. Empty = the sensor id on the left.')}"></div>
       </div>` : '').join('')}
-      <div class="hint" style="margin-bottom:6px">${T('Leeg laten toont de sensor-id (bv.','Leave empty to show the sensor id (e.g.')} <span class="mono">cubewatt</span>).</div>
+      <div class="hint" style="margin-bottom:6px">${T('Links de bron-sensor, rechts je eigen label. Leeg = de sensor-id wordt gebruikt.','Left is the source sensor, right is your own label. Empty = the sensor id is used.')}</div>
       <div class="row tight"><div><label class="fld">${T('Naam-font','Name font')}</label><select data-legend="nameFontId" title="${T('Verplicht. Font voor de trace-namen in de legenda.','Required. Font for the trace names in the legend.')}">${fontOpts(lg.nameFontId)}</select></div>
         <div><label class="fld">${T('Waarde-font','Value font')}</label><select data-legend="valueFontId" title="${T('Optioneel. Font voor de actuele waarden. Leeg = geen waarden.','Optional. Font for the current values. Empty = no values.')}"><option value="" ${lg.valueFontId?'':'selected'}>${T('(geen)','(none)')}</option>${fontOpts(lg.valueFontId)}</select></div></div>
       <div class="row tight"><div><label class="fld">${T('Waarden tonen','Show values')}</label><select data-legend="showValues" title="${T('NONE=geen, AUTO=automatisch, BESIDE=naast de naam, BELOW=onder de naam.','NONE=none, AUTO=automatic, BESIDE=next to name, BELOW=below name.')}">${['NONE','AUTO','BESIDE','BELOW'].map(o=>`<option ${(lg.showValues||'AUTO')===o?'selected':''}>${o}</option>`).join('')}</select></div>
@@ -1512,12 +1569,14 @@ function sourceEditor(el){
   return h;
 }
 const SUFFIX_PRESETS=['','°C','°F','%','W','kW','kWh','Wh','V','A','mA','Hz','bar','pH','ppm','L','L/u','mL','m³','g','kg','lux','dB','rpm','x','€','s','min','u'];
-const PREFIX_PRESETS=['','€ ','$ ','~','± ','# '];
+const PREFIX_PRESETS=['','€ ','$ ','£ ','¥ ','± ','~','≈ ','> ','< ','Ø ','Δ ','# ','~ ','max ','min ','avg '];
 function affixControl(which, val){
   const presets = which==='suffix'?SUFFIX_PRESETS:PREFIX_PRESETS;
   const known = presets.includes(val);
-  const opts = presets.map(p=>`<option value="${attr(p)}" ${known&&p===val?'selected':''}>${p===''?T('(geen)','(none)'):p}</option>`).join('')
-             + `<option value="__custom__" ${!known?'selected':''}>${T('Aangepast…','Custom…')}</option>`;
+  // (none) first, Custom… second, then the presets
+  const opts = `<option value="" ${val===''?'selected':''}>${T('(geen)','(none)')}</option>`
+             + `<option value="__custom__" ${!known?'selected':''}>${T('Aangepast…','Custom…')}</option>`
+             + presets.filter(p=>p!=='').map(p=>`<option value="${attr(p)}" ${known&&p===val?'selected':''}>${p}</option>`).join('');
   let h=`<select data-affix-sel="${which}">${opts}</select>`;
   h+=`<input data-affix-custom="${which}" type="text" value="${attr(val)}" placeholder="${T('eigen tekst','custom text')}" style="margin-top:5px;${known?'display:none':''}">`;
   return h;
@@ -1529,12 +1588,13 @@ function formatEditor(el){
       <option value="builder" ${fmt.mode!=='raw'?'selected':''}>Builder</option>
       <option value="raw" ${fmt.mode==='raw'?'selected':''}>${T('Rauwe printf','Raw printf')}</option></select></div></div>`;
   if(fmt.mode==='raw'){
-    h+=`<div class="row"><div><label class="fld">Format string</label><input data-fmt="raw" class="mono" type="text" value="${attr(fmt.raw||'%s')}" title="${T('C printf-format. %.1f = 1 decimaal, %s = tekst, %% = letterlijk %. Letterlijke tekens (bv. °C) komen automatisch in de font-glyphs.','C printf format. %.1f = 1 decimal, %s = text, %% = literal %. Literal characters (e.g. °C) are added to the font glyphs automatically.')}"></div></div>`;
+    h+=`<div class="row"><div><label class="fld">Format string</label><input data-fmt="raw" class="mono" type="text" value="${attr(fmt.raw||'%s')}" title="${T('C printf-format. %.1f = 1 decimaal, %s = tekst, %% = letterlijk %. Letterlijke tekens (bv. °C) komen automatisch in de font-glyphs.','C printf format. %.1f = 1 decimal, %s = text, %% = literal %. Literal characters (e.g. °C) are added to the font glyphs automatically.')}"></div></div>
+      <div class="hint">↗ <a href="https://cplusplus.com/reference/cstdio/printf/" target="_blank" rel="noopener">${T('printf-format uitleg','printf format reference')}</a> ${T('(opent in nieuw tabblad)','(opens in a new tab)')}</div>`;
   } else {
     h+=`<div class="row tight">
       <div><label class="fld">Prefix</label>${affixControl('prefix', fmt.prefix||'')}</div>
       <div><label class="fld">Suffix</label>${affixControl('suffix', fmt.suffix||'')}</div></div>`;
-    if(kind==='number') h+=`<div class="row"><div><label class="fld">${T('Decimalen','Decimals')}</label><input data-fmt="decimals" type="number" min="0" max="6" value="${fmt.decimals??1}" title="${T('Aantal cijfers achter de komma.','Number of digits after the decimal point.')}"></div></div>`;
+    if(kind==='number' && el.transform!=='roundN') h+=`<div class="row"><div><label class="fld">${T('Decimalen','Decimals')}</label><input data-fmt="decimals" class="spin" type="number" min="0" max="6" value="${fmt.decimals??1}" title="${T('Aantal cijfers achter de komma.','Number of digits after the decimal point.')}"></div></div>`;
   }
   // transform
   const opts = transformOptions(kind);
@@ -1544,7 +1604,7 @@ function formatEditor(el){
   if(el.transform==='scale'){ const a=el.transformArg||{};
     h+=`<div class="row"><div><label class="fld">${T('Factor (×)','Factor (×)')}</label><input data-ta="factor" type="number" step="any" value="${a.factor??1}"></div></div>`; }
   if(el.transform==='roundN'){ const a=el.transformArg||{};
-    h+=`<div class="row"><div><label class="fld">${T('Decimalen','Decimals')}</label><input data-ta="n" type="number" min="0" max="6" value="${a.n??1}"></div></div>`; }
+    h+=`<div class="row"><div><label class="fld">${T('Decimalen','Decimals')}</label><input data-ta="n" class="spin" type="number" min="0" max="6" value="${a.n??1}" title="${T('Afronden op dit aantal decimalen (zoals %.Nf).','Round to this many decimals (like %.Nf).')}"></div></div>`; }
   if(el.transform==='custom'){ const a=el.transformArg||{};
     h+=`<div class="row tight"><div style="flex:2"><label class="fld">Format</label><input data-ta="fmt" type="text" value="${attr(a.fmt||'{wd} {dd} {mon}')}" placeholder="{wd} {dd} {mon}"></div>
         <div><label class="fld">${T('Namen','Names')}</label><select data-ta="lang"><option value="nl" ${a.lang!=='en'?'selected':''}>NL</option><option value="en" ${a.lang==='en'?'selected':''}>EN</option></select></div></div>
@@ -1713,7 +1773,7 @@ function attr(v){ return v==null?'':String(v).replace(/"/g,'&quot;'); }
 /* ---- inspector event binding ---- */
 /* add ▲/▼ stepper buttons to radius/size number fields (the field stays editable) */
 function addSteppers(host){
-  const keys=['x','y','x2','y2','w','h','r','inner','rx','ry','sides'];
+  const keys=['x','y','x2','y2','w','h','r','inner','rx','ry','sides','scale'];
   const sel='input[type=number].spin, '+keys.map(k=>`input[type=number][data-k="${k}"]`).join(', ');
   host.querySelectorAll(sel).forEach(inp=>{
     if(inp._stepped || !inp.parentNode) return; inp._stepped=true;
@@ -1818,11 +1878,11 @@ function bindInspector(host, el){
   host.querySelectorAll('[data-wifi]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.wifi=el.wifi||{}; el.wifi[inp.dataset.wifi]=inp.value; afterChange(); }));
   host.querySelectorAll('[data-wifilv]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); const [i,prop]=inp.dataset.wifilv.split('.'); el.wifi.levels[+i][prop]= prop==='min'?(+inp.value):inp.value.toUpperCase(); afterChange(); }));
   // wifi per-level MDI icon picker
-  host.querySelectorAll('[data-pickwifi]').forEach(b=>b.addEventListener('click',()=>openIconPicker(sel=>{ pushUndo(); const i=+b.dataset.pickwifi; el.wifi.levels[i].hex=sel.hex; el.wifi.levels[i].icon=sel.name; afterChange(); })));
+  host.querySelectorAll('[data-pickwifi]').forEach(b=>b.addEventListener('click',()=>openIconPicker(sel=>{ pushUndo(); const i=+b.dataset.pickwifi; el.wifi.levels[i].hex=sel.hex; el.wifi.levels[i].icon=sel.name; afterChange(); }, 'wifi')));
 
   // clock
   host.querySelectorAll('[data-clock]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.clock=el.clock||{}; const k=inp.dataset.clock; el.clock[k]= inp.type==='checkbox'?inp.checked:(inp.type==='number'?(+inp.value):inp.value); afterChange(); }));
-  const pci=host.querySelector('#pick-clock-icon'); if(pci) pci.addEventListener('click',()=>openIconPicker(sel=>{ pushUndo(); el.clock.iconName=sel.name; el.clock.iconHex=sel.hex; afterChange(); }));
+  const pci=host.querySelector('#pick-clock-icon'); if(pci) pci.addEventListener('click',()=>openIconPicker(sel=>{ pushUndo(); el.clock.iconName=sel.name; el.clock.iconHex=sel.hex; afterChange(); }, 'refresh'));
   const c12=host.querySelector('#clock-12h'); if(c12) c12.addEventListener('change',()=>{ pushUndo(); el.clock=el.clock||{}; el.clock.strftime = c12.checked ? '%I:%M %p' : '%H:%M'; afterChange(); });
 
   // graph
@@ -1830,6 +1890,9 @@ function bindInspector(host, el){
   host.querySelectorAll('[data-trace]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); const [i,prop]=inp.dataset.trace.split('.'); el.graph.traces[+i][prop]= inp.type==='checkbox'?inp.checked:(inp.type==='number'?(+inp.value):inp.value); afterChange(); }));
   host.querySelectorAll('[data-axes]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.graph.axes=el.graph.axes||{}; const k=inp.dataset.axes; el.graph.axes[k]= inp.type==='checkbox'?inp.checked:inp.value; afterChange(); }));
   host.querySelectorAll('[data-legend]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.graph.legend=el.graph.legend||{}; const k=inp.dataset.legend; el.graph.legend[k]= inp.type==='checkbox'?inp.checked:(inp.type==='number'?(inp.value===''?'':+inp.value):inp.value); afterChange(); }));
+  host.querySelectorAll('[data-trace-color]').forEach(sw=>sw.addEventListener('click',()=>{ pushUndo();
+    const dot=sw.dataset.traceColor.indexOf('.'); const i=+sw.dataset.traceColor.slice(0,dot), cid=sw.dataset.traceColor.slice(dot+1);
+    el.graph.traces[i].colorId=cid; afterChange(); }));
   host.querySelectorAll('[data-trace-del]').forEach(b=>b.addEventListener('click',()=>{ pushUndo(); el.graph.traces.splice(+b.dataset.traceDel,1); afterChange(); }));
   const ta=host.querySelector('#trace-add'); if(ta) ta.addEventListener('click',()=>{ pushUndo(); el.graph.traces.push({sourceId:'', lineType:'SOLID', thickness:2, continuous:true, colorId:'color_text'}); afterChange(); });
 }
@@ -1987,7 +2050,10 @@ function textNameBlock(el, I, fontId, color, anchor){
 function numFilled(v){ return v!==''&&v!=null&&!isNaN(+v); }
 function yamlStr(s){ return '"'+String(s).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"'; }
 function graphId(el){ return 'graph_'+el.id.replace(/[^a-z0-9_]/gi,''); }
-function qrId(el){ return 'qr_'+el.id.replace(/[^a-z0-9_]/gi,''); }
+function qrId(el){
+  const c=el.qrCustomId; if(c && /^[a-z_][a-z0-9_]*$/i.test(c)) return c;   // user-chosen id
+  return 'qr_'+el.id.replace(/[^a-z0-9_]/gi,'');
+}
 function graphDrawCode(el, I){
   let out=`${I}it.graph(${el.x}, ${el.y}, id(${graphId(el)}));`;
   const gr=el.graph||{}, ax=gr.axes||{}, lg=gr.legend||{};
@@ -2035,6 +2101,17 @@ function wifiCode(el, I, color, anchor){
   out+=`${I}}`;
   return out;
 }
+/* clock text offset: horizontal auto-scales with the icon size (so the time doesn't
+   land on top of big icons) unless the user set offX; offY shifts the text vertically
+   (0 = vertically centred on the icon). */
+function clockOffsets(el){
+  const c=el.clock||{};
+  const ifont = c.icon ? (fontById(c.iconFontId)||fontById(el.fontId)||{size:30}) : null;
+  const autoX = c.icon ? Math.round((ifont.size||30))+6 : 0;
+  const offX = (c.offX!=null && c.offX!=='') ? +c.offX : (c.iconGap!=null?+c.iconGap:autoX);
+  const offY = (c.offY!=null && c.offY!=='') ? +c.offY : 0;
+  return {offX, offY, autoX};
+}
 function clockCode(el, I, color, anchor){
   const c=el.clock||{}; const font=(fontById(el.fontId)||{id:'font_small_book'}).id;
   // keep horizontal part of the anchor, force vertical CENTER so icon+text share a midline
@@ -2048,8 +2125,9 @@ function clockCode(el, I, color, anchor){
   out+=`${I}  strftime(ts_${shortId(el)}, sizeof(ts_${shortId(el)}), "${esc(c.strftime||'%H:%M')}", localtime(&t_${shortId(el)}));\n`;
   if(c.icon){
     const ifont=(fontById(c.iconFontId)||{id:font}).id;
+    const {offX,offY}=clockOffsets(el);
     out+=`${I}  it.printf(${el.x}, ${el.y}, id(${ifont}), ${color}, TextAlign::${va}, "\\U${pad8(c.iconHex||'F044C')}");\n`;
-    out+=`${I}  it.printf(${el.x + (c.iconGap||40)}, ${el.y}, id(${font}), ${color}, TextAlign::${va}, "%s", ts_${shortId(el)});\n`;
+    out+=`${I}  it.printf(${el.x + offX}, ${el.y + offY}, id(${font}), ${color}, TextAlign::${va}, "%s", ts_${shortId(el)});\n`;
   } else {
     out+=`${I}  it.printf(${el.x}, ${el.y}, id(${font}), ${color}, TextAlign::${va}, "%s", ts_${shortId(el)});\n`;
   }
@@ -2466,7 +2544,7 @@ async function loadMdiMeta(){
   }catch(e){ MDI_META=[]; toast(T('Kon MDI-lijst niet laden','Could not load MDI list')); }
   return MDI_META;
 }
-async function openIconPicker(cb){
+async function openIconPicker(cb, defaultQuery){
   openModal(T('MDI-icoon kiezen','Choose MDI icon'), `<input class="icon-search" id="icon-q" type="text" placeholder="${T('Zoek… (bv. thermometer, pump, weather)','Search… (e.g. thermometer, pump, weather)')}"><div class="icon-grid" id="icon-grid"><div class="hint">${T('Laden…','Loading…')}</div></div>`, []);
   const meta=await loadMdiMeta();
   const grid=$('#icon-grid'), q=$('#icon-q');
@@ -2476,7 +2554,7 @@ async function openIconPicker(cb){
     grid.innerHTML = list.map(m=>`<div class="icon-cell" data-name="${m.name}" data-hex="${m.codepoint.toUpperCase()}"><span class="mdi mdi-${m.name}"></span><small>${m.name}</small></div>`).join('') || `<div class="hint">${T('Niets gevonden.','Nothing found.')}</div>`;
     grid.querySelectorAll('.icon-cell').forEach(c=>c.onclick=()=>{ cb({name:c.dataset.name, hex:c.dataset.hex}); closeModal(); });
   }
-  render('thermometer'); q.value=''; q.oninput=()=>render(q.value); q.focus();
+  const dq=defaultQuery||'thermometer'; render(dq); q.value=defaultQuery||''; q.oninput=()=>render(q.value); q.focus();
 }
 
 /* ============================================================
@@ -2652,7 +2730,7 @@ async function openFonts(){
        <div class="row tight">
          <div style="flex:2"><label class="fld">id</label><input id="nf-id" type="text" class="mono" placeholder="${T('bv. font_groot','e.g. font_large')}" title="${T('De id waarmee je dit font in elementen kiest en die in de YAML verschijnt. Letters, cijfers en _.','The id you select this font by in elements and that appears in the YAML. Letters, digits and _.')}"></div>
          <div><label class="fld">${T('grootte (size)','size')}</label><input id="nf-size" class="spin" type="number" placeholder="size" value="30" style="width:90px" title="${T('Tekenhoogte in pixels (font size).','Glyph height in pixels (font size).')}"></div>
-         <div><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt.','Where the font comes from.')}"><option value="local">${T('Lokale fonts','Local Fonts')}</option><option value="gfonts">Google Fonts</option><option value="web">${T('Web-fonts','Web Fonts')}</option><option value="mdi">${T('MDI-icoonfont','MDI icon font')}</option></select></div>
+         <div><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt.','Where the font comes from.')}"><option value="local">${T('Lokale fonts','Local Fonts')}</option><option value="mdi">MDI Fonts</option><option value="gfonts">Google Fonts</option><option value="web">${T('Web-fonts','Web Fonts')}</option></select></div>
        </div>
        <div class="row tight" id="nf-mdi" style="display:none">
          <div style="flex:2"><label class="fld">${T('pad (vast)','path (fixed)')}</label><input id="nf-mdi-file" type="text" class="mono" value="fonts/materialdesignicons-webfont.ttf" readonly title="${T('De meegebundelde Material Design Icons-font; dit pad ligt vast.','The bundled Material Design Icons font; this path is fixed.')}"></div>
@@ -2868,7 +2946,7 @@ function openProfileSettings(){
   const colTypeName={mono:T('mono (zwart/wit)','mono (black/white)'),bwr:T('BWR (zwart/wit/rood)','BWR (black/white/red)'),'7c':T('7-kleuren','7-colour')};
   const modelOpts=EINK_MODELS.map(m=>`<option value="${attr(m.v)}" ${d.model===m.v?'selected':''}>${m.v} — ${m.d}</option>`).join('');
   openModal(T('Profiel-instellingen','Profile settings'),
-    `${state.profiles.length>1?`<div class="row"><div><label class="fld">${T('Profiel (wisselen)','Profile (switch)')}</label><select id="ps-switch" style="width:100%">${state.profiles.map(x=>`<option value="${attr(x.id)}" ${x.id===p.id?'selected':''}>${attr(x.name)}</option>`).join('')}</select></div></div>`:''}
+    `${state.profiles.length>1?`<div class="row"><div><label class="fld">${T('Profiel (wisselen)','Profile (switch)')}</label><select id="ps-switch" style="width:100%">${sortedProfiles().map(x=>`<option value="${attr(x.id)}" ${x.id===p.id?'selected':''}>${attr(x.name)}</option>`).join('')}</select></div></div>`:''}
      <div class="row"><div><label class="fld">${T('Profielnaam','Profile name')}</label><input id="ps-name" value="${attr(p.name)}"></div></div>
      <div class="row"><div><label class="fld">Model</label><select id="ps-model" style="width:100%">${modelOpts}</select></div></div>
      <div class="hint" id="ps-model-info"></div>
@@ -2953,7 +3031,7 @@ function openProfileSettings(){
       persist(); initStage(); renderProfiles(); afterChange();
       // keep the dialog open — just refresh the name field and the switch dropdown
       { const nm=$('#ps-name'); if(nm) nm.value=p.name;
-        const sw=$('#ps-switch'); if(sw) sw.innerHTML=state.profiles.map(x=>`<option value="${attr(x.id)}" ${x.id===p.id?'selected':''}>${attr(x.name)}</option>`).join(''); }
+        const sw=$('#ps-switch'); if(sw) sw.innerHTML=sortedProfiles().map(x=>`<option value="${attr(x.id)}" ${x.id===p.id?'selected':''}>${attr(x.name)}</option>`).join(''); }
       toast(T('Profiel opgeslagen','Profile saved'));
     }}]);
   const infoEl=$('#ps-model-info');
@@ -3317,8 +3395,12 @@ function doImport(textArg){
 /* ============================================================
    PROFILES bar + project save/load
    ============================================================ */
+/* natural sort: numbers before letters, case-insensitive (used for both profile dropdowns) */
+function sortedProfiles(){
+  return state.profiles.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),undefined,{numeric:true,sensitivity:'base'}));
+}
 function renderProfiles(){
-  const sel=$('#profile-select'); sel.innerHTML=state.profiles.map(p=>`<option value="${p.id}" ${p.id===state.current?'selected':''}>${p.name}</option>`).join('');
+  const sel=$('#profile-select'); sel.innerHTML=sortedProfiles().map(p=>`<option value="${p.id}" ${p.id===state.current?'selected':''}>${attr(p.name)}</option>`).join('');
 }
 /* ============================================================
    SERVER STORAGE (add-on build) — projects + fonts in /data

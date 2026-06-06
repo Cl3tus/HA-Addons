@@ -3,6 +3,28 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.3.0
+- Profiles are listed **alphabetically (numbers first)** in both the top-bar and
+  Profile-settings dropdowns.
+- **Layers**: drag-reorder now shows an **insertion line** above/below the row and
+  can reach the very top/bottom reliably.
+- **Click-through selection**: click again on the same spot to step to the element
+  *under* the current one (cycles through everything stacked there).
+- New elements default to **CENTER** alignment.
+- **QR**: scale stepper, a custom **ID** field for the `qr_code:` component, and the
+  preview inverts (dark bg) when the QR colour is white so it stays visible.
+- **Graph**: trace colour via swatches, thickness stepper, duplicate Duration removed
+  from “general”, clearer per-trace legend labels (Source → Label).
+- **Value**: Round-to-N-decimals fixed (no longer fights the builder decimals),
+  decimals/factor steppers, prefix/suffix list now has **Custom…** second + more
+  prefixes, and a printf-format help link.
+- **Refresh clock**: separate X/Y text offsets (steppers); horizontal offset
+  auto-scales with the icon size so the time doesn’t overlap big icons; the time text
+  now uses a text font (not the icon font).
+- Adding an **MDI icon / clock / Wi-Fi** element auto-ensures an MDI font (size 30) so
+  nothing shows as tofu. **MDI Fonts** is the 2nd Font-Source option.
+- ▲/▼ steppers across all **Position & Size** fields and the font editor size/weight.
+
 ## 3.2.4
 - **Real QR preview**: the editor now renders the actual QR code (bundled
   qrcode-generator), so both the pattern and the size match the device.
