@@ -3,6 +3,13 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.1.8
+- **No more tofu on typed text**: Google-Fonts and Web fonts now always include the
+  full printable-ASCII set (ESPHome downloads them in full anyway), plus any special
+  characters the design uses (e.g. `°`). Editing text no longer needs a clean rebuild
+  to pick up newly-typed letters. Local TTF / icon / 7-segment fonts keep their exact
+  glyph set.
+
 ## 3.1.7
 - The main **Save / Open** now use the JSON **`profiles/`** folder (the editable
   design), not `projects/`. Open switches to a design if it's already loaded, else

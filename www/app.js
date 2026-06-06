@@ -2294,6 +2294,13 @@ function glyphEsc(ch){ if(ch==='\\') return '\\\\'; if(ch==='"') return '\\"'; r
 function glyphBlock(f, g){
   const chars=new Set(g?g.chars:[]); const icons=g?g.icons:new Map(); const dyn=g?g.dynamic:f.dynamic;
   if(dyn) for(const ch of (f.baseCharset||'')) chars.add(ch);
+  // gfonts/web fonts are downloaded in full by ESPHome, so always give them the whole
+  // printable-ASCII set (plus any special chars the design actually uses, e.g. °).
+  // Typed text can then never render as tofu, even after editing — at a tiny flash cost.
+  const isIconFont=/materialdesignicons/i.test(f.file||'');
+  if((f.kind==='gfonts'||f.kind==='web') && !isIconFont && !fontIsDigitDisplay(f)){
+    for(const ch of ASCII_GLYPHS) chars.add(ch);
+  }
   if(!chars.size && !icons.size){
     if(f.seedGlyphs && f.seedGlyphs.length){ f.seedGlyphs.forEach(c=>chars.add(c)); }
     else return ''; // full font (no glyph restriction)
