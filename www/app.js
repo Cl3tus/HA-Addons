@@ -396,10 +396,17 @@ function initStage(){
 }
 
 /* #11 — rubber-band selection: click+drag on empty canvas selects elements it touches */
-let _marqueeRect=null, _marqueeStart=null;
+let _marqueeRect=null, _marqueeStart=null, _marqueeOnNode=null;
+// a near-full-canvas element acts as a backdrop: dragging on it should rubber-band
+// the things on top of it, not move the backdrop itself
+function isBackdropNode(node){
+  if(!node) return false;
+  const d=profile().device; const b=node.getClientRect({relativeTo:contentLayer});
+  return b.width>=d.w*0.6 && b.height>=d.h*0.6;
+}
 function setupMarquee(){
   stage.on('mousedown touchstart', e=>{
-    if(e.target!==stage) return;                 // only when starting on empty area
+    if(e.target!==stage && !_marqueeOnNode) return;   // empty area, or a backdrop flagged itself
     const e2=e.evt;
     const add = e2 && (e2.ctrlKey||e2.metaKey||e2.shiftKey);
     _marqueeStart=stage.getRelativePointerPosition();
@@ -420,10 +427,13 @@ function setupMarquee(){
     if(!_marqueeStart||!_marqueeRect) return;
     const box=_marqueeRect.getClientRect({relativeTo:contentLayer});
     _marqueeRect.destroy(); _marqueeRect=null; const start=_marqueeStart; _marqueeStart=null;
-    if(box.width<4 && box.height<4){ // treated as a plain click on empty canvas
+    if(box.width<4 && box.height<4){ // treated as a plain click
+      const onNode=_marqueeOnNode; _marqueeOnNode=null;
+      if(onNode){ select(onNode); return; }   // click on a backdrop element → select it
       if(!_marqueeBase || !_marqueeBase.size) select(null);
       contentLayer.draw(); return;
     }
+    _marqueeOnNode=null;
     const hit=new Set(_marqueeBase||[]);
     els().forEach(el=>{
       if(el.visible===false) return;
@@ -677,6 +687,9 @@ function buildNode(el){
     const e=ev && ev.evt;
     if(e && (e.ctrlKey||e.metaKey)){ ev.cancelBubble=true; toggleSelect(el.id); return; }
     if(isSelected(el.id) && selectedIds.size>1) return;   // keep group for drag
+    // an unselected near-full-canvas backdrop: don't move it — let the event bubble to
+    // the stage so a drag becomes a marquee (a plain click selects it in finish()).
+    if(!isSelected(el.id) && isBackdropNode(node)){ node.draggable(false); _marqueeOnNode=el.id; return; }
     selectNode(el, node);
   });
   node.on('dragstart', ()=>{ pushUndo(); if(selectionVisual) selectionVisual.hide();
@@ -1265,7 +1278,7 @@ function renderInspector(){
       <div class="hint">${T('Houd Shift ingedrukt tijdens roteren om op 45° te vergrendelen.','Hold Shift while rotating to snap to 45°.')}</div>`);
   } else if(el.type==='polygon'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">${T('Midden X','Center X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Midden Y','Center Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
-      <div class="row"><div><label class="fld">${T('Straal','Radius')}</label><input data-k="r" type="number" value="${el.r||60}"></div><div><label class="fld">${T('Aantal zijden','Sides')}</label><input data-k="sides" type="number" min="3" max="12" value="${el.sides||6}"></div></div>
+      <div class="row"><div><label class="fld">${T('Straal','Radius')}</label><input data-k="r" type="number" value="${el.r||60}"></div><div><label class="fld">${T('Aantal hoeken','Sides')}</label><input data-k="sides" class="spin" type="number" min="3" step="1" value="${el.sides||6}" title="${T('Minimaal 3 (minder wordt een lijn/driehoek).','Minimum 3 (fewer becomes a line/triangle).')}"></div></div>
       <label class="fld">${T('Rotatie','Rotation')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
       <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
       <label class="toggle"><input type="checkbox" data-k="filled" ${el.filled?'checked':''}> ${T('Gevuld','Filled')}</label>`);
@@ -1669,6 +1682,7 @@ function bindInspector(host, el){
     const isNum = inp.type==='number'||inp.type==='range';
     inp.addEventListener('change',()=>{ pushUndo(); const k=inp.dataset.k;
       el[k] = inp.type==='checkbox'?inp.checked:(isNum?(+inp.value):inp.value);
+      if(k==='sides'){ el.sides=Math.max(3, Math.round(el.sides||3)); inp.value=el.sides; }   // never below 3
       // re-locking restores a clean 1:1 aspect (circle -> round, rect/triangle -> square)
       if(k==='lockAspect' && inp.checked){
         if(el.type==='circle'){
@@ -2860,7 +2874,11 @@ function openProfileSettings(){
       // adapt the colour palette to the model's colour capability (only when it changes)
       const newType=modelInfo(d.model).c;
       if(newType!==paletteType(p.colors)) p.colors=colorSetFor(newType);
-      persist(); initStage(); renderProfiles(); afterChange(); closeModal();
+      persist(); initStage(); renderProfiles(); afterChange();
+      // keep the dialog open — just refresh the name field and the switch dropdown
+      { const nm=$('#ps-name'); if(nm) nm.value=p.name;
+        const sw=$('#ps-switch'); if(sw) sw.innerHTML=state.profiles.map(x=>`<option value="${attr(x.id)}" ${x.id===p.id?'selected':''}>${attr(x.name)}</option>`).join(''); }
+      toast(T('Profiel opgeslagen','Profile saved'));
     }}]);
   const infoEl=$('#ps-model-info');
   const applyRes=()=>{ const res=modelRes($('#ps-model').value); if(!res) return;
@@ -2895,7 +2913,12 @@ function openProfileSettings(){
   if(pinsMaster){ pinsMaster.onchange=syncPins; syncPins(); }
   $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>{ $('#ps-bg').value=b.dataset.bg; });
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
-    if(confirm(T('Profiel verwijderen?','Delete profile?'))){ state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist(); boot(); closeModal(); } };
+    if(confirm(T('Profiel verwijderen?','Delete profile?'))){
+      state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist();
+      renderProfiles(); initStage(); selectedId=null; selectedIds=new Set(); renderCanvas(); renderLayers(); renderInspector();
+      openProfileSettings();   // stay in settings, now showing the first profile
+      toast(T('Profiel verwijderd','Profile deleted'));
+    } };
   $('#ps-dup').onclick=()=>{
     const cp=JSON.parse(JSON.stringify(p)); cp.id=uid('p'); cp._waitSeeded=true;
     const base=(p.name||'profiel').replace(/\s*\(\d+\)\s*$/,'');

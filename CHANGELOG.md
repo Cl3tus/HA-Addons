@@ -3,6 +3,18 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.2.1
+- Polygon **sides** field now shows up/down stepper arrows; minimum 3, no upper cap.
+- **Drag-select over a big backdrop element** now rubber-bands the objects on top of
+  it instead of moving the backdrop (click still selects it; once selected you can
+  drag to move it).
+- **Profile settings** stays open on **Save** (just refreshes the name + switch
+  dropdown) and on **Delete** (switches to the first profile).
+- Version number moved to sit after "Lambda Generator" (grey).
+- Save/Open tooltips simplified to "Save project" / "Open project".
+- Note: the YAML drawer can't physically slow the mouse selection near the base64
+  line, so that line stays visually fenced off (gap + divider) as the stop cue.
+
 ## 3.2.0
 - **Fix build error** on rotated polygons: `regular_polygon` now uses the correct
   ESPHome signature (`VARIATION_POINTY_TOP` + rotation degrees).

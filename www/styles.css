@@ -121,8 +121,7 @@ body.chrome-hidden #topbar { display: none; }
 .brand .brand-text { display: flex; flex-direction: column; line-height: 1.12; }
 .brand b { font-weight: 600; letter-spacing: .2px; }
 .brand span { color: var(--txt-dim); font-size: 11px; font-family: var(--mono); }
-.brand #brand-version { color: var(--txt-faint); }
-.brand #brand-version:not(:empty)::after { content: " · "; }
+.brand #brand-version { color: var(--txt-faint); margin-left: 8px; }
 
 .topbar-sep { width: 1px; height: 22px; background: var(--line); }
 .topbar-spacer { flex: 1; }
@@ -178,6 +177,10 @@ input:disabled, select:disabled { opacity: .45; cursor: not-allowed; }
 input[type=number] { width: 100%; -moz-appearance: textfield; appearance: textfield; }
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* opt-in: show the up/down stepper arrows (e.g. polygon sides) */
+input.spin[type=number] { -moz-appearance: auto; appearance: auto; }
+input.spin[type=number]::-webkit-outer-spin-button,
+input.spin[type=number]::-webkit-inner-spin-button { -webkit-appearance: inner-spin-button; opacity: 1; }
 label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--txt-dim); margin: 0 0 4px; }
 
 /* ---------- Side panels ---------- */
