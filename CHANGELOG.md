@@ -3,6 +3,13 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.2.3
+- **Gauge** preview now matches the device: a 180° half-ring (top), outlined track,
+  filling from the **left over the top** by the fill % (50% = left half). Gauges no
+  longer show a rotation handle (they can't rotate).
+- **QR code** preview is now sized like the device: the real module count (QR version
+  for the content + ECC) × scale, with an estimated-size hint in the inspector.
+
 ## 3.2.2
 - Generated-YAML drawer: copying now keeps the **blank lines** between blocks, and
   while the drawer is open only its text is selectable (a drag-copy can't grab the

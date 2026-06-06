@@ -572,20 +572,24 @@ function buildNode(el){
       fill:color.css});
   }
   else if(E.type==='gauge'){
+    // matches ESPHome it.filled_gauge: a 180° half ring (top half) whose track is
+    // outlined and which fills from the LEFT (9 o'clock) over the top toward the
+    // right (3 o'clock); 50% = the left quarter (9→12 o'clock). No rotation.
     const pct=Math.max(0,Math.min(100,E.percent==null?50:E.percent));
     const ro=E.r||50, ri=Math.min(E.inner||30, ro-1);
-    // custom shape: the START ANGLE is baked into the arc (a0) while the node's
-    // own rotation stays 0, so the transformer's rotate handle always sits on top.
-    node = new Konva.Shape({ x:E.x, y:E.y, width:2*ro, height:2*ro, offsetX:ro, offsetY:ro,
-      rotation:0, fill:color.css,
-      sceneFunc:(ctx,shape)=>{
-        const a0=-Math.PI/2 + (E.rotation||0)*Math.PI/180, a1=a0 + (pct/100)*2*Math.PI;
-        ctx.beginPath();
-        ctx.arc(ro, ro, ro, a0, a1, false);
-        ctx.arc(ro, ro, ri, a1, a0, true);
-        ctx.closePath();
-        ctx.fillStrokeShape(shape);
-      }});
+    const A0=Math.PI, A2=2*Math.PI;   // west → east, over the top
+    node = new Konva.Shape({ x:E.x, y:E.y, width:2*ro, height:2*ro, offsetX:ro, offsetY:ro, rotation:0, fill:color.css,
+      sceneFunc:(ctx)=>{
+        const cx=ro, cy=ro, col=color.css;
+        // track outline (full 180° annulus)
+        ctx.beginPath(); ctx.arc(cx,cy,ro,A0,A2,false); ctx.arc(cx,cy,ri,A2,A0,true); ctx.closePath();
+        ctx.lineWidth=1; ctx.strokeStyle=col; ctx.stroke();
+        // filled value sector
+        if(pct>0){ const a1=A0 + (pct/100)*Math.PI;
+          ctx.beginPath(); ctx.arc(cx,cy,ro,A0,a1,false); ctx.arc(cx,cy,ri,a1,A0,true); ctx.closePath();
+          ctx.fillStyle=col; ctx.fill(); }
+      },
+      hitFunc:(ctx,shape)=>{ ctx.beginPath(); ctx.arc(ro,ro,ro,A0,A2,false); ctx.arc(ro,ro,ri,A2,A0,true); ctx.closePath(); ctx.fillStrokeShape(shape); }});
   }
   else if(E.type==='qr'){
     node = qrPreviewNode(E, color.css);
@@ -786,11 +790,28 @@ function rectCorners(E){
 }
 const flatPts = pts => pts.reduce((a,p)=>{a.push(p[0],p[1]);return a;},[]);
 
-/* QR placeholder preview — a sized box with three finder squares + a hatch
-   pattern. The real QR is rendered on the device by ESPHome (qr_code:). */
-const QR_MODULES = 25;
+/* byte-mode character capacity per QR version (1..40) for ECC L/M/Q/H — used to work
+   out the real module count so the preview box matches the device size exactly. */
+const QR_BYTE_CAP = {
+  L:[17,32,53,78,106,134,154,192,230,271,321,367,425,458,520,586,644,718,792,858,929,1003,1091,1171,1273,1367,1465,1528,1628,1732,1840,1952,2068,2188,2303,2431,2563,2699,2809,2953],
+  M:[14,26,42,62,84,106,122,152,180,213,251,287,331,362,412,450,504,560,624,666,711,779,857,911,997,1059,1125,1190,1264,1370,1452,1538,1628,1722,1809,1911,1989,2099,2213,2331],
+  Q:[11,20,32,46,60,74,86,108,130,151,177,203,241,258,292,322,364,394,442,482,509,565,611,661,715,751,805,868,908,982,1030,1112,1168,1228,1283,1351,1423,1499,1579,1663],
+  H:[7,14,24,34,44,58,64,84,98,119,137,155,177,194,220,250,280,310,338,382,403,439,461,511,535,593,625,658,698,742,790,842,898,958,983,1051,1093,1139,1219,1273] };
+/* module count (side length) for the data + ECC. Assumes byte mode (exact for URLs
+   and mixed-case text; a slight over-estimate for pure numeric/uppercase data). */
+function qrModuleCount(text, ecc){
+  const bytes = unescape(encodeURIComponent(String(text||''))).length;
+  const lvl = ecc==='HIGH'?'H' : ecc==='QUARTILE'?'Q' : ecc==='MEDIUM'?'M' : 'L';
+  const tbl = QR_BYTE_CAP[lvl];
+  let v = tbl.findIndex(cap=>bytes<=cap);
+  if(v<0) v = 39;            // data too long → cap at version 40
+  return 17 + 4*(v+1);       // version N → 17 + 4N modules per side
+}
+/* QR placeholder preview — sized exactly like the device (modules × scale) with
+   three finder squares + a hatch pattern. The real QR is rendered by ESPHome. */
 function qrPreviewNode(E, css){
   const scale = Math.max(1, E.scale||4);
+  const QR_MODULES = qrModuleCount(E.text, E.ecc);
   const size = QR_MODULES * scale;
   const g = new Konva.Group({x:E.x, y:E.y});
   g.add(new Konva.Rect({x:0,y:0,width:size,height:size,fill:'#fff',stroke:css,strokeWidth:1}));
@@ -819,7 +840,7 @@ function attachSelection(el, node){
     const locked = (el.type==='circle') ? (el.lockAspect!==false)
                  : (el.type==='triangle'||el.type==='rect') ? !!el.lockAspect
                  : (el.type==='polygon'||el.type==='ring'||el.type==='gauge'||el.type==='qr');
-    const rotateEnabled = (el.type==='rect' || el.type==='triangle' || el.type==='polygon' || el.type==='gauge');
+    const rotateEnabled = (el.type==='rect' || el.type==='triangle' || el.type==='polygon');
     const allAnchors=['top-left','top-center','top-right','middle-right','middle-left','bottom-left','bottom-center','bottom-right'];
     const corners=['top-left','top-right','bottom-left','bottom-right'];
     transformer=new Konva.Transformer({rotateEnabled, keepRatio:locked,
@@ -838,7 +859,7 @@ function attachSelection(el, node){
       else if(el.type==='triangle'){ el.w=Math.max(4,Math.round(el.w*sx)); el.h=Math.max(4,Math.round(el.h*sy)); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='polygon'){ el.r=Math.max(4,Math.round(node.radius()*((sx+sy)/2))); el.rotation=Math.round(node.rotation()); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='ring'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round(node.outerRadius()*f)); el.inner=Math.max(2,Math.round(node.innerRadius()*f)); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
-      else if(el.type==='gauge'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round((el.r||50)*f)); el.inner=Math.max(2,Math.round((el.inner||30)*f)); el.rotation=((((el.rotation||0)+Math.round(node.rotation()))%360)+360)%360; el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
+      else if(el.type==='gauge'){ const f=(sx+sy)/2; el.r=Math.max(6,Math.round((el.r||50)*f)); el.inner=Math.max(2,Math.round((el.inner||30)*f)); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       else if(el.type==='qr'){ el.scale=Math.max(1,Math.round((el.scale||4)*((sx+sy)/2))); el.x=Math.round(node.x()); el.y=Math.round(node.y()); }
       node.scaleX(1); node.scaleY(1); afterChange(); });
   } else if(el.type==='line'){
@@ -1291,9 +1312,7 @@ function renderInspector(){
       <div class="row"><div><label class="fld">${T('Buitenstraal','Outer radius')}</label><input data-k="r" type="number" value="${el.r||50}"></div><div><label class="fld">${T('Binnenstraal','Inner radius')}</label><input data-k="inner" type="number" value="${el.inner||30}"></div></div>
       <label class="fld">${T('Vulling','Fill')} (<span class="rot-deg">${el.percent==null?50:el.percent}</span>%)</label>
       <input data-k="percent" type="range" min="0" max="100" step="1" value="${el.percent==null?50:el.percent}">
-      <label class="fld">${T('Starthoek','Start angle')} (<span class="rot-deg">${el.rotation||0}</span>°)</label>
-      <input data-k="rotation" type="range" min="0" max="360" step="1" value="${el.rotation||0}">
-      <div class="hint"><span class="mono">it.filled_gauge</span> — ${T('cirkelvormige voortgang. Houd Shift ingedrukt tijdens roteren om op 45° te vergrendelen.','circular progress. Hold Shift while rotating to snap to 45°.')}</div>`);
+      <div class="hint"><span class="mono">it.filled_gauge</span> — ${T('halve cirkel (180°), vult van links over de top naar rechts. 50% = de linkerhelft.','half circle (180°), fills from the left over the top to the right. 50% = the left half.')}</div>`);
   } else if(el.type==='qr'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">${T('Schaal (px per module)','Scale (px per module)')}</label><input data-k="scale" type="number" min="1" max="12" value="${el.scale||4}"></div>
@@ -1301,7 +1320,9 @@ function renderInspector(){
           ${['LOW','MEDIUM','QUARTILE','HIGH'].map(o=>`<option ${(el.ecc||'LOW')===o?'selected':''}>${o}</option>`).join('')}
         </select></div></div>
       <div class="row"><div><label class="fld">${T('Inhoud (tekst/URL)','Content (text/URL)')}</label><input data-k="text" type="text" value="${attr(el.text)}"></div></div>
-      <div class="hint">${T('ECC: LOW ~7%, MEDIUM ~15%, QUARTILE ~25%, HIGH ~30% fouttolerantie. De preview is een plaatshouder; ESPHome rendert de echte QR op het device.','ECC: LOW ~7%, MEDIUM ~15%, QUARTILE ~25%, HIGH ~30% error tolerance. The preview is a placeholder; ESPHome renders the real QR on the device.')}</div>`);
+      ${(()=>{ const mods=qrModuleCount(el.text,el.ecc), px=mods*Math.max(1,el.scale||4);
+        return `<div class="hint">${T('Geschatte grootte','Estimated size')}: <b>${mods}×${mods}</b> ${T('modules','modules')} = <b>${px}×${px} px</b> ${T('op het device.','on the device.')}</div>`; })()}
+      <div class="hint">${T('ECC: LOW ~7%, MEDIUM ~15%, QUARTILE ~25%, HIGH ~30% fouttolerantie. Het patroon is een plaatshouder, maar de grootte klopt met het device.','ECC: LOW ~7%, MEDIUM ~15%, QUARTILE ~25%, HIGH ~30% error tolerance. The pattern is a placeholder, but the size matches the device.')}</div>`);
   } else if(el.type==='graph'){
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
