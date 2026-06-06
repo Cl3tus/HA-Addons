@@ -3,6 +3,17 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.2.4
+- **Real QR preview**: the editor now renders the actual QR code (bundled
+  qrcode-generator), so both the pattern and the size match the device.
+- **▲/▼ steppers everywhere on Position & Size** (X, Y, width, height, radii, sides)
+  and on the **font editor** size/weight — fields stay editable.
+- **Circle with lock ratio** keeps radius X and Y equal when you change one.
+- **MDI icon font** is now a **Font Source** option (set your own id + size, fixed
+  bundled path) instead of a separate button.
+- Note: a mouse text-selection in the YAML drawer can still be dropped by the browser
+  if you drag outside the window/iframe — use **Kopieer** for a reliable full copy.
+
 ## 3.2.3
 - **Gauge** preview now matches the device: a 180° half-ring (top), outlined track,
   filling from the **left over the top** by the fill % (50% = left half). Gauges no

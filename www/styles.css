@@ -387,6 +387,9 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
    accidentally pick up other parts of the page */
 body.code-open { user-select: none; -webkit-user-select: none; }
 body.code-open #code-out, body.code-open input, body.code-open textarea { user-select: text; -webkit-user-select: text; }
+/* keep the YAML selection clearly highlighted even when the window loses focus */
+#code-out::selection { background: rgba(232,161,58,0.40); }
+#code-out ::selection { background: rgba(232,161,58,0.40); }
 .code-tag { color: var(--accent); }
 .code-key { color: #79c0ff; }
 .code-str { color: #a7e0a0; }

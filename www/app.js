@@ -797,32 +797,46 @@ const QR_BYTE_CAP = {
   M:[14,26,42,62,84,106,122,152,180,213,251,287,331,362,412,450,504,560,624,666,711,779,857,911,997,1059,1125,1190,1264,1370,1452,1538,1628,1722,1809,1911,1989,2099,2213,2331],
   Q:[11,20,32,46,60,74,86,108,130,151,177,203,241,258,292,322,364,394,442,482,509,565,611,661,715,751,805,868,908,982,1030,1112,1168,1228,1283,1351,1423,1499,1579,1663],
   H:[7,14,24,34,44,58,64,84,98,119,137,155,177,194,220,250,280,310,338,382,403,439,461,511,535,593,625,658,698,742,790,842,898,958,983,1051,1093,1139,1219,1273] };
-/* module count (side length) for the data + ECC. Assumes byte mode (exact for URLs
-   and mixed-case text; a slight over-estimate for pure numeric/uppercase data). */
+/* build a real QR matrix with the bundled qrcode-generator (auto version). Returns
+   the qr object (getModuleCount/isDark) or null if unavailable / data too long. */
+function buildQR(text, ecc){
+  if(typeof qrcode==='undefined') return null;
+  const lvl = ecc==='HIGH'?'H' : ecc==='QUARTILE'?'Q' : ecc==='MEDIUM'?'M' : 'L';
+  try{ const q=qrcode(0, lvl); q.addData(String(text||'')); q.make(); return q; }catch(e){ return null; }
+}
+/* module count (side length) for the data + ECC — exact via the QR library, with a
+   byte-mode capacity-table fallback if the library is missing. */
 function qrModuleCount(text, ecc){
+  const q=buildQR(text, ecc); if(q) return q.getModuleCount();
   const bytes = unescape(encodeURIComponent(String(text||''))).length;
   const lvl = ecc==='HIGH'?'H' : ecc==='QUARTILE'?'Q' : ecc==='MEDIUM'?'M' : 'L';
   const tbl = QR_BYTE_CAP[lvl];
   let v = tbl.findIndex(cap=>bytes<=cap);
-  if(v<0) v = 39;            // data too long → cap at version 40
-  return 17 + 4*(v+1);       // version N → 17 + 4N modules per side
+  if(v<0) v = 39;
+  return 17 + 4*(v+1);
 }
-/* QR placeholder preview — sized exactly like the device (modules × scale) with
-   three finder squares + a hatch pattern. The real QR is rendered by ESPHome. */
+/* QR preview — renders the REAL QR (correct modules) at modules × scale so both the
+   look and the size match the device. Falls back to a placeholder if the lib fails. */
 function qrPreviewNode(E, css){
   const scale = Math.max(1, E.scale||4);
-  const QR_MODULES = qrModuleCount(E.text, E.ecc);
-  const size = QR_MODULES * scale;
+  const q = buildQR(E.text, E.ecc);
   const g = new Konva.Group({x:E.x, y:E.y});
+  if(q){
+    const n=q.getModuleCount(), size=n*scale;
+    g.add(new Konva.Rect({x:0,y:0,width:size,height:size,fill:'#fff',stroke:css,strokeWidth:1}));
+    g.add(new Konva.Shape({width:size,height:size,listening:false, sceneFunc:(ctx)=>{
+      ctx.fillStyle=css;
+      for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(q.isDark(r,c)) ctx.fillRect(c*scale, r*scale, scale, scale);
+    }}));
+    return g;
+  }
+  // fallback placeholder (data too long or lib missing) — still sized correctly
+  const QR_MODULES = qrModuleCount(E.text, E.ecc), size=QR_MODULES*scale, m=scale;
   g.add(new Konva.Rect({x:0,y:0,width:size,height:size,fill:'#fff',stroke:css,strokeWidth:1}));
-  const m = scale;                       // one module
-  const finder = (fx,fy)=>{
-    g.add(new Konva.Rect({x:fx*m,y:fy*m,width:7*m,height:7*m,fill:css}));
+  const finder=(fx,fy)=>{ g.add(new Konva.Rect({x:fx*m,y:fy*m,width:7*m,height:7*m,fill:css}));
     g.add(new Konva.Rect({x:(fx+1)*m,y:(fy+1)*m,width:5*m,height:5*m,fill:'#fff'}));
-    g.add(new Konva.Rect({x:(fx+2)*m,y:(fy+2)*m,width:3*m,height:3*m,fill:css}));
-  };
+    g.add(new Konva.Rect({x:(fx+2)*m,y:(fy+2)*m,width:3*m,height:3*m,fill:css})); };
   finder(0,0); finder(QR_MODULES-7,0); finder(0,QR_MODULES-7);
-  // sparse module hatch in the data area so it reads as a QR
   for(let i=9;i<QR_MODULES-2;i+=2){ for(let j=9;j<QR_MODULES-2;j+=2){
     if((i*j)%3===0) g.add(new Konva.Rect({x:i*m,y:j*m,width:m,height:m,fill:css})); } }
   return g;
@@ -1699,7 +1713,8 @@ function attr(v){ return v==null?'':String(v).replace(/"/g,'&quot;'); }
 /* ---- inspector event binding ---- */
 /* add ▲/▼ stepper buttons to radius/size number fields (the field stays editable) */
 function addSteppers(host){
-  const sel='input[type=number].spin, input[type=number][data-k="r"], input[type=number][data-k="inner"], input[type=number][data-k="rx"], input[type=number][data-k="ry"], input[type=number][data-k="sides"]';
+  const keys=['x','y','x2','y2','w','h','r','inner','rx','ry','sides'];
+  const sel='input[type=number].spin, '+keys.map(k=>`input[type=number][data-k="${k}"]`).join(', ');
   host.querySelectorAll(sel).forEach(inp=>{
     if(inp._stepped || !inp.parentNode) return; inp._stepped=true;
     const wrap=document.createElement('span'); wrap.className='stepper';
@@ -1723,6 +1738,8 @@ function bindInspector(host, el){
     inp.addEventListener('change',()=>{ pushUndo(); const k=inp.dataset.k;
       el[k] = inp.type==='checkbox'?inp.checked:(isNum?(+inp.value):inp.value);
       if(k==='sides'){ el.sides=Math.max(3, Math.round(el.sides||3)); inp.value=el.sides; }   // never below 3
+      // circle with lock ratio: keep rx == ry so it stays round
+      if(el.type==='circle' && el.lockAspect!==false && (k==='rx'||k==='ry')){ const v=el[k]; el.rx=v; el.ry=v; }
       // re-locking restores a clean 1:1 aspect (circle -> round, rect/triangle -> square)
       if(k==='lockAspect' && inp.checked){
         if(el.type==='circle'){
@@ -1733,7 +1750,7 @@ function bindInspector(host, el){
         }
       }
       afterChange();
-      if(k==='lockAspect') renderInspector();   // refresh shown values
+      if(k==='lockAspect' || (el.type==='circle' && el.lockAspect!==false && (k==='rx'||k==='ry'))) renderInspector();   // refresh shown values
     });
     // live preview while dragging a slider (no undo spam, no full inspector rebuild)
     if(inp.type==='range'){
@@ -2471,6 +2488,7 @@ function openModal(title, body, footerBtns, onClose){
   const f=$('#modal-footer'); f.innerHTML='';
   (footerBtns||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'ghost'); el.textContent=b.label; el.onclick=b.onClick; f.appendChild(el); });
   _modalClose = onClose||null;
+  addSteppers($('#modal-body'));   // ▲/▼ steppers for any .spin field in modals (font size/weight)
   $('#modal-back').classList.add('open');
 }
 function closeModal(){ const f=_modalClose; _modalClose=null; if(f){ try{ f(); }catch(e){} } $('#modal-back').classList.remove('open'); }
@@ -2633,12 +2651,16 @@ async function openFonts(){
        <label class="fld">${T('Font toevoegen','Add font')}</label>
        <div class="row tight">
          <div style="flex:2"><label class="fld">id</label><input id="nf-id" type="text" class="mono" placeholder="${T('bv. font_groot','e.g. font_large')}" title="${T('De id waarmee je dit font in elementen kiest en die in de YAML verschijnt. Letters, cijfers en _.','The id you select this font by in elements and that appears in the YAML. Letters, digits and _.')}"></div>
-         <div><label class="fld">${T('grootte (size)','size')}</label><input id="nf-size" type="number" placeholder="size" value="30" style="width:90px" title="${T('Tekenhoogte in pixels (font size).','Glyph height in pixels (font size).')}"></div>
-         <div><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt: een lokaal font-bestand, Google Fonts, of een download-URL.','Where the font comes from: a local font file, Google Fonts, or a download URL.')}"><option value="local">${T('Lokale fonts','Local Fonts')}</option><option value="gfonts">Google Fonts</option><option value="web">${T('Web-fonts','Web Fonts')}</option></select></div>
+         <div><label class="fld">${T('grootte (size)','size')}</label><input id="nf-size" class="spin" type="number" placeholder="size" value="30" style="width:90px" title="${T('Tekenhoogte in pixels (font size).','Glyph height in pixels (font size).')}"></div>
+         <div><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt.','Where the font comes from.')}"><option value="local">${T('Lokale fonts','Local Fonts')}</option><option value="gfonts">Google Fonts</option><option value="web">${T('Web-fonts','Web Fonts')}</option><option value="mdi">${T('MDI-icoonfont','MDI icon font')}</option></select></div>
        </div>
+       <div class="row tight" id="nf-mdi" style="display:none">
+         <div style="flex:2"><label class="fld">${T('pad (vast)','path (fixed)')}</label><input id="nf-mdi-file" type="text" class="mono" value="fonts/materialdesignicons-webfont.ttf" readonly title="${T('De meegebundelde Material Design Icons-font; dit pad ligt vast.','The bundled Material Design Icons font; this path is fixed.')}"></div>
+       </div>
+       <div class="hint" id="nf-mdi-note" style="display:none;margin-top:4px">${T('Kies een eigen id en grootte; de glyphs worden bepaald door de gekozen icons.','Pick your own id and size; the glyphs come from the icons you use.')}</div>
        <div class="row tight" id="nf-gfonts">
          <div style="flex:2"><label class="fld">family</label><input id="nf-family" type="text" placeholder="${T('bv.','e.g.')} Roboto" title="${T('Exacte Google-Fonts-naam, bv. “Roboto”, “Noto Sans Display”.','Exact Google Fonts family name, e.g. “Roboto”, “Noto Sans Display”.')}"></div>
-         <div><label class="fld">weight</label><input id="nf-weight" type="number" placeholder="weight" value="400" style="width:90px" title="${T('Letterdikte: 100=thin, 400=normaal, 700=bold, 900=black. Moet bestaan voor deze family.','Font weight: 100=thin, 400=regular, 700=bold, 900=black. Must exist for this family.')}"></div>
+         <div><label class="fld">weight</label><input id="nf-weight" class="spin" type="number" placeholder="weight" value="400" style="width:90px" title="${T('Letterdikte: 100=thin, 400=normaal, 700=bold, 900=black. Moet bestaan voor deze family.','Font weight: 100=thin, 400=regular, 700=bold, 900=black. Must exist for this family.')}"></div>
        </div>
        <div class="hint" id="nf-gfonts-link" style="margin-top:4px">↗ <a href="https://fonts.google.com/" target="_blank" rel="noopener">${T('Bekijk en kies een Google Font','Browse and pick a Google Font')}</a> ${T('(opent in nieuw tabblad)','(opens in a new tab)')}</div>
        <div class="row tight" id="nf-local" style="display:none">
@@ -2651,7 +2673,6 @@ async function openFonts(){
        </div>
        <div class="hint" id="nf-web-link" style="display:none;margin-top:4px">↗ <a href="https://fontsource.org/" target="_blank" rel="noopener">${T('Zoek een download-URL op Fontsource','Find a download URL on Fontsource')}</a> ${T('(of plak een directe link naar een .ttf/.otf)','(or paste a direct link to a .ttf/.otf)')}</div>
        <button class="btn sm" id="nf-add" style="margin-top:8px">+ ${T('Font toevoegen','Add font')}</button>
-       <button class="btn sm ghost" id="nf-add-mdi" style="margin-top:8px;margin-left:6px" title="${T('Voeg een Material Design Icons-icoonfont toe (de meegebundelde TTF).','Add a Material Design Icons icon font (the bundled TTF).')}">+ ${T('MDI-icoonfont','MDI icon font')}</button>
        <div class="hint" style="margin-top:6px">${T('Het','The')} <span class="mono">id</span> ${T('gebruik je in elementen; het','is used in elements; the')} <span class="mono">${T('pad','path')}</span> ${T('moet kloppen met je ESPHome','must match your ESPHome')} <span class="mono">fonts/</span>${T('-map.',' folder.')}</div>
      </div>
      <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')} ${T('Wijzigingen gelden pas na Opslaan.','Changes apply only after Save.')}</div>`,
@@ -2681,6 +2702,8 @@ async function openFonts(){
     $('#nf-local-note').style.display = k==='local'?'':'none';
     $('#nf-web').style.display        = k==='web'?'':'none';
     $('#nf-web-link').style.display   = k==='web'?'':'none';
+    $('#nf-mdi').style.display        = k==='mdi'?'':'none';
+    $('#nf-mdi-note').style.display   = k==='mdi'?'':'none';
   };
   kindSel.onchange=syncKind; syncKind();
   let pendingUpload=null;
@@ -2690,25 +2713,18 @@ async function openFonts(){
     if(!/^[a-z_][a-z0-9_]*$/i.test(id)){ toast(T('Geef een geldig id (letters/cijfers/_)','Enter a valid id (letters/digits/_)')); return; }
     if(fontById(id)){ toast(T('Dit id bestaat al','This id already exists')); return; }
     const size=+$('#nf-size').value||30, kind=kindSel.value;
-    const f={ id, size, kind, dynamic:false, baseCharset:' -.:%/°0123456789', dataUrl:null, seedGlyphs:[] };
+    const f={ id, size, kind:(kind==='mdi'?'local':kind), dynamic:false, baseCharset:' -.:%/°0123456789', dataUrl:null, seedGlyphs:[] };
     if(kind==='gfonts'){ f.family=($('#nf-family').value||'Roboto').trim(); f.weight=+$('#nf-weight').value||400; f.file=null; }
     else if(kind==='web'){ const url=($('#nf-url').value||'').trim();
       if(!/^https?:\/\//i.test(url)){ toast(T('Geef een geldige http(s)-URL','Enter a valid http(s) URL')); return; }
       f.family=null; f.weight=null; f.url=url; f.file=null; }
+    else if(kind==='mdi'){ f.family=null; f.weight=null; f.file='fonts/materialdesignicons-webfont.ttf'; f.baseCharset=''; }
     else { f.family=null; f.weight=null; f.file=($('#nf-file').value||'fonts/font.ttf').trim(); f.dataUrl=pendingUpload; reuseFontFile(f); }
     profile().fonts.push(f);
     injectGoogleFonts(); await registerUploadedFonts();
     if(f.dataUrl) await maybeUploadFont(f, (f.file||'').split('/').pop()||f.id+'.ttf');
     persist(); afterChange(); openFonts(); toast(T('Font toegevoegd','Font added'));
   };
-  // re-add the bundled Material Design Icons font (handy if it was deleted by mistake)
-  { const mb=$('#nf-add-mdi'); if(mb) mb.onclick=async()=>{
-      let id='font_mdi', n=2; while(fontById(id)) id='font_mdi_'+(n++);
-      const f={ id, size:48, kind:'local', file:'fonts/materialdesignicons-webfont.ttf', dynamic:false, baseCharset:'', dataUrl:null, seedGlyphs:[] };
-      profile().fonts.push(f);
-      await registerUploadedFonts();
-      persist(); afterChange(); openFonts(); toast(T('MDI-icoonfont toegevoegd: ','MDI icon font added: ')+id);
-    }; }
 }
 
 /* rename a font id everywhere it is referenced (elements, graph axes, clock icon) */
@@ -2733,7 +2749,7 @@ function editFont(i){
     openModal(T('Icoon-font','Icon font'),
       `<div class="row tight">
          <div style="flex:2"><label class="fld">id</label><input id="ef-id" class="mono" value="${attr(f.id)}" title="${T('Wordt overal bijgewerkt waar dit icoon-font gebruikt wordt.','Updated everywhere this icon font is used.')}"></div>
-         <div><label class="fld">${T('grootte (px)','size (px)')}</label><input id="ef-size" type="number" min="6" value="${f.size||30}" style="width:90px" title="${T('Tekenhoogte in pixels.','Glyph height in pixels.')}"></div>
+         <div><label class="fld">${T('grootte (px)','size (px)')}</label><input id="ef-size" class="spin" type="number" min="6" value="${f.size||30}" style="width:90px" title="${T('Tekenhoogte in pixels.','Glyph height in pixels.')}"></div>
        </div>
        <div class="hint" style="margin-top:6px">${T('Van de meegebundelde Material Design Icons-font kun je de id en de grootte aanpassen; de bron ligt vast.','For the bundled Material Design Icons font you can change the id and the size; the source is fixed.')}</div>`,
       [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:openFonts},
@@ -2751,7 +2767,7 @@ function editFont(i){
   openModal(T('Font bewerken','Edit font'),
     `<div class="row tight">
        <div style="flex:2"><label class="fld">id</label><input id="ef-id" class="mono" value="${attr(f.id)}" title="${T('Wordt overal bijgewerkt waar dit font gebruikt wordt.','Updated everywhere this font is used.')}"></div>
-       <div><label class="fld">${T('grootte','size')}</label><input id="ef-size" type="number" min="6" value="${f.size||30}" style="width:90px" title="${T('Tekenhoogte in pixels.','Glyph height in pixels.')}"></div>
+       <div><label class="fld">${T('grootte','size')}</label><input id="ef-size" class="spin" type="number" min="6" value="${f.size||30}" style="width:90px" title="${T('Tekenhoogte in pixels.','Glyph height in pixels.')}"></div>
        <div><label class="fld">Font Source</label><select id="ef-kind" title="${T('Lokaal font-bestand, Google Fonts of een download-URL.','Local font file, Google Fonts or a download URL.')}">
          <option value="local" ${kind0==='local'?'selected':''}>${T('Lokale fonts','Local Fonts')}</option>
          <option value="gfonts" ${kind0==='gfonts'?'selected':''}>Google Fonts</option>
@@ -2759,7 +2775,7 @@ function editFont(i){
      </div>
      <div class="row tight" id="ef-gfonts" style="${kind0==='gfonts'?'':'display:none'}">
        <div style="flex:2"><label class="fld">family</label><input id="ef-family" value="${attr(f.family||'Roboto')}" title="${T('Exacte Google-Fonts-naam.','Exact Google Fonts family name.')}"></div>
-       <div><label class="fld">weight</label><input id="ef-weight" type="number" value="${f.weight||400}" style="width:90px" title="${T('100=thin, 400=normaal, 700=bold, 900=black.','100=thin, 400=regular, 700=bold, 900=black.')}"></div>
+       <div><label class="fld">weight</label><input id="ef-weight" class="spin" type="number" value="${f.weight||400}" style="width:90px" title="${T('100=thin, 400=normaal, 700=bold, 900=black.','100=thin, 400=regular, 700=bold, 900=black.')}"></div>
      </div>
      <div class="hint" id="ef-gfonts-link" style="${kind0==='gfonts'?'':'display:none'};margin-top:4px">↗ <a href="https://fonts.google.com/" target="_blank" rel="noopener">${T('Bekijk Google Fonts','Browse Google Fonts')}</a></div>
      <div class="row tight" id="ef-local" style="${kind0==='local'?'':'display:none'}">
