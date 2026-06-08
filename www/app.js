@@ -556,7 +556,9 @@ function drawRuler(){
 
   const p=profile(); const W=p.device.w, H=p.device.h;
   const {ox:frameOffX, oy:frameOffY} = rulerFrameOffset();
-  const step = zoom >= 1 ? 50 : zoom >= 0.5 ? 100 : 200;
+  // pick the largest canvas-px interval that gives ≥18px between ticks on screen
+  const STEPS=[25,50,100,200,500]; let step=STEPS[STEPS.length-1];
+  for(let i=0;i<STEPS.length;i++){ if(STEPS[i]*zoom>=18){ step=STEPS[i]; break; } }
   const guides = profileGuides();
   const MARKER=5;
   const colDim   = cssVar('--txt-dim');
@@ -588,10 +590,10 @@ function drawRuler(){
   // ── X ruler ──────────────────────────────────────────────────────────────
   rxEl.innerHTML='';
   const rxR=rxEl.getBoundingClientRect();
-  // gradient: outside-left | canvas zone | outside-right
-  // use resolved CSS vars so light/dark theme always applies correctly
+  const isLight=document.body.classList.contains('light');
   { const cLeft=Math.max(0,frameOffX), cRight=Math.min(rxR.width, frameOffX+W*zoom);
-    const bgIn=cssVar('--panel-2'), bgOut=cssVar('--bg');
+    const bgIn=cssVar('--panel-2');
+    const bgOut=isLight ? '#ffffff' : cssVar('--bg');
     if(cLeft>0 || cRight<rxR.width){
       rxEl.style.background=`linear-gradient(to right, ${bgOut} ${cLeft}px, ${bgIn} ${cLeft}px, ${bgIn} ${cRight}px, ${bgOut} ${cRight}px)`;
     } else { rxEl.style.background=bgIn; }
@@ -602,15 +604,26 @@ function drawRuler(){
 
   const xStart = Math.floor(-frameOffX / zoom / step) * step;
   const xEnd   = Math.ceil((rxR.width - frameOffX) / zoom / step) * step;
+  const xLabelled = new Set();
   for(let x=xStart; x<=xEnd; x+=step){
     const sx=frameOffX+x*zoom;
     const outside = x<0 || x>W;
-    const isMaj=((x%(step*2))===0) || x===0;
-    svgX.appendChild(makeTick(sx, isMaj?10:14, sx, 20, outside));
-    if(isMaj){
+    const isMaj=((x%step)===0);   // label every step
+    const is2x=((x%(step*2))===0) || x===0;
+    svgX.appendChild(makeTick(sx, is2x?10:14, sx, 20, outside));
+    if(isMaj && sx>4 && sx<rxR.width-4){
       const lbl=makeLabel(String(x), sx+2, 9, 0, outside);
-      lbl.setAttribute('text-anchor','start');
-      lbl.setAttribute('x', sx+2);
+      lbl.setAttribute('text-anchor','start'); lbl.setAttribute('x',sx+2);
+      svgX.appendChild(lbl); xLabelled.add(x);
+    }
+  }
+  // canvas-end label (W) if not already rendered
+  if(!xLabelled.has(W)){
+    const sx=frameOffX+W*zoom;
+    if(sx>4 && sx<rxR.width-4){
+      svgX.appendChild(makeTick(sx,8,sx,20,false));
+      const lbl=makeLabel(String(W),sx+2,9,0,false);
+      lbl.setAttribute('text-anchor','start'); lbl.setAttribute('x',sx+2);
       svgX.appendChild(lbl);
     }
   }
@@ -644,7 +657,8 @@ function drawRuler(){
   ryEl.innerHTML='';
   const ryR=ryEl.getBoundingClientRect();
   { const cTop=Math.max(0,frameOffY), cBot=Math.min(ryR.height, frameOffY+H*zoom);
-    const bgIn=cssVar('--panel-2'), bgOut=cssVar('--bg');
+    const bgIn=cssVar('--panel-2');
+    const bgOut=isLight ? '#ffffff' : cssVar('--bg');
     if(cTop>0 || cBot<ryR.height){
       ryEl.style.background=`linear-gradient(to bottom, ${bgOut} ${cTop}px, ${bgIn} ${cTop}px, ${bgIn} ${cBot}px, ${bgOut} ${cBot}px)`;
     } else { ryEl.style.background=bgIn; }
@@ -655,14 +669,23 @@ function drawRuler(){
 
   const yStart = Math.floor(-frameOffY / zoom / step) * step;
   const yEnd   = Math.ceil((ryR.height - frameOffY) / zoom / step) * step;
+  const yLabelled = new Set();
   for(let y=yStart; y<=yEnd; y+=step){
     const sy=frameOffY+y*zoom;
     const outside = y<0 || y>H;
-    const isMaj=((y%(step*2))===0) || y===0;
-    svgY.appendChild(makeTick(isMaj?8:12, sy, 20, sy, outside));
-    if(isMaj){
+    const is2x=((y%(step*2))===0) || y===0;
+    svgY.appendChild(makeTick(is2x?8:12, sy, 20, sy, outside));
+    if(sy>4 && sy<ryR.height-4){
       const lbl=makeLabel(String(y), 10, sy-2, -90, outside);
-      svgY.appendChild(lbl);
+      svgY.appendChild(lbl); yLabelled.add(y);
+    }
+  }
+  // canvas-end label (H)
+  if(!yLabelled.has(H)){
+    const sy=frameOffY+H*zoom;
+    if(sy>4 && sy<ryR.height-4){
+      svgY.appendChild(makeTick(8,sy,20,sy,false));
+      svgY.appendChild(makeLabel(String(H),10,sy-2,-90,false));
     }
   }
   // guide markers
