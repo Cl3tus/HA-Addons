@@ -729,7 +729,7 @@ function showRulerMenu(clientX, clientY, axis){
   };
   if(count===0){ return; }
   menu.className='ctxmenu open';
-  menu.style.cssText=`position:fixed;z-index:3000;left:${clientX}px;top:${clientY}px`;
+  menu.style.cssText=`position:fixed;z-index:3000;left:${clientX}px;top:${clientY}px;min-width:0;width:auto`;
   menu.innerHTML=`<button>${label}</button>`;
   document.body.appendChild(menu);
   menu.querySelector('button').addEventListener('click',()=>{ onClick(); menu.remove(); });
