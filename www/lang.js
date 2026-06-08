@@ -126,6 +126,13 @@
     'Boven uitlijnen': 'Align top',
     'Verticaal centreren': 'Center vertically',
     'Onder uitlijnen': 'Align bottom',
+    /* --- tooltips: guides --- */
+    'Alle gidslinialen verwijderen': 'Clear all guides',
+    /* --- tooltips: layer order --- */
+    'Naar voren (bovenste laag)': 'Bring to front',
+    'Één stap naar voren': 'Step forward',
+    'Één stap naar achteren': 'Step backward',
+    'Naar achteren (onderste laag)': 'Send to back',
     /* --- tooltips: actions --- */
     'Ongedaan maken (Ctrl+Z)': 'Undo (Ctrl+Z)',
     'Opnieuw (Ctrl+Y)': 'Redo (Ctrl+Y)',
@@ -207,6 +214,8 @@
   window.toggleLang = function () {
     _override = (_lang === 'nl') ? 'en' : 'nl';
     refresh();
+    // notify app.js so it can re-render dynamic UI (inspector, modals, etc.)
+    if (typeof window.onLangChanged === 'function') window.onLangChanged();
   };
 
   // Fetch the add-on Configuration option (auto/nl/en)

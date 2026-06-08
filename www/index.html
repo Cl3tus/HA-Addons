@@ -17,7 +17,7 @@
 <script src="vendor/js-yaml.min.js"></script>
 <script src="vendor/qrcode-generator.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=3.3.1">
+<link rel="stylesheet" href="styles.css?v=3.4.0">
 </head>
 <body>
 <div id="app">
@@ -134,6 +134,15 @@
         <button class="btn ghost sm" id="al-bottom" data-i18n-title="Onder uitlijnen">⊥</button>
       </div>
       <div class="topbar-sep"></div>
+      <button class="btn ghost sm" id="btn-clear-guides" data-i18n-title="Alle gidslinialen verwijderen" title="Alle gidslinialen verwijderen"><span class="mdi mdi-ruler-remove"></span></button>
+      <div class="topbar-sep"></div>
+      <div class="grp">
+        <button class="btn ghost sm" id="btn-bring-front" data-i18n-title="Naar voren (bovenste laag)">⤒</button>
+        <button class="btn ghost sm" id="btn-step-forward" data-i18n-title="Één stap naar voren">↑</button>
+        <button class="btn ghost sm" id="btn-step-back" data-i18n-title="Één stap naar achteren">↓</button>
+        <button class="btn ghost sm" id="btn-bring-back" data-i18n-title="Naar achteren (onderste laag)">⤓</button>
+      </div>
+      <div class="topbar-sep"></div>
       <div class="grp">
         <button class="btn ghost sm" id="btn-undo" data-i18n-title="Ongedaan maken (Ctrl+Z)">↶</button>
         <button class="btn ghost sm" id="btn-redo" data-i18n-title="Opnieuw (Ctrl+Y)">↷</button>
@@ -146,8 +155,14 @@
     </div>
 
     <div id="stage-wrap">
-      <div id="stage-frame">
-        <div id="konva-host"></div>
+      <div id="ruler-corner"></div>
+      <div id="ruler-x"></div>
+      <div id="ruler-y"></div>
+      <div id="canvas-area">
+        <div id="stage-frame">
+          <div id="konva-host"></div>
+          <svg id="guide-overlay"></svg>
+        </div>
       </div>
     </div>
 
@@ -187,8 +202,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=3.3.1"></script>
-<script src="lang.js?v=3.3.1"></script>
-<script src="theme.js?v=3.3.1"></script>
+<script src="app.js?v=3.4.0"></script>
+<script src="lang.js?v=3.4.0"></script>
+<script src="theme.js?v=3.4.0"></script>
 </body>
 </html>

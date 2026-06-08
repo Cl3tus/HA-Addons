@@ -131,13 +131,9 @@ function seedProfile(name='My display'){
     schema_version: 1,
     device: { name:'eink-display', comment:'E-ink Display',
               model:'7.50in-bV3-bwr', rotation:90, w:480, h:800, bg:'#d4d6d7' },
-    // a minimal, generic font set so text/icons render out of the box
+    // minimal default font set: one text font + one icon font
     fonts: [
-      f('font_klein','gfonts',null,'Roboto',400,25,false),
-      f('font_medium','gfonts',null,'Roboto',500,25,false),
-      f('font_boven','gfonts',null,'Noto Sans Display',900,35,false),
-      f('font_mdi_large','local','fonts/materialdesignicons-webfont.ttf',null,null,50,false),
-      f('font_mdi_medium','local','fonts/materialdesignicons-webfont.ttf',null,null,60,false),
+      f(T('font_klein','font_small'),'gfonts',null,'Roboto',400,25,false),
       f('font_mdi_small','local','fonts/materialdesignicons-webfont.ttf',null,null,30,false),
     ],
     colors: colorSetFor('bwr'),   // palette matches the model's colour capability
@@ -392,6 +388,7 @@ function initStage(){
   contentLayer = new Konva.Layer();
   stage.add(gridLayer); stage.add(contentLayer);
   setupMarquee();
+  setupRulers();
   applyZoom();
 }
 
@@ -500,7 +497,168 @@ function applyZoom(){
   fr.style.height = (H*zoom)+'px';
   fr.style.background = p.device.bg || '#d4d6d7';
   $('#zoom-val').textContent = Math.round(zoom*100)+'%';
+  requestAnimationFrame(drawRuler);
 }
+/* ============================================================
+   RULERS + GUIDE LINES (Figma-style)
+   ============================================================ */
+let _guides = [];   // [{axis:'h'|'v', pos:Number}]  pos = canvas px
+
+function drawRuler(){
+  const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
+  const p=profile(); const W=p.device.w, H=p.device.h;
+  const fr=$('#stage-frame');
+  if(!fr) return;
+  const frRect=fr.getBoundingClientRect();
+  const wrapRect=$('#stage-wrap').getBoundingClientRect();
+
+  // how far the frame is from the top-left of stage-wrap (accounting for scroll + padding)
+  const wrap=$('#stage-wrap');
+  const frameOffX = frRect.left - wrapRect.left + wrap.scrollLeft;
+  const frameOffY = frRect.top  - wrapRect.top  + wrap.scrollTop;
+
+  const step = zoom >= 1 ? 50 : zoom >= 0.5 ? 100 : 200;
+  const textEvery = 2;   // label every Nth tick
+
+  // X ruler (horizontal — shows X pixel values)
+  rxEl.innerHTML='';
+  const svgX=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svgX.setAttribute('width', wrapRect.width); svgX.setAttribute('height', 20);
+  svgX.style.cssText='display:block;overflow:visible';
+  for(let x=0;x<=W;x+=step){
+    const sx = frameOffX + x*zoom;
+    const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
+    tick.setAttribute('x1',sx); tick.setAttribute('y1',14);
+    tick.setAttribute('x2',sx); tick.setAttribute('y2',20);
+    tick.setAttribute('stroke','var(--txt-dim)'); tick.setAttribute('stroke-width','0.8');
+    svgX.appendChild(tick);
+    if(x % (step*textEvery) === 0){
+      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('x',sx+2); lbl.setAttribute('y',11);
+      lbl.setAttribute('font-size','8'); lbl.setAttribute('fill','var(--txt-faint)');
+      lbl.setAttribute('font-family','var(--mono)');
+      lbl.textContent=String(x);
+      svgX.appendChild(lbl);
+    }
+  }
+  rxEl.appendChild(svgX);
+
+  // Y ruler (vertical — shows Y pixel values, rotated)
+  ryEl.innerHTML='';
+  const svgY=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svgY.setAttribute('width', 20); svgY.setAttribute('height', wrapRect.height);
+  svgY.style.cssText='display:block;overflow:visible';
+  for(let y=0;y<=H;y+=step){
+    const sy = frameOffY + y*zoom;
+    const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
+    tick.setAttribute('x1',14); tick.setAttribute('y1',sy);
+    tick.setAttribute('x2',20); tick.setAttribute('y2',sy);
+    tick.setAttribute('stroke','var(--txt-dim)'); tick.setAttribute('stroke-width','0.8');
+    svgY.appendChild(tick);
+    if(y % (step*textEvery) === 0){
+      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('transform',`rotate(-90,9,${sy-2})`);
+      lbl.setAttribute('x',9); lbl.setAttribute('y',sy-2);
+      lbl.setAttribute('font-size','8'); lbl.setAttribute('fill','var(--txt-faint)');
+      lbl.setAttribute('text-anchor','middle');
+      lbl.setAttribute('font-family','var(--mono)');
+      lbl.textContent=String(y);
+      svgY.appendChild(lbl);
+    }
+  }
+  ryEl.appendChild(svgY);
+
+  drawGuides();
+}
+
+function drawGuides(){
+  const overlay=$('#guide-overlay'); if(!overlay) return;
+  const p=profile(); const W=p.device.w, H=p.device.h;
+  overlay.innerHTML='';
+  _guides.forEach((g,i)=>{
+    const el=document.createElementNS('http://www.w3.org/2000/svg','line');
+    if(g.axis==='h'){
+      const y=g.pos*zoom;
+      el.setAttribute('x1',0); el.setAttribute('y1',y);
+      el.setAttribute('x2',W*zoom); el.setAttribute('y2',y);
+      el.classList.add('guide-h');
+    } else {
+      const x=g.pos*zoom;
+      el.setAttribute('x1',x); el.setAttribute('y1',0);
+      el.setAttribute('x2',x); el.setAttribute('y2',H*zoom);
+      el.classList.add('guide-v');
+    }
+    el.style.pointerEvents='stroke';
+    // right-click → remove
+    el.addEventListener('contextmenu',ev=>{ ev.preventDefault(); _guides.splice(i,1); drawGuides(); drawRuler(); });
+    // drag to reposition
+    el.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation();
+      const fr=$('#stage-frame').getBoundingClientRect();
+      const onMove=mv=>{ const pos = g.axis==='h' ? (mv.clientY-fr.top)/zoom : (mv.clientX-fr.left)/zoom;
+        g.pos=Math.max(0,Math.round(pos)); drawGuides(); };
+      const onUp=()=>{ window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); drawRuler(); };
+      window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
+    });
+    // tooltip showing position
+    const title=document.createElementNS('http://www.w3.org/2000/svg','title');
+    title.textContent=(g.axis==='h'?'Y':'X')+': '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
+    el.appendChild(title);
+    overlay.appendChild(el);
+  });
+}
+
+function setupRulers(){
+  const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
+
+  // drag from X ruler → horizontal guide
+  rxEl.addEventListener('mousedown',ev=>{
+    if(ev.button!==0) return;
+    const preview=document.createElement('div'); preview.id='guide-preview-h';
+    document.body.appendChild(preview);
+    const fr=$('#stage-frame').getBoundingClientRect();
+    const update=mv=>{ preview.style.top=mv.clientY+'px'; preview.style.left=fr.left+'px'; preview.style.width=fr.width+'px'; };
+    update(ev);
+    const onUp=mv=>{
+      preview.remove();
+      window.removeEventListener('mousemove',update); window.removeEventListener('mouseup',onUp);
+      const pos=Math.max(0,Math.round((mv.clientY-fr.top)/zoom));
+      if(mv.clientY>fr.top && mv.clientY<fr.bottom){ _guides.push({axis:'h',pos}); drawGuides(); drawRuler(); }
+    };
+    window.addEventListener('mousemove',update); window.addEventListener('mouseup',onUp);
+    ev.preventDefault();
+  });
+
+  // drag from Y ruler → vertical guide
+  ryEl.addEventListener('mousedown',ev=>{
+    if(ev.button!==0) return;
+    const preview=document.createElement('div'); preview.id='guide-preview-v';
+    document.body.appendChild(preview);
+    const fr=$('#stage-frame').getBoundingClientRect();
+    const update=mv=>{ preview.style.left=mv.clientX+'px'; preview.style.top=fr.top+'px'; preview.style.height=fr.height+'px'; };
+    update(ev);
+    const onUp=mv=>{
+      preview.remove();
+      window.removeEventListener('mousemove',update); window.removeEventListener('mouseup',onUp);
+      const pos=Math.max(0,Math.round((mv.clientX-fr.left)/zoom));
+      if(mv.clientX>fr.left && mv.clientX<fr.right){ _guides.push({axis:'v',pos}); drawGuides(); drawRuler(); }
+    };
+    window.addEventListener('mousemove',update); window.addEventListener('mouseup',onUp);
+    ev.preventDefault();
+  });
+
+  // show coordinate tooltip while hovering over ruler
+  rxEl.addEventListener('mousemove',ev=>{
+    const fr=$('#stage-frame').getBoundingClientRect();
+    const x=Math.round((ev.clientX-fr.left)/zoom);
+    rxEl.title='X: '+x+'px';
+  });
+  ryEl.addEventListener('mousemove',ev=>{
+    const fr=$('#stage-frame').getBoundingClientRect();
+    const y=Math.round((ev.clientY-fr.top)/zoom);
+    ryEl.title='Y: '+y+'px';
+  });
+}
+
 function gridStep(){ return (profile().device.grid)|| 16; }
 function drawGrid(){
   gridLayer.destroyChildren();
@@ -539,7 +697,7 @@ function buildNode(el){
                             fill:color.css, listening:true });
     // measure then position by anchor
     const w=node.width(), h=node.height();
-    const {ox,oy}=anchorOffset(E.anchor||'TOP_LEFT', w, h);
+    const {ox,oy}=anchorOffset(E.anchor||'CENTER', w, h);
     node.x(E.x+ox); node.y(E.y+oy);
     if(!fontLoaded(font)){ node.opacity(0.75); }
   }
@@ -603,7 +761,7 @@ function buildNode(el){
   else if(E.type==='wifi'){
     const font=fontById(E.fontId)||profile().fonts[0];
     node=new Konva.Text({ text:mdiChar(wifiPreviewHex(E)), fontFamily:previewFamily(font), fontSize:font.size, fill:color.css, listening:true });
-    const w=node.width(), h=node.height(); const {ox,oy}=anchorOffset(E.anchor||'TOP_CENTER', w, h);
+    const w=node.width(), h=node.height(); const {ox,oy}=anchorOffset(E.anchor||'CENTER', w, h);
     node.x(E.x+ox); node.y(E.y+oy);
   }
   else if(E.type==='clock'){
@@ -621,7 +779,7 @@ function buildNode(el){
     const {offX,offY}=hasIcon?clockOffsets(E):{offX:0,offY:0};
     txtNode.x(offX); txtNode.y((midH-txtNode.height())/2 + offY); g.add(txtNode);
     // anchor by group bbox
-    const b=g.getClientRect(); const {ox,oy}=anchorOffset(E.anchor||'TOP_CENTER', b.width, b.height);
+    const b=g.getClientRect(); const {ox,oy}=anchorOffset(E.anchor||'CENTER', b.width, b.height);
     g.x(E.x+ox); g.y(E.y+oy); node=g;
   }
   else if(E.type==='graph'){
@@ -741,7 +899,7 @@ function buildNode(el){
       el.x=Math.round(node.x()-ox); el.y=Math.round(node.y()-oy);
     } else {
       const w=node.width(), h=node.height();
-      const {ox,oy}=anchorOffset(el.anchor||'TOP_LEFT', w, h);
+      const {ox,oy}=anchorOffset(el.anchor||'CENTER', w, h);
       el.x=Math.round(node.x()-ox); el.y=Math.round(node.y()-oy);
     }
     // (live snapping is handled by dragBoundFunc, which aligns the visual box to
@@ -1113,6 +1271,27 @@ function moveLayerTo(srcId, targetId, before){
   const arr=els(); arr.length=0; newArr.forEach(e=>arr.push(e));
   afterChange();
 }
+function bringToFront(){
+  if(!selectedId) return;
+  const arr=els(), i=arr.findIndex(e=>e.id===selectedId); if(i<0||i===arr.length-1) return;
+  pushUndo(); arr.push(arr.splice(i,1)[0]); afterChange();
+}
+function sendToBack(){
+  if(!selectedId) return;
+  const arr=els(), i=arr.findIndex(e=>e.id===selectedId); if(i<=0) return;
+  pushUndo(); arr.unshift(arr.splice(i,1)[0]); afterChange();
+}
+function stepForward(){
+  if(!selectedId) return;
+  const arr=els(), i=arr.findIndex(e=>e.id===selectedId); if(i<0||i===arr.length-1) return;
+  pushUndo(); const tmp=arr[i]; arr[i]=arr[i+1]; arr[i+1]=tmp; afterChange();
+}
+function stepBackward(){
+  if(!selectedId) return;
+  const arr=els(), i=arr.findIndex(e=>e.id===selectedId); if(i<=0) return;
+  pushUndo(); const tmp=arr[i]; arr[i]=arr[i-1]; arr[i-1]=tmp; afterChange();
+}
+
 function renderLayers(){
   const box=$('#layers'); box.innerHTML='';
   $('#layer-count').textContent = els().length;
@@ -1183,6 +1362,13 @@ function ensureMdiFont(){
   return id;
 }
 function mdiFontFor(preferId){ const f=fontById(preferId); return (f && /materialdesignicons/i.test(f.file||'')) ? preferId : ensureMdiFont(); }
+// returns the best available text font id: prefer font_small/font_klein, else first non-MDI font
+function defaultTextFont(){
+  const preferred=[T('font_klein','font_small'),'font_klein','font_small','font_medium','font_boven'];
+  for(const id of preferred){ if(fontById(id)) return id; }
+  const f=profile().fonts.find(f=>!/materialdesignicons/i.test(f.file||''));
+  return f ? f.id : (profile().fonts[0]||{id:'font_klein'}).id;
+}
 function addElement(type, pos){
   pushUndo();
   const p=profile();
@@ -1199,7 +1385,7 @@ function addElement(type, pos){
                whenTrue:{text:'',iconName:'',iconHex:'',colorId:'',visible:true},
                whenFalse:{text:'',iconName:'',iconHex:'',colorId:'',visible:true}} };
   if(type==='text'){
-    Object.assign(base,{ fontId:'font_klein', role,
+    Object.assign(base,{ fontId:defaultTextFont(), role,
       source: role==='value'
         ? {kind:'sensor',sourceId:(p.sources[0]?p.sources[0].id:''),text:'',expr:''}
         : {kind:'static',text:'Tekst',sourceId:'',expr:''},
@@ -1233,15 +1419,15 @@ function addElement(type, pos){
         {min:-999, icon:'wifi-strength-alert-outline', hex:'F092B'} ] } });
   } else if(type==='clock'){
     const mdi=mdiFontFor('font_mdi_small');
-    Object.assign(base,{ fontId:'font_klein', anchor:'CENTER', colorId:'color_text',
+    Object.assign(base,{ fontId:defaultTextFont(), anchor:'CENTER', colorId:'color_text',
       clock:{ strftime:'%H:%M', icon:true, iconName:'recycle', iconHex:'F044C', iconFontId:mdi } });
   } else if(type==='graph'){
     Object.assign(base,{ x:cx-150,y:cy, w:300,h:140, colorId:'color_text', anchor:undefined,
       graph:{ duration:'1h', x_grid:'10min', y_grid:5, border:true,
         min_range:'', max_range:'',
         traces:[{sourceId:'aquatemp', name:'', lineType:'SOLID', thickness:2, continuous:true, colorId:'color_text'}],
-        axes:{ show:false, fontId:'font_klein', yTitle:'', xTitle:'', showYScale:true, showXScale:true },
-        legend:{ show:false, x:'', y:'', nameFontId:'font_klein', valueFontId:'', border:true,
+        axes:{ show:false, fontId:defaultTextFont(), yTitle:'', xTitle:'', showYScale:true, showXScale:true },
+        legend:{ show:false, x:'', y:'', nameFontId:defaultTextFont(), valueFontId:'', border:true,
                  showLines:true, showValues:'AUTO', showUnits:true, direction:'AUTO' } } });
   }
   els().push(base); selectedId=base.id; afterChange();
@@ -1403,8 +1589,7 @@ function renderInspector(){
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
       <div class="hint">${T('De golf in de preview is een voorbeeld; op het device tekent ESPHome de echte sensorgeschiedenis. De Y-as-getallen verschijnen pas als je hieronder een vaste Y-min én Y-max invult.','The wave in the preview is a placeholder; on the device ESPHome draws the real sensor history. The Y-axis numbers only appear once you set a fixed Y-min and Y-max below.')}</div>`);
   } else {
-    h+=g(T('Positie & uitlijning','Position & alignment'),`<div class="row"><div><label class="fld">${T('Anker X','Anchor X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Anker Y','Anchor Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>
-      <label class="fld">${T('Uitlijning (TextAlign)','Alignment (TextAlign)')}</label>${anchorGrid(el)}`);
+    h+=g(T('Positie','Position'),`<div class="row"><div><label class="fld">${T('Anker X','Anchor X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Anker Y','Anchor Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>`);
   }
 
   // font + color
@@ -1840,7 +2025,7 @@ function bindInspector(host, el){
     const node=contentLayer.getChildren(n=>n._elId===el.id)[0];
     if(node && (el.type==='text'||el.type==='icon')){
       const w=node.width(), h=node.height();
-      const oldO=anchorOffset(el.anchor||'TOP_LEFT', w, h);
+      const oldO=anchorOffset(el.anchor||'CENTER', w, h);
       const topLeftX=el.x+oldO.ox, topLeftY=el.y+oldO.oy; // current visual top-left
       const newO=anchorOffset(b.dataset.anchor, w, h);
       el.x=Math.round(topLeftX-newO.ox); el.y=Math.round(topLeftY-newO.oy);
@@ -2763,7 +2948,16 @@ async function openFonts(){
      </div>
      <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')} ${T('Wijzigingen gelden pas na Opslaan.','Changes apply only after Save.')}</div>`,
     [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:()=>{ _revertFontsIfUnsaved(); closeModal(); }},
-     {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{ _fontsSnapshot=null; persist(); afterChange(); closeModal(); toast(T('Fonts opgeslagen','Fonts saved')); }}],
+     {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
+       // warn if the "add font" form has data that hasn't been added via +
+       const pendingId=($('#nf-id')&&$('#nf-id').value||'').trim();
+       const pendingFamily=($('#nf-family')&&$('#nf-family').value||'').trim();
+       const pendingFile=($('#nf-file')&&$('#nf-file').value||'').trim();
+       const pendingUrl=($('#nf-url')&&$('#nf-url').value||'').trim();
+       if(pendingId || pendingFamily || pendingFile || pendingUrl){
+         if(!confirm(T('Er zijn niet-toegevoegde wijzigingen in het "Font toevoegen"-formulier. Klik op + om het font toe te voegen, of klik OK om toch op te slaan zonder dit font.','There are unadded changes in the "Add font" form. Click + to add the font first, or click OK to save without it.'))) return;
+       }
+       _fontsSnapshot=null; persist(); afterChange(); closeModal(); toast(T('Fonts opgeslagen','Fonts saved')); }}],
     _revertFontsIfUnsaved);   // ✕ / backdrop also revert unsaved font changes
   // click a loaded font id → inline preview
   $$('#modal-body [data-prev]').forEach(a=>a.onclick=ev=>{ ev.preventDefault(); previewFontInline(profile().fonts[+a.dataset.prev]); });
@@ -3744,6 +3938,9 @@ function wire(){
   $('#tg-grid').onchange=()=>drawGrid();
   $('#grid-size').onchange=e=>{ profile().device.grid=+e.target.value; persist(); drawGrid(); };
 
+  { const cg=$('#btn-clear-guides'); if(cg) cg.onclick=()=>{ _guides=[]; drawGuides(); drawRuler(); }; }
+  $('#btn-bring-front').onclick=bringToFront; $('#btn-bring-back').onclick=sendToBack;
+  $('#btn-step-forward').onclick=stepForward; $('#btn-step-back').onclick=stepBackward;
   $('#btn-undo').onclick=undo; $('#btn-redo').onclick=redo;
   $('#btn-dup').onclick=dupSel; $('#btn-del').onclick=deleteSel;
   { const c=$('#btn-copy-el'); if(c) c.onclick=copySel;
@@ -3773,6 +3970,15 @@ function wire(){
     else if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){ nudge(e); }
   });
 }
+// re-render all dynamic UI after a language toggle so open panels/inspector update
+window.onLangChanged = function(){
+  renderLayers(); renderInspector(); renderProfiles();
+  // if the font modal is open, reopen it so all its strings re-render
+  if($('#modal') && $('#modal').style.display!=='none' && $('#modal-title') && $('#modal-title').textContent==='Font Editor'){
+    closeModal(); openFonts();
+  }
+};
+
 function nudge(e){ if(!selectedIds.size) return; e.preventDefault(); const d=e.shiftKey?10:1;
   const dx=(e.key==='ArrowLeft'?-d:e.key==='ArrowRight'?d:0), dy=(e.key==='ArrowUp'?-d:e.key==='ArrowDown'?d:0);
   els().forEach(el=>{ if(selectedIds.has(el.id)){ el.x+=dx; el.y+=dy; if(el.x2!=null){el.x2+=dx;el.y2+=dy;} } });
@@ -3929,6 +4135,7 @@ async function boot(){
   zoom=1; applyZoom();                 // default to 100% (use "Passend" to fit)
   renderCanvas(); renderLayers(); renderInspector();
   updateLiveBadge();
+  requestAnimationFrame(drawRuler);
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>renderCanvas());
   // Check add-on API + live data (fire-and-forget to keep boot fast)
   fetch('api/info').then(r=>r.json()).then(info=>{
@@ -3944,6 +4151,8 @@ async function boot(){
 
 async function startup(){
   loadState();
+  // redraw ruler marks when the user scrolls the canvas area
+  { const wrap=$('#stage-wrap'); if(wrap) wrap.addEventListener('scroll', ()=>requestAnimationFrame(drawRuler), {passive:true}); }
   // One-time: detect add-on, apply language/theme, load profiles from storage
   try{
     const info=await fetch('api/info').then(r=>r.json());

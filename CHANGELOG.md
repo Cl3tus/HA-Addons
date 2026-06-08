@@ -3,6 +3,14 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.4.0
+- **Figma-style rulers + guide lines**: ruler strips along the canvas edges; drag from ruler to create a guide line; right-click to remove; clear all via toolbar button.
+- **Bring to front / send to back** + **step forward / step backward** buttons added to the canvas toolbar (between alignment and undo/redo).
+- **Language toggle** now re-renders all open panels, inspector, and the font modal immediately — no reload needed.
+- **Font editor**: Save now warns when the "Add font" form has unsaved data (filled but not yet clicked +).
+- **Text alignment removed** from text, value, MDI icon, Refresh Time and Wi-Fi icon inspectors — anchor is always CENTER; section renamed to **Position**.
+- **New profile defaults** simplified to two fonts: `font_small` (Roboto 400 25px) + `font_mdi_small` (MDI 30px).
+
 ## 3.3.1
 - Profile dropdown re-sorts on every change (no reload needed).
 - Refresh clock renamed to **Refresh Time** in palette + default element name.

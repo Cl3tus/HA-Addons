@@ -283,19 +283,72 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 .toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--txt-dim); cursor: pointer; user-select: none; white-space: nowrap; }
 .toggle input { accent-color: var(--accent); }
 
+/* -------- Ruler strips (Figma-style) -------- */
+:root { --ruler-sz: 20px; }
 #stage-wrap {
-  /* flex + margin:auto on the child centres the canvas when it fits, but still
-     lets you scroll to every edge when it's bigger than the viewport */
-  flex: 1; min-height: 0; overflow: auto; display: flex; padding: 28px;
+  flex: 1; min-height: 0; overflow: auto;
+  display: grid;
+  grid-template-columns: var(--ruler-sz) 1fr;
+  grid-template-rows: var(--ruler-sz) 1fr;
+  gap: 0;
 }
+#ruler-corner {
+  grid-column: 1; grid-row: 1;
+  width: var(--ruler-sz); height: var(--ruler-sz);
+  background: var(--panel-2);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; left: 0; z-index: 12;
+}
+#ruler-x {
+  grid-column: 2; grid-row: 1;
+  height: var(--ruler-sz);
+  position: sticky; top: 0; z-index: 11;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  overflow: hidden; cursor: crosshair;
+  user-select: none;
+}
+#ruler-y {
+  grid-column: 1; grid-row: 2;
+  width: var(--ruler-sz);
+  position: sticky; left: 0; z-index: 11;
+  background: var(--panel-2);
+  border-right: 1px solid var(--line);
+  overflow: hidden; cursor: crosshair;
+  user-select: none;
+}
+/* canvas area: col 2 / row 2, flex-centered so #stage-frame stays centered */
+#canvas-area {
+  grid-column: 2; grid-row: 2;
+  display: flex; align-items: center; justify-content: center;
+  padding: 28px; min-height: 0;
+}
+/* stage-frame centered inside canvas-area */
 #stage-frame {
-  margin: auto;
+  flex-shrink: 0;
   overflow: hidden;      /* clip the scaled inner content to the frame box */
   background: #d4d6d7;
   box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px #000, 0 0 0 9px #2a2a2a, 0 0 0 10px #000;
   border-radius: 3px;
   position: relative;
 }
+/* guide-overlay SVG sits over the stage-frame */
+#guide-overlay { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+/* guide lines rendered by JS */
+.guide-h, .guide-v {
+  stroke: rgba(0,120,255,0.7); stroke-width: 1; stroke-dasharray: 4 3;
+  pointer-events: stroke; cursor: ns-resize;
+}
+.guide-v { cursor: ew-resize; }
+/* guide drag preview line (follows cursor before drop) */
+#guide-preview-h, #guide-preview-v {
+  position: fixed; pointer-events: none; z-index: 200;
+  background: rgba(0,120,255,0.5);
+}
+#guide-preview-h { height: 1px; left: 0; right: 0; }
+#guide-preview-v { width: 1px; top: 0; bottom: 0; }
+/* #stage-frame — positioned/styled in the ruler block above */
 body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8bcc6, 0 0 0 9px #d8dbe2, 0 0 0 10px #c2c6d0; }
 #stage-frame.eink { filter: none; }
 #stage-frame.drop-hover { box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 2px var(--accent), 0 0 0 10px rgba(232,161,58,.18); }
