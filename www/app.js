@@ -553,21 +553,25 @@ function drawRuler(){
   const step = zoom >= 1 ? 50 : zoom >= 0.5 ? 100 : 200;
   const guides = profileGuides();
   const MARKER=5;
-  // resolve colours once (CSS vars don't work in SVG attributes)
-  const colDim=cssVar('--txt-dim');
-  const colFaint=cssVar('--txt-faint');
-  const colGuide='#1a7fe8';
+  const colDim   = cssVar('--txt-dim');
+  const colFaint  = cssVar('--txt-faint');
+  const colGuide  = '#1a7fe8';
+  // outside-canvas ticks: dimmer / slightly tinted
+  const colDimOut   = cssVar('--txt-faint');
+  const colFaintOut = cssVar('--line-2') || '#444';
 
-  function makeTick(x1,y1,x2,y2){
+  function makeTick(x1,y1,x2,y2, outside){
     const l=document.createElementNS('http://www.w3.org/2000/svg','line');
     l.setAttribute('x1',x1); l.setAttribute('y1',y1);
     l.setAttribute('x2',x2); l.setAttribute('y2',y2);
-    l.style.stroke=colDim; l.style.strokeWidth='0.8';
+    l.style.stroke = outside ? colDimOut : colDim;
+    l.style.strokeWidth = outside ? '0.5' : '0.8';
     return l;
   }
-  function makeLabel(txt, x, y, rotate){
+  function makeLabel(txt, x, y, rotate, outside){
     const t=document.createElementNS('http://www.w3.org/2000/svg','text');
-    t.style.fontSize='8px'; t.style.fill=colFaint;
+    t.style.fontSize='8px';
+    t.style.fill = outside ? colFaintOut : colFaint;
     t.style.fontFamily='monospace';
     if(rotate) t.setAttribute('transform',`rotate(${rotate},${x},${y})`);
     t.setAttribute('x',x); t.setAttribute('y',y);
@@ -582,29 +586,29 @@ function drawRuler(){
   svgX.style.cssText='display:block;overflow:visible;width:100%;height:20px';
   svgX.setAttribute('width',rxR.width); svgX.setAttribute('height',20);
 
-  // range: from negative (left of canvas) to beyond canvas right
   const xStart = Math.floor(-frameOffX / zoom / step) * step;
   const xEnd   = Math.ceil((rxR.width - frameOffX) / zoom / step) * step;
   for(let x=xStart; x<=xEnd; x+=step){
     const sx=frameOffX+x*zoom;
+    const outside = x<0 || x>W;
     const isMaj=((x%(step*2))===0) || x===0;
-    svgX.appendChild(makeTick(sx, isMaj?10:14, sx, 20));
+    svgX.appendChild(makeTick(sx, isMaj?10:14, sx, 20, outside));
     if(isMaj){
-      const lbl=makeLabel(String(x), sx, 9, 0);
+      const lbl=makeLabel(String(x), sx+2, 9, 0, outside);
       lbl.setAttribute('text-anchor','start');
       lbl.setAttribute('x', sx+2);
       svgX.appendChild(lbl);
     }
   }
-  // guide markers (triangles pointing down)
-  guides.filter(g=>g.axis==='v').forEach(g=>{
+  // guide markers — use data-idx so the contextmenu handler can find them reliably
+  guides.filter(g=>g.axis==='v').forEach((g,gi)=>{
     const sx=frameOffX+g.pos*zoom;
     const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
     tri.setAttribute('points',`${sx-MARKER},1 ${sx+MARKER},1 ${sx},${MARKER*1.8}`);
     tri.style.fill=colGuide; tri.style.cursor='ew-resize';
-    tri.addEventListener('contextmenu',ev=>{ ev.preventDefault(); ev.stopPropagation();
-      const arr=profileGuides(); const idx=arr.indexOf(g); if(idx>=0) arr.splice(idx,1);
-      persistGuides(); drawRuler(); });
+    tri.style.pointerEvents='all';
+    tri.setAttribute('data-guide-idx',String(gi));
+    tri.setAttribute('data-guide-axis','v');
     tri.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault();
       const fr=$('#stage-frame').getBoundingClientRect();
       const preview=document.createElement('div'); preview.id='guide-preview-v';
@@ -617,7 +621,7 @@ function drawRuler(){
       window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
     });
     const ttl=document.createElementNS('http://www.w3.org/2000/svg','title');
-    ttl.textContent='X: '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
+    ttl.textContent='X: '+g.pos+'px';
     tri.appendChild(ttl); svgX.appendChild(tri);
   });
   rxEl.appendChild(svgX);
@@ -633,22 +637,23 @@ function drawRuler(){
   const yEnd   = Math.ceil((ryR.height - frameOffY) / zoom / step) * step;
   for(let y=yStart; y<=yEnd; y+=step){
     const sy=frameOffY+y*zoom;
+    const outside = y<0 || y>H;
     const isMaj=((y%(step*2))===0) || y===0;
-    svgY.appendChild(makeTick(isMaj?8:12, sy, 20, sy));
+    svgY.appendChild(makeTick(isMaj?8:12, sy, 20, sy, outside));
     if(isMaj){
-      const lbl=makeLabel(String(y), 10, sy-2, -90);
+      const lbl=makeLabel(String(y), 10, sy-2, -90, outside);
       svgY.appendChild(lbl);
     }
   }
-  // guide markers (triangles pointing right)
-  guides.filter(g=>g.axis==='h').forEach(g=>{
+  // guide markers
+  guides.filter(g=>g.axis==='h').forEach((g,gi)=>{
     const sy=frameOffY+g.pos*zoom;
     const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
     tri.setAttribute('points',`1,${sy-MARKER} 1,${sy+MARKER} ${MARKER*1.8},${sy}`);
     tri.style.fill=colGuide; tri.style.cursor='ns-resize';
-    tri.addEventListener('contextmenu',ev=>{ ev.preventDefault(); ev.stopPropagation();
-      const arr=profileGuides(); const idx=arr.indexOf(g); if(idx>=0) arr.splice(idx,1);
-      persistGuides(); drawRuler(); });
+    tri.style.pointerEvents='all';
+    tri.setAttribute('data-guide-idx',String(gi));
+    tri.setAttribute('data-guide-axis','h');
     tri.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault();
       const fr=$('#stage-frame').getBoundingClientRect();
       const preview=document.createElement('div'); preview.id='guide-preview-h';
@@ -661,7 +666,7 @@ function drawRuler(){
       window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
     });
     const ttl=document.createElementNS('http://www.w3.org/2000/svg','title');
-    ttl.textContent='Y: '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
+    ttl.textContent='Y: '+g.pos+'px';
     tri.appendChild(ttl); svgY.appendChild(tri);
   });
   ryEl.appendChild(svgY);
@@ -688,36 +693,80 @@ function drawGuides(){
   guideLayer.draw();
 }
 
+/* small ruler popup (replaces browser contextmenu on ruler strips) */
+function showRulerMenu(clientX, clientY, axis){
+  const prev=$('#ruler-menu'); if(prev) prev.remove();
+  const menu=document.createElement('div'); menu.id='ruler-menu';
+  const guides=profileGuides();
+  const vCount=guides.filter(g=>g.axis==='v').length;
+  const hCount=guides.filter(g=>g.axis==='h').length;
+  const items=[
+    { label: T(`Verwijder alle verticale gidsen (${vCount})`,`Remove all vertical guides (${vCount})`),
+      disabled: vCount===0,
+      onClick:()=>{ const arr=profileGuides(); const keep=arr.filter(g=>g.axis!=='v'); arr.length=0; keep.forEach(g=>arr.push(g)); persistGuides(); drawGuides(); drawRuler(); } },
+    { label: T(`Verwijder alle horizontale gidsen (${hCount})`,`Remove all horizontal guides (${hCount})`),
+      disabled: hCount===0,
+      onClick:()=>{ const arr=profileGuides(); const keep=arr.filter(g=>g.axis!=='h'); arr.length=0; keep.forEach(g=>arr.push(g)); persistGuides(); drawGuides(); drawRuler(); } },
+  ];
+  menu.innerHTML=items.map((it,i)=>
+    `<div class="ctxitem${it.disabled?' disabled':''}" data-i="${i}">${it.label}</div>`
+  ).join('');
+  menu.style.cssText=`position:fixed;z-index:3000;left:${clientX}px;top:${clientY}px;
+    background:var(--panel-2);border:1px solid var(--line-2);border-radius:6px;
+    padding:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:200px;font-size:12px`;
+  document.body.appendChild(menu);
+  menu.querySelectorAll('.ctxitem:not(.disabled)').forEach(el=>{
+    el.addEventListener('click',()=>{ items[+el.dataset.i].onClick(); menu.remove(); });
+  });
+  const close=e=>{ if(!menu.contains(e.target)){ menu.remove(); window.removeEventListener('mousedown',close); } };
+  setTimeout(()=>window.addEventListener('mousedown',close),0);
+}
+
 function setupRulers(){
   const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
 
-  // click on ruler strip: if not on a marker → create new guide at that position
-  // marker mousedown events stopPropagation, so this only fires for empty ruler clicks
+  // ── X ruler mousedown: left = new guide, right = check marker or show menu ──
   rxEl.addEventListener('mousedown',ev=>{
     if(ev.button!==0) return;
+    // check if click is on a marker polygon
+    const hit=ev.target.closest('[data-guide-axis]') || (ev.target.dataset&&ev.target.dataset.guideAxis ? ev.target : null);
+    if(hit && hit.dataset.guideAxis==='v') return; // marker handles its own drag
     const fr=$('#stage-frame').getBoundingClientRect();
-    const startX=ev.clientX;
     const preview=document.createElement('div'); preview.id='guide-preview-v';
-    preview.style.left=startX+'px'; preview.style.top=fr.top+'px'; preview.style.height=fr.height+'px';
+    preview.style.left=ev.clientX+'px'; preview.style.top=fr.top+'px'; preview.style.height=fr.height+'px';
     document.body.appendChild(preview);
     const onMove=mv=>{ preview.style.left=mv.clientX+'px'; };
     const onUp=mv=>{
       preview.remove();
       window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp);
       const pos=Math.max(0,Math.round((mv.clientX-fr.left)/zoom));
-      // drop anywhere — place guide at the X position on the canvas
       profileGuides().push({axis:'v',pos}); persistGuides(); drawGuides(); drawRuler();
     };
     window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
     ev.preventDefault();
   });
+  rxEl.addEventListener('contextmenu',ev=>{
+    ev.preventDefault();
+    const poly=ev.target.closest ? ev.target.closest('[data-guide-axis]') : null;
+    if(poly && poly.getAttribute('data-guide-axis')==='v'){
+      const idx=+poly.getAttribute('data-guide-idx');
+      const vGuides=profileGuides().filter(g=>g.axis==='v');
+      if(vGuides[idx]){
+        const arr=profileGuides(); arr.splice(arr.indexOf(vGuides[idx]),1);
+        persistGuides(); drawGuides(); drawRuler(); return;
+      }
+    }
+    showRulerMenu(ev.clientX, ev.clientY, 'v');
+  });
 
+  // ── Y ruler mousedown ──────────────────────────────────────────────────────
   ryEl.addEventListener('mousedown',ev=>{
     if(ev.button!==0) return;
+    const hit=ev.target.closest('[data-guide-axis]') || (ev.target.dataset&&ev.target.dataset.guideAxis ? ev.target : null);
+    if(hit && hit.dataset.guideAxis==='h') return;
     const fr=$('#stage-frame').getBoundingClientRect();
-    const startY=ev.clientY;
     const preview=document.createElement('div'); preview.id='guide-preview-h';
-    preview.style.top=startY+'px'; preview.style.left=fr.left+'px'; preview.style.width=fr.width+'px';
+    preview.style.top=ev.clientY+'px'; preview.style.left=fr.left+'px'; preview.style.width=fr.width+'px';
     document.body.appendChild(preview);
     const onMove=mv=>{ preview.style.top=mv.clientY+'px'; };
     const onUp=mv=>{
@@ -728,6 +777,19 @@ function setupRulers(){
     };
     window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
     ev.preventDefault();
+  });
+  ryEl.addEventListener('contextmenu',ev=>{
+    ev.preventDefault();
+    const poly=ev.target.closest ? ev.target.closest('[data-guide-axis]') : null;
+    if(poly && poly.getAttribute('data-guide-axis')==='h'){
+      const idx=+poly.getAttribute('data-guide-idx');
+      const hGuides=profileGuides().filter(g=>g.axis==='h');
+      if(hGuides[idx]){
+        const arr=profileGuides(); arr.splice(arr.indexOf(hGuides[idx]),1);
+        persistGuides(); drawGuides(); drawRuler(); return;
+      }
+    }
+    showRulerMenu(ev.clientX, ev.clientY, 'h');
   });
 
   rxEl.addEventListener('mousemove',ev=>{

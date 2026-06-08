@@ -3,6 +3,11 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.4.8
+- Ruler: ticks outside the canvas range (negative + beyond canvas edge) shown in a dimmer colour.
+- Ruler: right-click on a marker removes that specific guide (reliable via `data-guide-axis` attribute).
+- Ruler: right-click on empty ruler strip shows a popup with "Remove all vertical guides (N)" and "Remove all horizontal guides (N)" options.
+
 ## 3.4.7
 - Status bar: Ruler checkbox moved next to Grid/px (zoom | grid+ruler | snap groups).
 - Zoom display changed to editable input: type a value and press Enter; − and + snap to nearest 10% boundary.
