@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.4.3
+- Fix: duplicate `guideLayer` declaration caused a complete crash on load (no canvas, no profiles, font editor unresponsive).
+
 ## 3.4.2
 - Font editor: unsaved-form warning now uses an in-app dialog instead of the browser `confirm()`. Toast only fires after an actual save (not on cancel).
 - Ruler: top strip now creates **vertical** guides, left strip creates **horizontal** guides (corrected).
