@@ -318,20 +318,27 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   overflow: hidden; cursor: crosshair;
   user-select: none;
 }
-/* canvas area: col 2 / row 2, flex-centered so #stage-frame stays centered */
+/* canvas area: col 2 / row 2 — plain block so overflow scrolls correctly.
+   padding gives breathing room around the stage-frame on all sides. */
 #canvas-area {
   grid-column: 2; grid-row: 2;
-  display: flex; align-items: center; justify-content: center;
-  padding: 48px 28px 56px; min-height: 0;
+  padding: 48px 40px 64px 40px;
+  /* let content determine size so the parent stage-wrap can scroll to it */
+  width: max-content; height: max-content;
+  min-width: 100%; min-height: 100%;
+  box-sizing: border-box;
+  display: flex; align-items: flex-start; justify-content: flex-start;
 }
-/* stage-frame centered inside canvas-area */
+/* stage-frame — centred when canvas fits, scrollable when it doesn't */
 #stage-frame {
-  flex-shrink: 0;
+  /* margin:auto centres when canvas-area is bigger than stage-frame */
+  margin: auto;
   overflow: hidden;      /* clip the scaled inner content to the frame box */
   background: #d4d6d7;
   box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px #000, 0 0 0 9px #2a2a2a, 0 0 0 10px #000;
   border-radius: 3px;
   position: relative;
+  flex-shrink: 0;
 }
 /* guide drag-preview lines (follow cursor while dragging from ruler) */
 #guide-preview-h, #guide-preview-v {

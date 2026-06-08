@@ -3,6 +3,12 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.4.5
+- Canvas scrolling fixed: frame is now always reachable when zoomed in (padding + max-content sizing).
+- Snap raster greyed when Snap lineaal is active and vice versa.
+- Snap lineaal checkbox hidden (and auto-unchecked) when Ruler is turned off.
+- UI states synced on every profile switch.
+
 ## 3.4.4
 - Ruler: guide markers now draggable within the ruler strip to reposition; click elsewhere creates new guide.
 - Ruler: triangle marker positions now correct (fixed offset calculation relative to ruler element).

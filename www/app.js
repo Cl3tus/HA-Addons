@@ -511,6 +511,22 @@ function applyZoom(){
 function profileGuides(){ const p=profile(); if(!p.guides) p.guides=[]; return p.guides; }
 function rulerOn(){ const p=profile(); return p.ruler !== false; }
 
+/* sync snap/ruler checkbox visual states:
+   - snap grid greys out when snap ruler is checked (and vice versa)
+   - snap ruler label hidden + unchecked when ruler is off */
+function updateSnapRulerUI(){
+  const sg=$('#tg-snap'), sr=$('#tg-snap-guides'), tr=$('#tg-ruler');
+  const rulerEnabled = tr && tr.checked;
+  // hide snap-ruler label entirely when ruler is off
+  const srLabel=sr&&sr.closest('label');
+  if(srLabel){ srLabel.style.display = rulerEnabled ? '' : 'none'; }
+  // when ruler turns off, also uncheck snap-ruler in state
+  if(!rulerEnabled && sr && sr.checked){ sr.checked=false; }
+  // grey out the other snap when one is active
+  if(sg) sg.closest('label').style.opacity = (sr&&sr.checked) ? '0.4' : '';
+  if(sr) sr.closest('label').style.opacity = (sg&&sg.checked) ? '0.4' : '';
+}
+
 /* Returns the canvas-left offset of #stage-frame relative to the ruler-x strip.
    ruler-x sits in grid column 2, so its left edge = right edge of ruler-y (20px).
    stage-frame can be scrolled + padded inside canvas-area. */
@@ -4042,11 +4058,11 @@ function wire(){
   $('#zoom-fit').onclick=fitZoom;
   $('#tg-grid').onchange=()=>drawGrid();
   $('#grid-size').onchange=e=>{ profile().device.grid=+e.target.value; persist(); drawGrid(); };
-  { const tr=$('#tg-ruler'); if(tr) tr.onchange=()=>{ profile().ruler=tr.checked; persist(); drawRuler(); }; }
-  // snap grid and snap ruler are mutually exclusive
+  { const tr=$('#tg-ruler'); if(tr) tr.onchange=()=>{ profile().ruler=tr.checked; persist(); drawRuler(); updateSnapRulerUI(); }; }
+  // snap grid and snap ruler are mutually exclusive; snap ruler hidden when ruler is off
   { const sg=$('#tg-snap'), sr=$('#tg-snap-guides');
-    if(sg) sg.onchange=()=>{ if(sg.checked && sr) sr.checked=false; };
-    if(sr) sr.onchange=()=>{ if(sr.checked && sg) sg.checked=false; }; }
+    if(sg) sg.onchange=()=>{ if(sg.checked && sr){ sr.checked=false; } updateSnapRulerUI(); };
+    if(sr) sr.onchange=()=>{ if(sr.checked && sg){ sg.checked=false; } updateSnapRulerUI(); }; }
 
   $('#btn-bring-front').onclick=bringToFront; $('#btn-bring-back').onclick=sendToBack;
   $('#btn-step-forward').onclick=stepForward; $('#btn-step-back').onclick=stepBackward;
@@ -4238,6 +4254,7 @@ async function boot(){
     const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!we; }
   const gs=$('#grid-size'); if(gs) gs.value=String(gridStep());
   { const tr=$('#tg-ruler'); if(tr) tr.checked=rulerOn(); }
+  updateSnapRulerUI();
   injectGoogleFonts();
   try{ await registerUploadedFonts(); }catch(e){ console.warn(e); }
   initStage();
