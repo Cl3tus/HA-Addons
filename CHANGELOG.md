@@ -3,6 +3,13 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.4.7
+- Status bar: Ruler checkbox moved next to Grid/px (zoom | grid+ruler | snap groups).
+- Zoom display changed to editable input: type a value and press Enter; − and + snap to nearest 10% boundary.
+- Ruler: fixed colour rendering (CSS variables now resolved before being set on SVG elements).
+- Ruler: right-click on markers now works (overflow:visible + clip-path instead of overflow:hidden).
+- Ruler: ticks extend into negative values left/above the canvas origin, and continue past the canvas edge.
+
 ## 3.4.6
 - Zoom, grid size, snap and ruler controls moved to a sticky **status bar** at the bottom of the canvas area.
 - Snap grid/ruler grey-out removed — was distracting.

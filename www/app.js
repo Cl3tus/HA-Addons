@@ -497,7 +497,8 @@ function applyZoom(){
   fr.style.width = (W*zoom)+'px';
   fr.style.height = (H*zoom)+'px';
   fr.style.background = p.device.bg || '#d4d6d7';
-  $('#zoom-val').textContent = Math.round(zoom*100)+'%';
+  const zv=$('#zoom-val');
+  if(zv && document.activeElement!==zv) zv.value = Math.round(zoom*100)+'%';
   requestAnimationFrame(drawRuler);
 }
 /* ============================================================
@@ -535,6 +536,11 @@ function rulerFrameOffset(){
   return { ox: frR.left - rxR.left, oy: frR.top - ryR.top };
 }
 
+/* resolve a CSS variable to its computed value so we can embed it in SVG attributes */
+function cssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
+}
+
 function drawRuler(){
   const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
   const on=rulerOn();
@@ -546,116 +552,117 @@ function drawRuler(){
   const {ox:frameOffX, oy:frameOffY} = rulerFrameOffset();
   const step = zoom >= 1 ? 50 : zoom >= 0.5 ? 100 : 200;
   const guides = profileGuides();
-  const MARKER=5; // half-width of triangle marker
+  const MARKER=5;
+  // resolve colours once (CSS vars don't work in SVG attributes)
+  const colDim=cssVar('--txt-dim');
+  const colFaint=cssVar('--txt-faint');
+  const colGuide='#1a7fe8';
 
-  // ── X ruler (top strip → vertical guides) ────────────────────────────────
+  function makeTick(x1,y1,x2,y2){
+    const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',x1); l.setAttribute('y1',y1);
+    l.setAttribute('x2',x2); l.setAttribute('y2',y2);
+    l.style.stroke=colDim; l.style.strokeWidth='0.8';
+    return l;
+  }
+  function makeLabel(txt, x, y, rotate){
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.style.fontSize='8px'; t.style.fill=colFaint;
+    t.style.fontFamily='monospace';
+    if(rotate) t.setAttribute('transform',`rotate(${rotate},${x},${y})`);
+    t.setAttribute('x',x); t.setAttribute('y',y);
+    t.setAttribute('text-anchor','middle');
+    t.textContent=txt; return t;
+  }
+
+  // ── X ruler ──────────────────────────────────────────────────────────────
   rxEl.innerHTML='';
   const rxR=rxEl.getBoundingClientRect();
   const svgX=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svgX.setAttribute('width', rxR.width); svgX.setAttribute('height', 20);
   svgX.style.cssText='display:block;overflow:visible;width:100%;height:20px';
-  for(let x=0;x<=W;x+=step){
+  svgX.setAttribute('width',rxR.width); svgX.setAttribute('height',20);
+
+  // range: from negative (left of canvas) to beyond canvas right
+  const xStart = Math.floor(-frameOffX / zoom / step) * step;
+  const xEnd   = Math.ceil((rxR.width - frameOffX) / zoom / step) * step;
+  for(let x=xStart; x<=xEnd; x+=step){
     const sx=frameOffX+x*zoom;
-    const isMaj=x%(step*2)===0;
-    const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
-    tick.setAttribute('x1',sx); tick.setAttribute('y1',isMaj?10:14);
-    tick.setAttribute('x2',sx); tick.setAttribute('y2',20);
-    tick.setAttribute('stroke','var(--txt-dim)'); tick.setAttribute('stroke-width','0.8');
-    svgX.appendChild(tick);
+    const isMaj=((x%(step*2))===0) || x===0;
+    svgX.appendChild(makeTick(sx, isMaj?10:14, sx, 20));
     if(isMaj){
-      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
-      lbl.setAttribute('x',sx+2); lbl.setAttribute('y',9);
-      lbl.setAttribute('font-size','8'); lbl.setAttribute('fill','var(--txt-faint)');
-      lbl.setAttribute('font-family','var(--mono)');
-      lbl.textContent=String(x); svgX.appendChild(lbl);
+      const lbl=makeLabel(String(x), sx, 9, 0);
+      lbl.setAttribute('text-anchor','start');
+      lbl.setAttribute('x', sx+2);
+      svgX.appendChild(lbl);
     }
   }
-  // markers for vertical guides — draggable within the ruler strip
+  // guide markers (triangles pointing down)
   guides.filter(g=>g.axis==='v').forEach(g=>{
     const sx=frameOffX+g.pos*zoom;
     const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-    tri.setAttribute('points',`${sx-MARKER},0 ${sx+MARKER},0 ${sx},${MARKER*1.6}`);
-    tri.setAttribute('fill','rgba(0,120,255,0.85)');
-    tri.style.cursor='ew-resize';
-    // right-click → remove
+    tri.setAttribute('points',`${sx-MARKER},1 ${sx+MARKER},1 ${sx},${MARKER*1.8}`);
+    tri.style.fill=colGuide; tri.style.cursor='ew-resize';
     tri.addEventListener('contextmenu',ev=>{ ev.preventDefault(); ev.stopPropagation();
       const arr=profileGuides(); const idx=arr.indexOf(g); if(idx>=0) arr.splice(idx,1);
       persistGuides(); drawRuler(); });
-    // drag within ruler to reposition
     tri.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault();
       const fr=$('#stage-frame').getBoundingClientRect();
-      const rxR2=rxEl.getBoundingClientRect();
       const preview=document.createElement('div'); preview.id='guide-preview-v';
       preview.style.left=(fr.left+g.pos*zoom)+'px';
       document.body.appendChild(preview);
-      const onMove=mv=>{
-        const pos=Math.round((mv.clientX-fr.left)/zoom);
-        g.pos=Math.max(0,Math.min(pos, Math.round(fr.width/zoom)));
-        preview.style.left=(fr.left+g.pos*zoom)+'px';
-        drawRuler();
-      };
+      const onMove=mv=>{ const pos=Math.round((mv.clientX-fr.left)/zoom);
+        g.pos=Math.max(0,Math.min(pos,Math.round(fr.width/zoom)));
+        preview.style.left=(fr.left+g.pos*zoom)+'px'; drawRuler(); };
       const onUp=()=>{ preview.remove(); window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); persistGuides(); drawRuler(); };
       window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
     });
-    const title=document.createElementNS('http://www.w3.org/2000/svg','title');
-    title.textContent='X: '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
-    tri.appendChild(title); svgX.appendChild(tri);
+    const ttl=document.createElementNS('http://www.w3.org/2000/svg','title');
+    ttl.textContent='X: '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
+    tri.appendChild(ttl); svgX.appendChild(tri);
   });
   rxEl.appendChild(svgX);
 
-  // ── Y ruler (left strip → horizontal guides) ─────────────────────────────
+  // ── Y ruler ──────────────────────────────────────────────────────────────
   ryEl.innerHTML='';
   const ryR=ryEl.getBoundingClientRect();
   const svgY=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svgY.setAttribute('width', 20); svgY.setAttribute('height', ryR.height);
   svgY.style.cssText='display:block;overflow:visible;width:20px;height:100%';
-  for(let y=0;y<=H;y+=step){
+  svgY.setAttribute('width',20); svgY.setAttribute('height',ryR.height);
+
+  const yStart = Math.floor(-frameOffY / zoom / step) * step;
+  const yEnd   = Math.ceil((ryR.height - frameOffY) / zoom / step) * step;
+  for(let y=yStart; y<=yEnd; y+=step){
     const sy=frameOffY+y*zoom;
-    const isMaj=y%(step*2)===0;
-    const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
-    tick.setAttribute('x1',isMaj?8:12); tick.setAttribute('y1',sy);
-    tick.setAttribute('x2',20); tick.setAttribute('y2',sy);
-    tick.setAttribute('stroke','var(--txt-dim)'); tick.setAttribute('stroke-width','0.8');
-    svgY.appendChild(tick);
+    const isMaj=((y%(step*2))===0) || y===0;
+    svgY.appendChild(makeTick(isMaj?8:12, sy, 20, sy));
     if(isMaj){
-      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
-      lbl.setAttribute('transform',`rotate(-90,10,${sy-2})`);
-      lbl.setAttribute('x',10); lbl.setAttribute('y',sy-2);
-      lbl.setAttribute('font-size','8'); lbl.setAttribute('fill','var(--txt-faint)');
-      lbl.setAttribute('text-anchor','middle');
-      lbl.setAttribute('font-family','var(--mono)');
-      lbl.textContent=String(y); svgY.appendChild(lbl);
+      const lbl=makeLabel(String(y), 10, sy-2, -90);
+      svgY.appendChild(lbl);
     }
   }
-  // markers for horizontal guides — draggable within ruler strip
+  // guide markers (triangles pointing right)
   guides.filter(g=>g.axis==='h').forEach(g=>{
     const sy=frameOffY+g.pos*zoom;
     const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-    tri.setAttribute('points',`0,${sy-MARKER} 0,${sy+MARKER} ${MARKER*1.6},${sy}`);
-    tri.setAttribute('fill','rgba(0,120,255,0.85)');
-    tri.style.cursor='ns-resize';
-    // right-click → remove
+    tri.setAttribute('points',`1,${sy-MARKER} 1,${sy+MARKER} ${MARKER*1.8},${sy}`);
+    tri.style.fill=colGuide; tri.style.cursor='ns-resize';
     tri.addEventListener('contextmenu',ev=>{ ev.preventDefault(); ev.stopPropagation();
       const arr=profileGuides(); const idx=arr.indexOf(g); if(idx>=0) arr.splice(idx,1);
       persistGuides(); drawRuler(); });
-    // drag within ruler to reposition
     tri.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault();
       const fr=$('#stage-frame').getBoundingClientRect();
       const preview=document.createElement('div'); preview.id='guide-preview-h';
       preview.style.top=(fr.top+g.pos*zoom)+'px';
       document.body.appendChild(preview);
-      const onMove=mv=>{
-        const pos=Math.round((mv.clientY-fr.top)/zoom);
-        g.pos=Math.max(0,Math.min(pos, Math.round(fr.height/zoom)));
-        preview.style.top=(fr.top+g.pos*zoom)+'px';
-        drawRuler();
-      };
+      const onMove=mv=>{ const pos=Math.round((mv.clientY-fr.top)/zoom);
+        g.pos=Math.max(0,Math.min(pos,Math.round(fr.height/zoom)));
+        preview.style.top=(fr.top+g.pos*zoom)+'px'; drawRuler(); };
       const onUp=()=>{ preview.remove(); window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); persistGuides(); drawRuler(); };
       window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
     });
-    const title=document.createElementNS('http://www.w3.org/2000/svg','title');
-    title.textContent='Y: '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
-    tri.appendChild(title); svgY.appendChild(tri);
+    const ttl=document.createElementNS('http://www.w3.org/2000/svg','title');
+    ttl.textContent='Y: '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
+    tri.appendChild(ttl); svgY.appendChild(tri);
   });
   ryEl.appendChild(svgY);
 
@@ -4049,9 +4056,21 @@ function wire(){
   { const cs=$('#code-save'); if(cs) cs.onclick=()=>{ if(!SERVER_STORAGE){ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); toast(T('Geen add-on opslag — gedownload','No add-on storage — downloaded')); return; } saveGeneratedYaml(false); }; }
   { const co=$('#code-open'); if(co) co.onclick=openGeneratedYaml; }
 
-  $('#zoom-in').onclick=()=>{ zoom=clamp(zoom+0.1,0.3,2); applyZoom(); };
-  $('#zoom-out').onclick=()=>{ zoom=clamp(zoom-0.1,0.3,2); applyZoom(); };
+  // zoom +/-: snap to the next 10% boundary (e.g. 107% + = 110%, 107% - = 100%)
+  $('#zoom-in').onclick=()=>{ const p=Math.round(zoom*100); zoom=clamp(Math.ceil((p+1)/10)*10/100,0.3,2); applyZoom(); };
+  $('#zoom-out').onclick=()=>{ const p=Math.round(zoom*100); zoom=clamp(Math.floor((p-1)/10)*10/100,0.3,2); applyZoom(); };
   $('#zoom-fit').onclick=fitZoom;
+  // zoom input: type a value and press Enter or blur to apply
+  { const zv=$('#zoom-val');
+    if(zv){
+      zv.addEventListener('keydown',e=>{
+        if(e.key==='Enter'){ e.preventDefault(); applyZoomInput(zv.value); zv.blur(); }
+        if(e.key==='Escape'){ zv.value=Math.round(zoom*100)+'%'; zv.blur(); }
+      });
+      zv.addEventListener('blur',()=>applyZoomInput(zv.value));
+      zv.addEventListener('focus',()=>{ zv.value=Math.round(zoom*100)+''; zv.select(); });
+    }
+  }
   $('#tg-grid').onchange=()=>drawGrid();
   $('#grid-size').onchange=e=>{ profile().device.grid=+e.target.value; persist(); drawGrid(); };
   { const tr=$('#tg-ruler'); if(tr) tr.onchange=()=>{ profile().ruler=tr.checked; persist(); drawRuler(); updateSnapRulerUI(); }; }
@@ -4105,6 +4124,11 @@ function nudge(e){ if(!selectedIds.size) return; e.preventDefault(); const d=e.s
   els().forEach(el=>{ if(selectedIds.has(el.id)){ el.x+=dx; el.y+=dy; if(el.x2!=null){el.x2+=dx;el.y2+=dy;} } });
   afterChange(); }
 function fitZoom(){ const wrap=$('#stage-wrap'); const p=profile(); const avail=wrap.clientHeight-56; zoom=clamp(avail/p.device.h,0.3,2); applyZoom(); }
+function applyZoomInput(raw){
+  const v=parseFloat(String(raw).replace('%','').trim());
+  if(!isNaN(v) && v>0){ zoom=clamp(v/100,0.3,2); applyZoom(); }
+  else { const zv=$('#zoom-val'); if(zv) zv.value=Math.round(zoom*100)+'%'; }
+}
 
 /* ============================================================
    BOOT

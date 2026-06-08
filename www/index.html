@@ -17,7 +17,7 @@
 <script src="vendor/js-yaml.min.js"></script>
 <script src="vendor/qrcode-generator.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=3.4.6">
+<link rel="stylesheet" href="styles.css?v=3.4.7">
 </head>
 <body>
 <div id="app">
@@ -145,15 +145,17 @@
       </div>
     </div>
 
-    <!-- canvas status bar (zoom + grid + snap + ruler) -->
+    <!-- canvas status bar (zoom | grid + ruler | snap) -->
     <div id="canvas-statusbar">
+      <!-- zoom group -->
       <div class="grp">
         <button class="btn ghost sm" id="zoom-out" data-i18n-title="Uitzoomen">−</button>
-        <span class="zoomval" id="zoom-val">100%</span>
+        <input id="zoom-val" type="text" value="100%" data-i18n-title="Zoom (handmatig invullen)" title="Zoom — klik om handmatig in te vullen" style="width:48px;text-align:center;font-family:var(--mono);font-size:11px;padding:1px 4px">
         <button class="btn ghost sm" id="zoom-in" data-i18n-title="Inzoomen">+</button>
         <button class="btn ghost sm" id="zoom-fit" data-i18n-title="Passend in beeld" data-i18n="Passend">Passend</button>
       </div>
       <div class="sb-sep"></div>
+      <!-- grid + ruler group -->
       <label class="toggle"><input type="checkbox" id="tg-grid" checked> <span data-i18n="Raster">Raster</span></label>
       <select id="grid-size" data-i18n-title="Rastergrootte" title="Rastergrootte" style="width:auto;padding:2px 5px;font-size:11px">
         <option value="8">8 px</option>
@@ -163,11 +165,11 @@
         <option value="25">25 px</option>
         <option value="40">40 px</option>
       </select>
+      <label class="toggle"><input type="checkbox" id="tg-ruler" checked> <span data-i18n="Lineaal">Lineaal</span></label>
       <div class="sb-sep"></div>
+      <!-- snap group -->
       <label class="toggle"><input type="checkbox" id="tg-snap" checked> <span data-i18n="Snap raster">Snap raster</span></label>
       <label class="toggle"><input type="checkbox" id="tg-snap-guides"> <span data-i18n="Snap lineaal">Snap lineaal</span></label>
-      <div class="sb-sep"></div>
-      <label class="toggle"><input type="checkbox" id="tg-ruler" checked> <span data-i18n="Lineaal">Lineaal</span></label>
     </div>
 
     <!-- slide-in code drawer -->
@@ -206,8 +208,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=3.4.6"></script>
-<script src="lang.js?v=3.4.6"></script>
-<script src="theme.js?v=3.4.6"></script>
+<script src="app.js?v=3.4.7"></script>
+<script src="lang.js?v=3.4.7"></script>
+<script src="theme.js?v=3.4.7"></script>
 </body>
 </html>

@@ -326,8 +326,10 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   position: sticky; top: 0; z-index: 11;
   background: var(--panel-2);
   border-bottom: 1px solid var(--line);
-  overflow: hidden; cursor: crosshair;
+  overflow: visible; cursor: crosshair;
   user-select: none;
+  /* clip only vertically so markers can poke into the canvas area */
+  clip-path: inset(0 0 -20px 0);
 }
 #ruler-y {
   grid-column: 1; grid-row: 2;
@@ -335,8 +337,9 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   position: sticky; left: 0; z-index: 11;
   background: var(--panel-2);
   border-right: 1px solid var(--line);
-  overflow: hidden; cursor: crosshair;
+  overflow: visible; cursor: crosshair;
   user-select: none;
+  clip-path: inset(0 -20px 0 0);
 }
 /* canvas area: col 2 / row 2 — plain block so overflow scrolls correctly.
    padding gives breathing room around the stage-frame on all sides. */
