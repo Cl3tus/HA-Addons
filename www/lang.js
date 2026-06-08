@@ -127,7 +127,7 @@
     'Verticaal centreren': 'Center vertically',
     'Onder uitlijnen': 'Align bottom',
     /* --- tooltips: guides --- */
-    'Alle gidslinialen verwijderen': 'Clear all guides',
+    'Lineaal': 'Ruler',
     /* --- tooltips: layer order --- */
     'Naar voren (bovenste laag)': 'Bring to front',
     'Één stap naar voren': 'Step forward',

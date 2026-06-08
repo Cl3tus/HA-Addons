@@ -3,6 +3,15 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.4.1
+- Font editor: unsaved-form warning now uses an in-app dialog instead of the browser `confirm()`. Toast only fires after an actual save (not on cancel).
+- Ruler: top strip now creates **vertical** guides, left strip creates **horizontal** guides (corrected).
+- Ruler: guide markers (triangle indicators) visible on the ruler strips; right-click on marker or canvas guide to remove it.
+- Ruler: guides are rendered on a Konva layer **behind** canvas elements but above the grid.
+- Ruler: guide lines thinner (0.5 px stroke, smaller dash).
+- Ruler: **Lineaal / Ruler** toggle checkbox added next to Snap (replaces the "clear guides" button); state saved per profile.
+- Ruler: `_guides` array moved into `profile().guides` so guides are per-profile and survive profile switches.
+
 ## 3.4.0
 - **Figma-style rulers + guide lines**: ruler strips along the canvas edges; drag from ruler to create a guide line; right-click to remove; clear all via toolbar button.
 - **Bring to front / send to back** + **step forward / step backward** buttons added to the canvas toolbar (between alignment and undo/redo).

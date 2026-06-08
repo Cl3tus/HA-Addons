@@ -379,14 +379,15 @@ function effective(el){
 /* ============================================================
    KONVA CANVAS
    ============================================================ */
-let stage, gridLayer, contentLayer, transformer, selectionVisual;
+let stage, gridLayer, guideLayer, contentLayer, transformer, selectionVisual;
 function initStage(){
   const p = profile();
   $('#konva-host').innerHTML='';
   stage = new Konva.Stage({ container:'#konva-host', width:p.device.w, height:p.device.h });
   gridLayer = new Konva.Layer({listening:false});
+  guideLayer = new Konva.Layer({listening:true});   // above grid, below content
   contentLayer = new Konva.Layer();
-  stage.add(gridLayer); stage.add(contentLayer);
+  stage.add(gridLayer); stage.add(guideLayer); stage.add(contentLayer);
   setupMarquee();
   setupRulers();
   applyZoom();
@@ -501,135 +502,145 @@ function applyZoom(){
 }
 /* ============================================================
    RULERS + GUIDE LINES (Figma-style)
+   - Top ruler  → vertical guides   (axis 'v', dragged downward onto canvas)
+   - Left ruler → horizontal guides (axis 'h', dragged rightward onto canvas)
+   - Guides stored per-profile in profile().guides = [{axis,pos}]
+   - Ruler visibility stored per-profile in profile().ruler (default true)
    ============================================================ */
-let _guides = [];   // [{axis:'h'|'v', pos:Number}]  pos = canvas px
+
+function profileGuides(){ const p=profile(); if(!p.guides) p.guides=[]; return p.guides; }
+function rulerOn(){ const p=profile(); return p.ruler !== false; }
+
+let guideLayer = null;   // Konva layer between grid and content
 
 function drawRuler(){
   const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
-  const p=profile(); const W=p.device.w, H=p.device.h;
-  const fr=$('#stage-frame');
-  if(!fr) return;
-  const frRect=fr.getBoundingClientRect();
-  const wrapRect=$('#stage-wrap').getBoundingClientRect();
+  const on=rulerOn();
+  // show/hide ruler strips
+  const corner=$('#ruler-corner');
+  [rxEl, ryEl, corner].forEach(el=>{ if(el) el.style.visibility = on ? '' : 'hidden'; });
 
-  // how far the frame is from the top-left of stage-wrap (accounting for scroll + padding)
+  if(!on){ if(guideLayer){ guideLayer.destroyChildren(); guideLayer.draw(); } return; }
+
+  const p=profile(); const W=p.device.w, H=p.device.h;
+  const fr=$('#stage-frame'); if(!fr) return;
+  const frRect=fr.getBoundingClientRect();
   const wrap=$('#stage-wrap');
+  const wrapRect=wrap.getBoundingClientRect();
   const frameOffX = frRect.left - wrapRect.left + wrap.scrollLeft;
   const frameOffY = frRect.top  - wrapRect.top  + wrap.scrollTop;
 
   const step = zoom >= 1 ? 50 : zoom >= 0.5 ? 100 : 200;
-  const textEvery = 2;   // label every Nth tick
+  const guides = profileGuides();
 
-  // X ruler (horizontal — shows X pixel values)
+  // -- X ruler (top, horizontal strip → dropping gives vertical guide) --
   rxEl.innerHTML='';
   const svgX=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svgX.setAttribute('width', wrapRect.width); svgX.setAttribute('height', 20);
   svgX.style.cssText='display:block;overflow:visible';
+  // tick marks
   for(let x=0;x<=W;x+=step){
     const sx = frameOffX + x*zoom;
+    const isMaj = x % (step*2) === 0;
     const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
-    tick.setAttribute('x1',sx); tick.setAttribute('y1',14);
+    tick.setAttribute('x1',sx); tick.setAttribute('y1', isMaj?12:15);
     tick.setAttribute('x2',sx); tick.setAttribute('y2',20);
     tick.setAttribute('stroke','var(--txt-dim)'); tick.setAttribute('stroke-width','0.8');
     svgX.appendChild(tick);
-    if(x % (step*textEvery) === 0){
+    if(isMaj){
       const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
-      lbl.setAttribute('x',sx+2); lbl.setAttribute('y',11);
+      lbl.setAttribute('x',sx+2); lbl.setAttribute('y',10);
       lbl.setAttribute('font-size','8'); lbl.setAttribute('fill','var(--txt-faint)');
       lbl.setAttribute('font-family','var(--mono)');
-      lbl.textContent=String(x);
-      svgX.appendChild(lbl);
+      lbl.textContent=String(x); svgX.appendChild(lbl);
     }
   }
+  // guide markers on X ruler (triangles pointing down = vertical guides)
+  guides.filter(g=>g.axis==='v').forEach(g=>{
+    const sx = frameOffX + g.pos*zoom;
+    const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    tri.setAttribute('points',`${sx-4},0 ${sx+4},0 ${sx},7`);
+    tri.setAttribute('fill','rgba(0,120,255,0.75)');
+    tri.style.cursor='pointer';
+    tri.addEventListener('contextmenu',ev=>{ ev.preventDefault();
+      const arr=profileGuides(); arr.splice(arr.indexOf(arr.find(x=>x===g)),1); persistGuides(); drawRuler(); });
+    const title=document.createElementNS('http://www.w3.org/2000/svg','title');
+    title.textContent='X: '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
+    tri.appendChild(title); svgX.appendChild(tri);
+  });
   rxEl.appendChild(svgX);
 
-  // Y ruler (vertical — shows Y pixel values, rotated)
+  // -- Y ruler (left, vertical strip → dropping gives horizontal guide) --
   ryEl.innerHTML='';
   const svgY=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svgY.setAttribute('width', 20); svgY.setAttribute('height', wrapRect.height);
   svgY.style.cssText='display:block;overflow:visible';
   for(let y=0;y<=H;y+=step){
     const sy = frameOffY + y*zoom;
+    const isMaj = y % (step*2) === 0;
     const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
-    tick.setAttribute('x1',14); tick.setAttribute('y1',sy);
+    tick.setAttribute('x1', isMaj?8:12); tick.setAttribute('y1',sy);
     tick.setAttribute('x2',20); tick.setAttribute('y2',sy);
     tick.setAttribute('stroke','var(--txt-dim)'); tick.setAttribute('stroke-width','0.8');
     svgY.appendChild(tick);
-    if(y % (step*textEvery) === 0){
+    if(isMaj){
       const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
-      lbl.setAttribute('transform',`rotate(-90,9,${sy-2})`);
-      lbl.setAttribute('x',9); lbl.setAttribute('y',sy-2);
+      lbl.setAttribute('transform',`rotate(-90,10,${sy-2})`);
+      lbl.setAttribute('x',10); lbl.setAttribute('y',sy-2);
       lbl.setAttribute('font-size','8'); lbl.setAttribute('fill','var(--txt-faint)');
       lbl.setAttribute('text-anchor','middle');
       lbl.setAttribute('font-family','var(--mono)');
-      lbl.textContent=String(y);
-      svgY.appendChild(lbl);
+      lbl.textContent=String(y); svgY.appendChild(lbl);
     }
   }
+  // guide markers on Y ruler (triangles pointing right = horizontal guides)
+  guides.filter(g=>g.axis==='h').forEach(g=>{
+    const sy = frameOffY + g.pos*zoom;
+    const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    tri.setAttribute('points',`0,${sy-4} 0,${sy+4} 7,${sy}`);
+    tri.setAttribute('fill','rgba(0,120,255,0.75)');
+    tri.style.cursor='pointer';
+    tri.addEventListener('contextmenu',ev=>{ ev.preventDefault();
+      const arr=profileGuides(); arr.splice(arr.indexOf(arr.find(x=>x===g)),1); persistGuides(); drawRuler(); });
+    const title=document.createElementNS('http://www.w3.org/2000/svg','title');
+    title.textContent='Y: '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
+    tri.appendChild(title); svgY.appendChild(tri);
+  });
   ryEl.appendChild(svgY);
 
   drawGuides();
 }
 
+function persistGuides(){ persist(); }
+
 function drawGuides(){
-  const overlay=$('#guide-overlay'); if(!overlay) return;
+  if(!guideLayer) return;
+  guideLayer.destroyChildren();
+  if(!rulerOn()){ guideLayer.draw(); return; }
   const p=profile(); const W=p.device.w, H=p.device.h;
-  overlay.innerHTML='';
-  _guides.forEach((g,i)=>{
-    const el=document.createElementNS('http://www.w3.org/2000/svg','line');
+  profileGuides().forEach(g=>{
+    let line;
     if(g.axis==='h'){
-      const y=g.pos*zoom;
-      el.setAttribute('x1',0); el.setAttribute('y1',y);
-      el.setAttribute('x2',W*zoom); el.setAttribute('y2',y);
-      el.classList.add('guide-h');
+      line=new Konva.Line({points:[0,g.pos,W,g.pos], stroke:'rgba(0,100,220,0.55)', strokeWidth:0.5,
+        dash:[5,4], listening:true});
     } else {
-      const x=g.pos*zoom;
-      el.setAttribute('x1',x); el.setAttribute('y1',0);
-      el.setAttribute('x2',x); el.setAttribute('y2',H*zoom);
-      el.classList.add('guide-v');
+      line=new Konva.Line({points:[g.pos,0,g.pos,H], stroke:'rgba(0,100,220,0.55)', strokeWidth:0.5,
+        dash:[5,4], listening:true});
     }
-    el.style.pointerEvents='stroke';
-    // right-click → remove
-    el.addEventListener('contextmenu',ev=>{ ev.preventDefault(); _guides.splice(i,1); drawGuides(); drawRuler(); });
-    // drag to reposition
-    el.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation();
-      const fr=$('#stage-frame').getBoundingClientRect();
-      const onMove=mv=>{ const pos = g.axis==='h' ? (mv.clientY-fr.top)/zoom : (mv.clientX-fr.left)/zoom;
-        g.pos=Math.max(0,Math.round(pos)); drawGuides(); };
-      const onUp=()=>{ window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); drawRuler(); };
-      window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
-    });
-    // tooltip showing position
-    const title=document.createElementNS('http://www.w3.org/2000/svg','title');
-    title.textContent=(g.axis==='h'?'Y':'X')+': '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
-    el.appendChild(title);
-    overlay.appendChild(el);
+    // right-click on canvas guide → remove
+    line.on('contextmenu',ev=>{ ev.evt.preventDefault();
+      const arr=profileGuides(); const idx=arr.indexOf(g); if(idx>=0) arr.splice(idx,1);
+      persistGuides(); drawGuides(); drawRuler(); });
+    guideLayer.add(line);
   });
+  guideLayer.draw();
 }
 
 function setupRulers(){
   const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
 
-  // drag from X ruler → horizontal guide
+  // top ruler → drag down → vertical guide ('v')
   rxEl.addEventListener('mousedown',ev=>{
-    if(ev.button!==0) return;
-    const preview=document.createElement('div'); preview.id='guide-preview-h';
-    document.body.appendChild(preview);
-    const fr=$('#stage-frame').getBoundingClientRect();
-    const update=mv=>{ preview.style.top=mv.clientY+'px'; preview.style.left=fr.left+'px'; preview.style.width=fr.width+'px'; };
-    update(ev);
-    const onUp=mv=>{
-      preview.remove();
-      window.removeEventListener('mousemove',update); window.removeEventListener('mouseup',onUp);
-      const pos=Math.max(0,Math.round((mv.clientY-fr.top)/zoom));
-      if(mv.clientY>fr.top && mv.clientY<fr.bottom){ _guides.push({axis:'h',pos}); drawGuides(); drawRuler(); }
-    };
-    window.addEventListener('mousemove',update); window.addEventListener('mouseup',onUp);
-    ev.preventDefault();
-  });
-
-  // drag from Y ruler → vertical guide
-  ryEl.addEventListener('mousedown',ev=>{
     if(ev.button!==0) return;
     const preview=document.createElement('div'); preview.id='guide-preview-v';
     document.body.appendChild(preview);
@@ -640,22 +651,42 @@ function setupRulers(){
       preview.remove();
       window.removeEventListener('mousemove',update); window.removeEventListener('mouseup',onUp);
       const pos=Math.max(0,Math.round((mv.clientX-fr.left)/zoom));
-      if(mv.clientX>fr.left && mv.clientX<fr.right){ _guides.push({axis:'v',pos}); drawGuides(); drawRuler(); }
+      if(mv.clientX>=fr.left && mv.clientX<=fr.right && mv.clientY>=fr.top){
+        profileGuides().push({axis:'v',pos}); persistGuides(); drawGuides(); drawRuler();
+      }
     };
     window.addEventListener('mousemove',update); window.addEventListener('mouseup',onUp);
     ev.preventDefault();
   });
 
-  // show coordinate tooltip while hovering over ruler
+  // left ruler → drag right → horizontal guide ('h')
+  ryEl.addEventListener('mousedown',ev=>{
+    if(ev.button!==0) return;
+    const preview=document.createElement('div'); preview.id='guide-preview-h';
+    document.body.appendChild(preview);
+    const fr=$('#stage-frame').getBoundingClientRect();
+    const update=mv=>{ preview.style.top=mv.clientY+'px'; preview.style.left=fr.left+'px'; preview.style.width=fr.width+'px'; };
+    update(ev);
+    const onUp=mv=>{
+      preview.remove();
+      window.removeEventListener('mousemove',update); window.removeEventListener('mouseup',onUp);
+      const pos=Math.max(0,Math.round((mv.clientY-fr.top)/zoom));
+      if(mv.clientY>=fr.top && mv.clientY<=fr.bottom && mv.clientX>=fr.left){
+        profileGuides().push({axis:'h',pos}); persistGuides(); drawGuides(); drawRuler();
+      }
+    };
+    window.addEventListener('mousemove',update); window.addEventListener('mouseup',onUp);
+    ev.preventDefault();
+  });
+
+  // hover tooltip
   rxEl.addEventListener('mousemove',ev=>{
     const fr=$('#stage-frame').getBoundingClientRect();
-    const x=Math.round((ev.clientX-fr.left)/zoom);
-    rxEl.title='X: '+x+'px';
+    rxEl.title='X: '+Math.round((ev.clientX-fr.left)/zoom)+'px';
   });
   ryEl.addEventListener('mousemove',ev=>{
     const fr=$('#stage-frame').getBoundingClientRect();
-    const y=Math.round((ev.clientY-fr.top)/zoom);
-    ryEl.title='Y: '+y+'px';
+    ryEl.title='Y: '+Math.round((ev.clientY-fr.top)/zoom)+'px';
   });
 }
 
@@ -2954,10 +2985,17 @@ async function openFonts(){
        const pendingFamily=($('#nf-family')&&$('#nf-family').value||'').trim();
        const pendingFile=($('#nf-file')&&$('#nf-file').value||'').trim();
        const pendingUrl=($('#nf-url')&&$('#nf-url').value||'').trim();
+       const doSave=()=>{ _fontsSnapshot=null; persist(); afterChange(); closeModal(); toast(T('Fonts opgeslagen','Fonts saved')); };
        if(pendingId || pendingFamily || pendingFile || pendingUrl){
-         if(!confirm(T('Er zijn niet-toegevoegde wijzigingen in het "Font toevoegen"-formulier. Klik op + om het font toe te voegen, of klik OK om toch op te slaan zonder dit font.','There are unadded changes in the "Add font" form. Click + to add the font first, or click OK to save without it.'))) return;
+         showAppConfirm(
+           T('Er zijn niet-toegevoegde wijzigingen in het "Font toevoegen"-formulier. Klik op + om het font toe te voegen, of klik OK om toch op te slaan zonder dit font.',
+             'There are unadded changes in the "Add font" form. Click + to add the font first, or click OK to save without it.'),
+           doSave  // OK → save
+           // cancel → do nothing (no toast)
+         );
+         return;
        }
-       _fontsSnapshot=null; persist(); afterChange(); closeModal(); toast(T('Fonts opgeslagen','Fonts saved')); }}],
+       doSave(); }}],
     _revertFontsIfUnsaved);   // ✕ / backdrop also revert unsaved font changes
   // click a loaded font id → inline preview
   $$('#modal-body [data-prev]').forEach(a=>a.onclick=ev=>{ ev.preventDefault(); previewFontInline(profile().fonts[+a.dataset.prev]); });
@@ -3780,6 +3818,21 @@ function applyTheme(){
 }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1800); }
 
+/* lightweight in-app confirm — avoids the browser's native confirm() dialog */
+function showAppConfirm(msg, onOk, onCancel){
+  const prev=$('#app-confirm'); if(prev) prev.remove();
+  const box=document.createElement('div'); box.id='app-confirm';
+  box.innerHTML=`<div class="app-confirm-msg">${msg}</div>
+    <div class="app-confirm-btns">
+      <button class="btn ghost sm" id="app-confirm-cancel">${T('Annuleren','Cancel')}</button>
+      <button class="btn primary sm" id="app-confirm-ok">OK</button>
+    </div>`;
+  document.body.appendChild(box);
+  const close=(cb)=>{ box.remove(); if(cb) cb(); };
+  box.querySelector('#app-confirm-ok').onclick=()=>close(onOk);
+  box.querySelector('#app-confirm-cancel').onclick=()=>close(onCancel);
+}
+
 /* point 2: right-click context menu on the canvas */
 function hideCtxMenu(){ $('#ctxmenu').classList.remove('open'); }
 
@@ -3937,8 +3990,8 @@ function wire(){
   $('#zoom-fit').onclick=fitZoom;
   $('#tg-grid').onchange=()=>drawGrid();
   $('#grid-size').onchange=e=>{ profile().device.grid=+e.target.value; persist(); drawGrid(); };
+  { const tr=$('#tg-ruler'); if(tr) tr.onchange=()=>{ profile().ruler=tr.checked; persist(); drawRuler(); }; }
 
-  { const cg=$('#btn-clear-guides'); if(cg) cg.onclick=()=>{ _guides=[]; drawGuides(); drawRuler(); }; }
   $('#btn-bring-front').onclick=bringToFront; $('#btn-bring-back').onclick=sendToBack;
   $('#btn-step-forward').onclick=stepForward; $('#btn-step-back').onclick=stepBackward;
   $('#btn-undo').onclick=undo; $('#btn-redo').onclick=redo;
@@ -4128,6 +4181,7 @@ async function boot(){
   { const we=profile()?profile().waitEnabled!==false:true;
     const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!we; }
   const gs=$('#grid-size'); if(gs) gs.value=String(gridStep());
+  { const tr=$('#tg-ruler'); if(tr) tr.checked=rulerOn(); }
   injectGoogleFonts();
   try{ await registerUploadedFonts(); }catch(e){ console.warn(e); }
   initStage();
