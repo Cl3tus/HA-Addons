@@ -276,10 +276,30 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 #canvas-toolbar {
   height: 40px; display: flex; align-items: center; gap: 10px;
   padding: 0 14px; border-bottom: 1px solid var(--line);
-  background: var(--panel); flex: none;   /* white in light / #1c1c1c dark — matches the top bar */
+  background: var(--panel); flex: none;
 }
 #canvas-toolbar .grp { display: flex; align-items: center; gap: 6px; }
 #canvas-toolbar .zoomval { font-family: var(--mono); width: 42px; text-align: center; color: var(--txt-dim); }
+
+/* ---- Canvas status bar (bottom, sticky) ---- */
+#canvas-statusbar {
+  position: sticky; bottom: 0; left: 0;
+  height: 32px; flex: none;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px;
+  background: var(--panel); border-top: 1px solid var(--line);
+  font-size: 11px; color: var(--txt-dim);
+  z-index: 10;
+  /* only span the left portion — right side empty */
+  width: 100%;
+  box-sizing: border-box;
+}
+#canvas-statusbar .grp { display: flex; align-items: center; gap: 5px; }
+#canvas-statusbar .zoomval { font-family: var(--mono); width: 38px; text-align: center; color: var(--txt-dim); }
+#canvas-statusbar .toggle { font-size: 11px; }
+#canvas-statusbar select { font-size: 11px; }
+#canvas-statusbar .btn { font-size: 12px; padding: 1px 5px; height: 22px; }
+.sb-sep { width: 1px; height: 16px; background: var(--line-2); margin: 0 2px; flex-shrink: 0; }
 .toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--txt-dim); cursor: pointer; user-select: none; white-space: nowrap; }
 .toggle input { accent-color: var(--accent); }
 
@@ -322,7 +342,7 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
    padding gives breathing room around the stage-frame on all sides. */
 #canvas-area {
   grid-column: 2; grid-row: 2;
-  padding: 48px 40px 64px 40px;
+  padding: 24px 40px 32px 40px;
   /* let content determine size so the parent stage-wrap can scroll to it */
   width: max-content; height: max-content;
   min-width: 100%; min-height: 100%;

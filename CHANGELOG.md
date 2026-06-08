@@ -3,6 +3,11 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.4.6
+- Zoom, grid size, snap and ruler controls moved to a sticky **status bar** at the bottom of the canvas area.
+- Snap grid/ruler grey-out removed — was distracting.
+- Canvas padding halved (24px top, 32px bottom).
+
 ## 3.4.5
 - Canvas scrolling fixed: frame is now always reachable when zoomed in (padding + max-content sizing).
 - Snap raster greyed when Snap lineaal is active and vice versa.

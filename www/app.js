@@ -512,7 +512,6 @@ function profileGuides(){ const p=profile(); if(!p.guides) p.guides=[]; return p
 function rulerOn(){ const p=profile(); return p.ruler !== false; }
 
 /* sync snap/ruler checkbox visual states:
-   - snap grid greys out when snap ruler is checked (and vice versa)
    - snap ruler label hidden + unchecked when ruler is off */
 function updateSnapRulerUI(){
   const sg=$('#tg-snap'), sr=$('#tg-snap-guides'), tr=$('#tg-ruler');
@@ -522,9 +521,6 @@ function updateSnapRulerUI(){
   if(srLabel){ srLabel.style.display = rulerEnabled ? '' : 'none'; }
   // when ruler turns off, also uncheck snap-ruler in state
   if(!rulerEnabled && sr && sr.checked){ sr.checked=false; }
-  // grey out the other snap when one is active
-  if(sg) sg.closest('label').style.opacity = (sr&&sr.checked) ? '0.4' : '';
-  if(sr) sr.closest('label').style.opacity = (sg&&sg.checked) ? '0.4' : '';
 }
 
 /* Returns the canvas-left offset of #stage-frame relative to the ruler-x strip.
