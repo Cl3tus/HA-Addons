@@ -874,7 +874,28 @@ function buildNode(el){
   node.dragBoundFunc(function(pos){
     const sn=$('#tg-snap'); if(!sn || !sn.checked || shiftDown) return pos;
     const g=gridStep(), ox=node._sbx||0, oy=node._sby||0;
-    return { x: Math.round((pos.x+ox)/g)*g - ox, y: Math.round((pos.y+oy)/g)*g - oy };
+    let rx = Math.round((pos.x+ox)/g)*g - ox;
+    let ry = Math.round((pos.y+oy)/g)*g - oy;
+    // guide snap (only when tg-snap-guides is checked and ruler is on)
+    const sg=$('#tg-snap-guides');
+    if(sg && sg.checked && rulerOn()){
+      const THRESH=8, guides=profileGuides();
+      // bounding box of node in canvas coords = pos + offsets
+      const bx=pos.x+ox, by=pos.y+oy;
+      const bw=node.width?node.width():0, bh=node.height?node.height():0;
+      guides.forEach(gd=>{
+        if(gd.axis==='v'){
+          // vertical guide snaps X: check left edge (bx) and right edge (bx+bw)
+          if(Math.abs(bx-gd.pos)<THRESH)       rx=gd.pos-ox;
+          else if(Math.abs(bx+bw-gd.pos)<THRESH) rx=gd.pos-bw-ox;
+        } else {
+          // horizontal guide snaps Y: check top edge (by) and bottom edge (by+bh)
+          if(Math.abs(by-gd.pos)<THRESH)       ry=gd.pos-oy;
+          else if(Math.abs(by+bh-gd.pos)<THRESH) ry=gd.pos-bh-oy;
+        }
+      });
+    }
+    return { x:rx, y:ry };
   });
   node.on('mousedown touchstart', (ev)=>{
     const e=ev && ev.evt;

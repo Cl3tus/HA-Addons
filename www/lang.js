@@ -128,6 +128,7 @@
     'Onder uitlijnen': 'Align bottom',
     /* --- tooltips: guides --- */
     'Lineaal': 'Ruler',
+    'Snap lineaal': 'Snap guides',
     /* --- tooltips: layer order --- */
     'Naar voren (bovenste laag)': 'Bring to front',
     'Één stap naar voren': 'Step forward',
