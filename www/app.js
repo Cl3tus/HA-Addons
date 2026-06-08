@@ -541,9 +541,10 @@ function rulerFrameOffset(){
   return { ox: frR.left - rxR.left, oy: frR.top - ryR.top };
 }
 
-/* resolve a CSS variable to its computed value so we can embed it in SVG attributes */
+/* resolve a CSS variable to its computed value so we can embed it in SVG attributes.
+   Must read from document.body because light-theme vars are set on body.light, not :root */
 function cssVar(name){
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
+  return getComputedStyle(document.body).getPropertyValue(name).trim() || '#888';
 }
 
 function drawRuler(){
