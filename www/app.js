@@ -512,16 +512,21 @@ function applyZoom(){
 function profileGuides(){ const p=profile(); if(!p.guides) p.guides=[]; return p.guides; }
 function rulerOn(){ const p=profile(); return p.ruler !== false; }
 
-/* sync snap/ruler checkbox visual states:
-   - snap ruler label hidden + unchecked when ruler is off */
+/* sync snap/ruler/grid checkbox visual states:
+   - snap ruler hidden + unchecked when ruler is off
+   - snap grid hidden + unchecked when grid is off */
 function updateSnapRulerUI(){
-  const sg=$('#tg-snap'), sr=$('#tg-snap-guides'), tr=$('#tg-ruler');
+  const sg=$('#tg-snap'), sr=$('#tg-snap-guides'), tr=$('#tg-ruler'), tg=$('#tg-grid');
   const rulerEnabled = tr && tr.checked;
-  // hide snap-ruler label entirely when ruler is off
+  const gridEnabled  = tg && tg.checked;
+  // snap ruler: hidden when ruler off
   const srLabel=sr&&sr.closest('label');
   if(srLabel){ srLabel.style.display = rulerEnabled ? '' : 'none'; }
-  // when ruler turns off, also uncheck snap-ruler in state
   if(!rulerEnabled && sr && sr.checked){ sr.checked=false; }
+  // snap grid: hidden when grid off
+  const sgLabel=sg&&sg.closest('label');
+  if(sgLabel){ sgLabel.style.display = gridEnabled ? '' : 'none'; }
+  if(!gridEnabled && sg && sg.checked){ sg.checked=false; }
 }
 
 /* Returns the canvas-left offset of #stage-frame relative to the ruler-x strip.
@@ -4144,7 +4149,7 @@ function wire(){
       zv.addEventListener('focus',()=>{ zv.value=Math.round(zoom*100)+''; zv.select(); });
     }
   }
-  $('#tg-grid').onchange=()=>drawGrid();
+  $('#tg-grid').onchange=()=>{ drawGrid(); updateSnapRulerUI(); };
   $('#grid-size').onchange=e=>{ profile().device.grid=+e.target.value; persist(); drawGrid(); };
   { const tr=$('#tg-ruler'); if(tr) tr.onchange=()=>{ profile().ruler=tr.checked; persist(); drawRuler(); updateSnapRulerUI(); }; }
   // snap grid and snap ruler are mutually exclusive; snap ruler hidden when ruler is off
