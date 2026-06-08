@@ -363,6 +363,45 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   position: relative;
   flex-shrink: 0;
 }
+/* cursor crosshair lines — follow mouse over canvas, extend into rulers */
+#cursor-h, #cursor-v {
+  position: fixed; pointer-events: none; z-index: 50; display: none;
+  background: repeating-linear-gradient(
+    to right,
+    rgba(120,120,120,0.35) 0px, rgba(120,120,120,0.35) 3px,
+    transparent 3px, transparent 6px
+  );
+}
+#cursor-h {
+  height: 1px; left: 0; right: 0;
+  background: repeating-linear-gradient(
+    to right,
+    rgba(120,120,120,0.35) 0px, rgba(120,120,120,0.35) 3px,
+    transparent 3px, transparent 6px
+  );
+}
+#cursor-v {
+  width: 1px; top: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(120,120,120,0.35) 0px, rgba(120,120,120,0.35) 3px,
+    transparent 3px, transparent 6px
+  );
+}
+body.light #cursor-h, body.light #cursor-v {
+  background: repeating-linear-gradient(
+    to right,
+    rgba(80,80,80,0.3) 0px, rgba(80,80,80,0.3) 3px,
+    transparent 3px, transparent 6px
+  );
+}
+body.light #cursor-v {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(80,80,80,0.3) 0px, rgba(80,80,80,0.3) 3px,
+    transparent 3px, transparent 6px
+  );
+}
 /* guide drag-preview lines (follow cursor while dragging from ruler) */
 #guide-preview-h, #guide-preview-v {
   position: fixed; pointer-events: none; z-index: 200;

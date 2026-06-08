@@ -390,6 +390,7 @@ function initStage(){
   stage.add(gridLayer); stage.add(guideLayer); stage.add(contentLayer);
   setupMarquee();
   setupRulers();
+  setupCrosshair();
   applyZoom();
 }
 
@@ -758,6 +759,19 @@ function showRulerMenu(clientX, clientY, axis){
   menu.querySelector('button').addEventListener('click',()=>{ onClick(); menu.remove(); });
   const close=e=>{ if(!menu.contains(e.target)){ menu.remove(); window.removeEventListener('mousedown',close); } };
   setTimeout(()=>window.addEventListener('mousedown',close),0);
+}
+
+function setupCrosshair(){
+  const ch=$('#cursor-h'), cv=$('#cursor-v'); if(!ch||!cv) return;
+  const frame=$('#stage-frame');
+  // show crosshair only when hovering over the canvas frame
+  frame.addEventListener('mouseenter',()=>{ if(!rulerOn()) return; ch.style.display='block'; cv.style.display='block'; });
+  frame.addEventListener('mouseleave',()=>{ ch.style.display='none'; cv.style.display='none'; });
+  frame.addEventListener('mousemove',ev=>{
+    if(!rulerOn()){ ch.style.display='none'; cv.style.display='none'; return; }
+    ch.style.top=ev.clientY+'px';
+    cv.style.left=ev.clientX+'px';
+  });
 }
 
 function setupRulers(){
