@@ -588,12 +588,12 @@ function drawRuler(){
   rxEl.innerHTML='';
   const rxR=rxEl.getBoundingClientRect();
   // gradient: outside-left | canvas zone | outside-right
+  // use resolved CSS vars so light/dark theme always applies correctly
   { const cLeft=Math.max(0,frameOffX), cRight=Math.min(rxR.width, frameOffX+W*zoom);
+    const bgIn=cssVar('--panel-2'), bgOut=cssVar('--bg');
     if(cLeft>0 || cRight<rxR.width){
-      const out=document.body.classList.contains('light') ? '#d8dbe2' : '#323232';
-      const grad=`linear-gradient(to right, ${out} ${cLeft}px, var(--panel-2) ${cLeft}px, var(--panel-2) ${cRight}px, ${out} ${cRight}px)`;
-      rxEl.style.background=grad;
-    } else { rxEl.style.background=''; }
+      rxEl.style.background=`linear-gradient(to right, ${bgOut} ${cLeft}px, ${bgIn} ${cLeft}px, ${bgIn} ${cRight}px, ${bgOut} ${cRight}px)`;
+    } else { rxEl.style.background=bgIn; }
   }
   const svgX=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svgX.style.cssText='display:block;overflow:visible;width:100%;height:20px';
@@ -643,11 +643,10 @@ function drawRuler(){
   ryEl.innerHTML='';
   const ryR=ryEl.getBoundingClientRect();
   { const cTop=Math.max(0,frameOffY), cBot=Math.min(ryR.height, frameOffY+H*zoom);
+    const bgIn=cssVar('--panel-2'), bgOut=cssVar('--bg');
     if(cTop>0 || cBot<ryR.height){
-      const out=document.body.classList.contains('light') ? '#d8dbe2' : '#323232';
-      const grad=`linear-gradient(to bottom, ${out} ${cTop}px, var(--panel-2) ${cTop}px, var(--panel-2) ${cBot}px, ${out} ${cBot}px)`;
-      ryEl.style.background=grad;
-    } else { ryEl.style.background=''; }
+      ryEl.style.background=`linear-gradient(to bottom, ${bgOut} ${cTop}px, ${bgIn} ${cTop}px, ${bgIn} ${cBot}px, ${bgOut} ${cBot}px)`;
+    } else { ryEl.style.background=bgIn; }
   }
   const svgY=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svgY.style.cssText='display:block;overflow:visible;width:20px;height:100%';
