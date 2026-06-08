@@ -4190,6 +4190,9 @@ function wire(){
     else if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){ nudge(e); }
   });
 }
+// re-render ruler after theme switch so gradient colours update
+window.onThemeChanged = function(){ requestAnimationFrame(drawRuler); };
+
 // re-render all dynamic UI after a language toggle so open panels/inspector update
 window.onLangChanged = function(){
   renderLayers(); renderInspector(); renderProfiles();

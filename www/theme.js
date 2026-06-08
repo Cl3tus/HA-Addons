@@ -88,6 +88,8 @@
     if (btn)   btn.textContent = label;
     var btnFe = document.getElementById('btn-theme-fe');
     if (btnFe) btnFe.textContent = label;
+    // notify app.js so theme-dependent canvas elements (rulers) re-render
+    if (typeof window.onThemeChanged === 'function') window.onThemeChanged();
   }
 
   /* ---- session-only manual toggle (not persisted) ---- */
