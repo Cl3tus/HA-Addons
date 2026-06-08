@@ -3,6 +3,14 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.4.4
+- Ruler: guide markers now draggable within the ruler strip to reposition; click elsewhere creates new guide.
+- Ruler: triangle marker positions now correct (fixed offset calculation relative to ruler element).
+- Ruler: new guide created on mouseup at cursor position — no need to drag all the way to canvas first.
+- Snap grid / Snap ruler are now mutually exclusive (enabling one disables the other).
+- Renamed "Snap" → "Snap raster / Snap grid", "Snap lineaal" → "Snap lineaal / Snap ruler".
+- Canvas: more whitespace above (48px) and below (56px) to prevent frame clipping.
+
 ## 3.4.3
 - Fix: duplicate `guideLayer` declaration caused a complete crash on load (no canvas, no profiles, font editor unresponsive).
 

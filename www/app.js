@@ -511,73 +511,97 @@ function applyZoom(){
 function profileGuides(){ const p=profile(); if(!p.guides) p.guides=[]; return p.guides; }
 function rulerOn(){ const p=profile(); return p.ruler !== false; }
 
+/* Returns the canvas-left offset of #stage-frame relative to the ruler-x strip.
+   ruler-x sits in grid column 2, so its left edge = right edge of ruler-y (20px).
+   stage-frame can be scrolled + padded inside canvas-area. */
+function rulerFrameOffset(){
+  const fr=$('#stage-frame'), rx=$('#ruler-x'), ry=$('#ruler-y');
+  if(!fr||!rx||!ry) return {ox:0,oy:0};
+  const frR=fr.getBoundingClientRect();
+  const rxR=rx.getBoundingClientRect();
+  const ryR=ry.getBoundingClientRect();
+  return { ox: frR.left - rxR.left, oy: frR.top - ryR.top };
+}
+
 function drawRuler(){
   const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
   const on=rulerOn();
-  // show/hide ruler strips
   const corner=$('#ruler-corner');
   [rxEl, ryEl, corner].forEach(el=>{ if(el) el.style.visibility = on ? '' : 'hidden'; });
-
   if(!on){ if(guideLayer){ guideLayer.destroyChildren(); guideLayer.draw(); } return; }
 
   const p=profile(); const W=p.device.w, H=p.device.h;
-  const fr=$('#stage-frame'); if(!fr) return;
-  const frRect=fr.getBoundingClientRect();
-  const wrap=$('#stage-wrap');
-  const wrapRect=wrap.getBoundingClientRect();
-  const frameOffX = frRect.left - wrapRect.left + wrap.scrollLeft;
-  const frameOffY = frRect.top  - wrapRect.top  + wrap.scrollTop;
-
+  const {ox:frameOffX, oy:frameOffY} = rulerFrameOffset();
   const step = zoom >= 1 ? 50 : zoom >= 0.5 ? 100 : 200;
   const guides = profileGuides();
+  const MARKER=5; // half-width of triangle marker
 
-  // -- X ruler (top, horizontal strip → dropping gives vertical guide) --
+  // ── X ruler (top strip → vertical guides) ────────────────────────────────
   rxEl.innerHTML='';
+  const rxR=rxEl.getBoundingClientRect();
   const svgX=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svgX.setAttribute('width', wrapRect.width); svgX.setAttribute('height', 20);
-  svgX.style.cssText='display:block;overflow:visible';
-  // tick marks
+  svgX.setAttribute('width', rxR.width); svgX.setAttribute('height', 20);
+  svgX.style.cssText='display:block;overflow:visible;width:100%;height:20px';
   for(let x=0;x<=W;x+=step){
-    const sx = frameOffX + x*zoom;
-    const isMaj = x % (step*2) === 0;
+    const sx=frameOffX+x*zoom;
+    const isMaj=x%(step*2)===0;
     const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
-    tick.setAttribute('x1',sx); tick.setAttribute('y1', isMaj?12:15);
+    tick.setAttribute('x1',sx); tick.setAttribute('y1',isMaj?10:14);
     tick.setAttribute('x2',sx); tick.setAttribute('y2',20);
     tick.setAttribute('stroke','var(--txt-dim)'); tick.setAttribute('stroke-width','0.8');
     svgX.appendChild(tick);
     if(isMaj){
       const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
-      lbl.setAttribute('x',sx+2); lbl.setAttribute('y',10);
+      lbl.setAttribute('x',sx+2); lbl.setAttribute('y',9);
       lbl.setAttribute('font-size','8'); lbl.setAttribute('fill','var(--txt-faint)');
       lbl.setAttribute('font-family','var(--mono)');
       lbl.textContent=String(x); svgX.appendChild(lbl);
     }
   }
-  // guide markers on X ruler (triangles pointing down = vertical guides)
+  // markers for vertical guides — draggable within the ruler strip
   guides.filter(g=>g.axis==='v').forEach(g=>{
-    const sx = frameOffX + g.pos*zoom;
+    const sx=frameOffX+g.pos*zoom;
     const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-    tri.setAttribute('points',`${sx-4},0 ${sx+4},0 ${sx},7`);
-    tri.setAttribute('fill','rgba(0,120,255,0.75)');
-    tri.style.cursor='pointer';
-    tri.addEventListener('contextmenu',ev=>{ ev.preventDefault();
-      const arr=profileGuides(); arr.splice(arr.indexOf(arr.find(x=>x===g)),1); persistGuides(); drawRuler(); });
+    tri.setAttribute('points',`${sx-MARKER},0 ${sx+MARKER},0 ${sx},${MARKER*1.6}`);
+    tri.setAttribute('fill','rgba(0,120,255,0.85)');
+    tri.style.cursor='ew-resize';
+    // right-click → remove
+    tri.addEventListener('contextmenu',ev=>{ ev.preventDefault(); ev.stopPropagation();
+      const arr=profileGuides(); const idx=arr.indexOf(g); if(idx>=0) arr.splice(idx,1);
+      persistGuides(); drawRuler(); });
+    // drag within ruler to reposition
+    tri.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault();
+      const fr=$('#stage-frame').getBoundingClientRect();
+      const rxR2=rxEl.getBoundingClientRect();
+      const preview=document.createElement('div'); preview.id='guide-preview-v';
+      preview.style.left=(fr.left+g.pos*zoom)+'px';
+      document.body.appendChild(preview);
+      const onMove=mv=>{
+        const pos=Math.round((mv.clientX-fr.left)/zoom);
+        g.pos=Math.max(0,Math.min(pos, Math.round(fr.width/zoom)));
+        preview.style.left=(fr.left+g.pos*zoom)+'px';
+        drawRuler();
+      };
+      const onUp=()=>{ preview.remove(); window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); persistGuides(); drawRuler(); };
+      window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
+    });
     const title=document.createElementNS('http://www.w3.org/2000/svg','title');
     title.textContent='X: '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
     tri.appendChild(title); svgX.appendChild(tri);
   });
   rxEl.appendChild(svgX);
 
-  // -- Y ruler (left, vertical strip → dropping gives horizontal guide) --
+  // ── Y ruler (left strip → horizontal guides) ─────────────────────────────
   ryEl.innerHTML='';
+  const ryR=ryEl.getBoundingClientRect();
   const svgY=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svgY.setAttribute('width', 20); svgY.setAttribute('height', wrapRect.height);
-  svgY.style.cssText='display:block;overflow:visible';
+  svgY.setAttribute('width', 20); svgY.setAttribute('height', ryR.height);
+  svgY.style.cssText='display:block;overflow:visible;width:20px;height:100%';
   for(let y=0;y<=H;y+=step){
-    const sy = frameOffY + y*zoom;
-    const isMaj = y % (step*2) === 0;
+    const sy=frameOffY+y*zoom;
+    const isMaj=y%(step*2)===0;
     const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
-    tick.setAttribute('x1', isMaj?8:12); tick.setAttribute('y1',sy);
+    tick.setAttribute('x1',isMaj?8:12); tick.setAttribute('y1',sy);
     tick.setAttribute('x2',20); tick.setAttribute('y2',sy);
     tick.setAttribute('stroke','var(--txt-dim)'); tick.setAttribute('stroke-width','0.8');
     svgY.appendChild(tick);
@@ -591,15 +615,32 @@ function drawRuler(){
       lbl.textContent=String(y); svgY.appendChild(lbl);
     }
   }
-  // guide markers on Y ruler (triangles pointing right = horizontal guides)
+  // markers for horizontal guides — draggable within ruler strip
   guides.filter(g=>g.axis==='h').forEach(g=>{
-    const sy = frameOffY + g.pos*zoom;
+    const sy=frameOffY+g.pos*zoom;
     const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-    tri.setAttribute('points',`0,${sy-4} 0,${sy+4} 7,${sy}`);
-    tri.setAttribute('fill','rgba(0,120,255,0.75)');
-    tri.style.cursor='pointer';
-    tri.addEventListener('contextmenu',ev=>{ ev.preventDefault();
-      const arr=profileGuides(); arr.splice(arr.indexOf(arr.find(x=>x===g)),1); persistGuides(); drawRuler(); });
+    tri.setAttribute('points',`0,${sy-MARKER} 0,${sy+MARKER} ${MARKER*1.6},${sy}`);
+    tri.setAttribute('fill','rgba(0,120,255,0.85)');
+    tri.style.cursor='ns-resize';
+    // right-click → remove
+    tri.addEventListener('contextmenu',ev=>{ ev.preventDefault(); ev.stopPropagation();
+      const arr=profileGuides(); const idx=arr.indexOf(g); if(idx>=0) arr.splice(idx,1);
+      persistGuides(); drawRuler(); });
+    // drag within ruler to reposition
+    tri.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault();
+      const fr=$('#stage-frame').getBoundingClientRect();
+      const preview=document.createElement('div'); preview.id='guide-preview-h';
+      preview.style.top=(fr.top+g.pos*zoom)+'px';
+      document.body.appendChild(preview);
+      const onMove=mv=>{
+        const pos=Math.round((mv.clientY-fr.top)/zoom);
+        g.pos=Math.max(0,Math.min(pos, Math.round(fr.height/zoom)));
+        preview.style.top=(fr.top+g.pos*zoom)+'px';
+        drawRuler();
+      };
+      const onUp=()=>{ preview.remove(); window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); persistGuides(); drawRuler(); };
+      window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
+    });
     const title=document.createElementNS('http://www.w3.org/2000/svg','title');
     title.textContent='Y: '+g.pos+'px  ('+T('rechtermuisklik om te verwijderen','right-click to remove')+')';
     tri.appendChild(title); svgY.appendChild(tri);
@@ -617,15 +658,9 @@ function drawGuides(){
   if(!rulerOn()){ guideLayer.draw(); return; }
   const p=profile(); const W=p.device.w, H=p.device.h;
   profileGuides().forEach(g=>{
-    let line;
-    if(g.axis==='h'){
-      line=new Konva.Line({points:[0,g.pos,W,g.pos], stroke:'rgba(0,100,220,0.55)', strokeWidth:0.5,
-        dash:[5,4], listening:true});
-    } else {
-      line=new Konva.Line({points:[g.pos,0,g.pos,H], stroke:'rgba(0,100,220,0.55)', strokeWidth:0.5,
-        dash:[5,4], listening:true});
-    }
-    // right-click on canvas guide → remove
+    const line = g.axis==='h'
+      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:'rgba(0,100,220,0.55)', strokeWidth:0.5, dash:[5,4], listening:true})
+      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:'rgba(0,100,220,0.55)', strokeWidth:0.5, dash:[5,4], listening:true});
     line.on('contextmenu',ev=>{ ev.evt.preventDefault();
       const arr=profileGuides(); const idx=arr.indexOf(g); if(idx>=0) arr.splice(idx,1);
       persistGuides(); drawGuides(); drawRuler(); });
@@ -637,47 +672,45 @@ function drawGuides(){
 function setupRulers(){
   const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
 
-  // top ruler → drag down → vertical guide ('v')
+  // click on ruler strip: if not on a marker → create new guide at that position
+  // marker mousedown events stopPropagation, so this only fires for empty ruler clicks
   rxEl.addEventListener('mousedown',ev=>{
     if(ev.button!==0) return;
-    const preview=document.createElement('div'); preview.id='guide-preview-v';
-    document.body.appendChild(preview);
     const fr=$('#stage-frame').getBoundingClientRect();
-    const update=mv=>{ preview.style.left=mv.clientX+'px'; preview.style.top=fr.top+'px'; preview.style.height=fr.height+'px'; };
-    update(ev);
+    const startX=ev.clientX;
+    const preview=document.createElement('div'); preview.id='guide-preview-v';
+    preview.style.left=startX+'px'; preview.style.top=fr.top+'px'; preview.style.height=fr.height+'px';
+    document.body.appendChild(preview);
+    const onMove=mv=>{ preview.style.left=mv.clientX+'px'; };
     const onUp=mv=>{
       preview.remove();
-      window.removeEventListener('mousemove',update); window.removeEventListener('mouseup',onUp);
+      window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp);
       const pos=Math.max(0,Math.round((mv.clientX-fr.left)/zoom));
-      if(mv.clientX>=fr.left && mv.clientX<=fr.right && mv.clientY>=fr.top){
-        profileGuides().push({axis:'v',pos}); persistGuides(); drawGuides(); drawRuler();
-      }
+      // drop anywhere — place guide at the X position on the canvas
+      profileGuides().push({axis:'v',pos}); persistGuides(); drawGuides(); drawRuler();
     };
-    window.addEventListener('mousemove',update); window.addEventListener('mouseup',onUp);
+    window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
     ev.preventDefault();
   });
 
-  // left ruler → drag right → horizontal guide ('h')
   ryEl.addEventListener('mousedown',ev=>{
     if(ev.button!==0) return;
-    const preview=document.createElement('div'); preview.id='guide-preview-h';
-    document.body.appendChild(preview);
     const fr=$('#stage-frame').getBoundingClientRect();
-    const update=mv=>{ preview.style.top=mv.clientY+'px'; preview.style.left=fr.left+'px'; preview.style.width=fr.width+'px'; };
-    update(ev);
+    const startY=ev.clientY;
+    const preview=document.createElement('div'); preview.id='guide-preview-h';
+    preview.style.top=startY+'px'; preview.style.left=fr.left+'px'; preview.style.width=fr.width+'px';
+    document.body.appendChild(preview);
+    const onMove=mv=>{ preview.style.top=mv.clientY+'px'; };
     const onUp=mv=>{
       preview.remove();
-      window.removeEventListener('mousemove',update); window.removeEventListener('mouseup',onUp);
+      window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp);
       const pos=Math.max(0,Math.round((mv.clientY-fr.top)/zoom));
-      if(mv.clientY>=fr.top && mv.clientY<=fr.bottom && mv.clientX>=fr.left){
-        profileGuides().push({axis:'h',pos}); persistGuides(); drawGuides(); drawRuler();
-      }
+      profileGuides().push({axis:'h',pos}); persistGuides(); drawGuides(); drawRuler();
     };
-    window.addEventListener('mousemove',update); window.addEventListener('mouseup',onUp);
+    window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
     ev.preventDefault();
   });
 
-  // hover tooltip
   rxEl.addEventListener('mousemove',ev=>{
     const fr=$('#stage-frame').getBoundingClientRect();
     rxEl.title='X: '+Math.round((ev.clientX-fr.left)/zoom)+'px';
@@ -4010,6 +4043,10 @@ function wire(){
   $('#tg-grid').onchange=()=>drawGrid();
   $('#grid-size').onchange=e=>{ profile().device.grid=+e.target.value; persist(); drawGrid(); };
   { const tr=$('#tg-ruler'); if(tr) tr.onchange=()=>{ profile().ruler=tr.checked; persist(); drawRuler(); }; }
+  // snap grid and snap ruler are mutually exclusive
+  { const sg=$('#tg-snap'), sr=$('#tg-snap-guides');
+    if(sg) sg.onchange=()=>{ if(sg.checked && sr) sr.checked=false; };
+    if(sr) sr.onchange=()=>{ if(sr.checked && sg) sg.checked=false; }; }
 
   $('#btn-bring-front').onclick=bringToFront; $('#btn-bring-back').onclick=sendToBack;
   $('#btn-step-forward').onclick=stepForward; $('#btn-step-back').onclick=stepBackward;

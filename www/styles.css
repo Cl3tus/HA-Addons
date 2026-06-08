@@ -322,7 +322,7 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 #canvas-area {
   grid-column: 2; grid-row: 2;
   display: flex; align-items: center; justify-content: center;
-  padding: 28px; min-height: 0;
+  padding: 48px 28px 56px; min-height: 0;
 }
 /* stage-frame centered inside canvas-area */
 #stage-frame {
