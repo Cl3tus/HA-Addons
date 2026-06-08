@@ -390,7 +390,6 @@ function initStage(){
   stage.add(gridLayer); stage.add(guideLayer); stage.add(contentLayer);
   setupMarquee();
   setupRulers();
-  setupCrosshair();
   applyZoom();
 }
 
@@ -761,31 +760,21 @@ function showRulerMenu(clientX, clientY, axis){
   setTimeout(()=>window.addEventListener('mousedown',close),0);
 }
 
-function setupCrosshair(){
-  const ch=$('#cursor-h'), cv=$('#cursor-v'); if(!ch||!cv) return;
-  const frame=$('#stage-frame');
-  // show crosshair only when hovering over the canvas frame
-  frame.addEventListener('mouseenter',()=>{ if(!rulerOn()) return; ch.style.display='block'; cv.style.display='block'; });
-  frame.addEventListener('mouseleave',()=>{ ch.style.display='none'; cv.style.display='none'; });
-  frame.addEventListener('mousemove',ev=>{
-    if(!rulerOn()){ ch.style.display='none'; cv.style.display='none'; return; }
-    ch.style.top=ev.clientY+'px';
-    cv.style.left=ev.clientX+'px';
-  });
-}
-
 function setupRulers(){
   const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
 
   // ── X ruler mousedown: left = new guide, right = check marker or show menu ──
   rxEl.addEventListener('mousedown',ev=>{
     if(ev.button!==0) return;
-    // check if click is on a marker polygon
     const hit=ev.target.closest('[data-guide-axis]') || (ev.target.dataset&&ev.target.dataset.guideAxis ? ev.target : null);
-    if(hit && hit.dataset.guideAxis==='v') return; // marker handles its own drag
+    if(hit && hit.dataset.guideAxis==='v') return;
     const fr=$('#stage-frame').getBoundingClientRect();
+    const rxR=rxEl.getBoundingClientRect();
+    // preview only in the whitespace between ruler-bottom and canvas-top
     const preview=document.createElement('div'); preview.id='guide-preview-v';
-    preview.style.left=ev.clientX+'px'; preview.style.top=fr.top+'px'; preview.style.height=fr.height+'px';
+    preview.style.left=ev.clientX+'px';
+    preview.style.top=rxR.bottom+'px';
+    preview.style.height=(fr.top-rxR.bottom)+'px';
     document.body.appendChild(preview);
     const onMove=mv=>{ preview.style.left=mv.clientX+'px'; };
     const onUp=mv=>{
@@ -817,8 +806,12 @@ function setupRulers(){
     const hit=ev.target.closest('[data-guide-axis]') || (ev.target.dataset&&ev.target.dataset.guideAxis ? ev.target : null);
     if(hit && hit.dataset.guideAxis==='h') return;
     const fr=$('#stage-frame').getBoundingClientRect();
+    const ryR=ryEl.getBoundingClientRect();
+    // preview only in the whitespace between ruler-right and canvas-left
     const preview=document.createElement('div'); preview.id='guide-preview-h';
-    preview.style.top=ev.clientY+'px'; preview.style.left=fr.left+'px'; preview.style.width=fr.width+'px';
+    preview.style.top=ev.clientY+'px';
+    preview.style.left=ryR.right+'px';
+    preview.style.width=(fr.left-ryR.right)+'px';
     document.body.appendChild(preview);
     const onMove=mv=>{ preview.style.top=mv.clientY+'px'; };
     const onUp=mv=>{
