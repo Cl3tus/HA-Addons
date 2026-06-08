@@ -556,9 +556,9 @@ function drawRuler(){
 
   const p=profile(); const W=p.device.w, H=p.device.h;
   const {ox:frameOffX, oy:frameOffY} = rulerFrameOffset();
-  // pick the largest canvas-px interval that gives ≥18px between ticks on screen
-  const STEPS=[25,50,100,200,500]; let step=STEPS[STEPS.length-1];
-  for(let i=0;i<STEPS.length;i++){ if(STEPS[i]*zoom>=18){ step=STEPS[i]; break; } }
+  // pick the smallest interval that gives ≥30px between labels on screen (min 50px)
+  const STEPS=[50,100,200,500]; let step=STEPS[STEPS.length-1];
+  for(let i=0;i<STEPS.length;i++){ if(STEPS[i]*zoom>=30){ step=STEPS[i]; break; } }
   const guides = profileGuides();
   const MARKER=5;
   const colDim   = cssVar('--txt-dim');
@@ -604,22 +604,23 @@ function drawRuler(){
 
   const xStart = Math.floor(-frameOffX / zoom / step) * step;
   const xEnd   = Math.ceil((rxR.width - frameOffX) / zoom / step) * step;
-  const xLabelled = new Set();
+  const sxW = frameOffX+W*zoom;   // screen X of canvas right edge
+  const MIN_GAP = 28;             // min px between a regular label and the end label
   for(let x=xStart; x<=xEnd; x+=step){
     const sx=frameOffX+x*zoom;
     const outside = x<0 || x>W;
-    const isMaj=((x%step)===0);   // label every step
     const is2x=((x%(step*2))===0) || x===0;
     svgX.appendChild(makeTick(sx, is2x?10:14, sx, 20, outside));
-    if(isMaj && sx>4 && sx<rxR.width-4){
+    // skip label if too close to the canvas-end label
+    const tooCloseToEnd = x!==W && Math.abs(sx-sxW)<MIN_GAP;
+    if(!tooCloseToEnd && sx>4 && sx<rxR.width-4){
       const lbl=makeLabel(String(x), sx+2, 9, 0, outside);
       lbl.setAttribute('text-anchor','start'); lbl.setAttribute('x',sx+2);
-      svgX.appendChild(lbl); xLabelled.add(x);
+      svgX.appendChild(lbl);
     }
   }
-  // canvas-end label (W) if not already rendered
-  if(!xLabelled.has(W)){
-    const sx=frameOffX+W*zoom;
+  // canvas-end label (W) — always shown if visible
+  { const sx=sxW;
     if(sx>4 && sx<rxR.width-4){
       svgX.appendChild(makeTick(sx,8,sx,20,false));
       const lbl=makeLabel(String(W),sx+2,9,0,false);
@@ -669,20 +670,19 @@ function drawRuler(){
 
   const yStart = Math.floor(-frameOffY / zoom / step) * step;
   const yEnd   = Math.ceil((ryR.height - frameOffY) / zoom / step) * step;
-  const yLabelled = new Set();
+  const syH = frameOffY+H*zoom;   // screen Y of canvas bottom edge
   for(let y=yStart; y<=yEnd; y+=step){
     const sy=frameOffY+y*zoom;
     const outside = y<0 || y>H;
     const is2x=((y%(step*2))===0) || y===0;
     svgY.appendChild(makeTick(is2x?8:12, sy, 20, sy, outside));
-    if(sy>4 && sy<ryR.height-4){
-      const lbl=makeLabel(String(y), 10, sy-2, -90, outside);
-      svgY.appendChild(lbl); yLabelled.add(y);
+    const tooCloseToEnd = y!==H && Math.abs(sy-syH)<MIN_GAP;
+    if(!tooCloseToEnd && sy>4 && sy<ryR.height-4){
+      svgY.appendChild(makeLabel(String(y), 10, sy-2, -90, outside));
     }
   }
   // canvas-end label (H)
-  if(!yLabelled.has(H)){
-    const sy=frameOffY+H*zoom;
+  { const sy=syH;
     if(sy>4 && sy<ryR.height-4){
       svgY.appendChild(makeTick(8,sy,20,sy,false));
       svgY.appendChild(makeLabel(String(H),10,sy-2,-90,false));
@@ -4161,8 +4161,8 @@ function wire(){
   { const co=$('#code-open'); if(co) co.onclick=openGeneratedYaml; }
 
   // zoom +/-: snap to the next 10% boundary (e.g. 107% + = 110%, 107% - = 100%)
-  $('#zoom-in').onclick=()=>{ const p=Math.round(zoom*100); zoom=clamp(Math.ceil((p+1)/10)*10/100,0.3,2); applyZoom(); };
-  $('#zoom-out').onclick=()=>{ const p=Math.round(zoom*100); zoom=clamp(Math.floor((p-1)/10)*10/100,0.3,2); applyZoom(); };
+  $('#zoom-in').onclick=()=>{ const p=Math.round(zoom*100); zoom=clamp(Math.ceil((p+1)/10)*10/100,0.3,5); applyZoom(); };
+  $('#zoom-out').onclick=()=>{ const p=Math.round(zoom*100); zoom=clamp(Math.floor((p-1)/10)*10/100,0.3,5); applyZoom(); };
   $('#zoom-fit').onclick=fitZoom;
   // zoom input: type a value and press Enter or blur to apply
   { const zv=$('#zoom-val');
@@ -4230,10 +4230,10 @@ function nudge(e){ if(!selectedIds.size) return; e.preventDefault(); const d=e.s
   const dx=(e.key==='ArrowLeft'?-d:e.key==='ArrowRight'?d:0), dy=(e.key==='ArrowUp'?-d:e.key==='ArrowDown'?d:0);
   els().forEach(el=>{ if(selectedIds.has(el.id)){ el.x+=dx; el.y+=dy; if(el.x2!=null){el.x2+=dx;el.y2+=dy;} } });
   afterChange(); }
-function fitZoom(){ const wrap=$('#stage-wrap'); const p=profile(); const avail=wrap.clientHeight-56; zoom=clamp(avail/p.device.h,0.3,2); applyZoom(); }
+function fitZoom(){ const wrap=$('#stage-wrap'); const p=profile(); const avail=wrap.clientHeight-56; zoom=clamp(avail/p.device.h,0.3,5); applyZoom(); }
 function applyZoomInput(raw){
   const v=parseFloat(String(raw).replace('%','').trim());
-  if(!isNaN(v) && v>0){ zoom=clamp(v/100,0.3,2); applyZoom(); }
+  if(!isNaN(v) && v>0){ zoom=clamp(v/100,0.3,5); applyZoom(); }
   else { const zv=$('#zoom-val'); if(zv) zv.value=Math.round(zoom*100)+'%'; }
 }
 
