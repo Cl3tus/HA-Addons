@@ -727,13 +727,12 @@ function showRulerMenu(clientX, clientY, axis){
     const arr=profileGuides(); const keep=arr.filter(g=>g.axis!==axis);
     arr.length=0; keep.forEach(g=>arr.push(g)); persistGuides(); drawGuides(); drawRuler();
   };
-  if(count===0){ return; }   // nothing to show
-  menu.innerHTML=`<div class="ctxitem" data-i="0">${label}</div>`;
-  menu.style.cssText=`position:fixed;z-index:3000;left:${clientX}px;top:${clientY}px;
-    background:var(--panel-2);border:1px solid var(--line-2);border-radius:6px;
-    padding:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:220px;font-size:12px`;
+  if(count===0){ return; }
+  menu.className='ctxmenu open';
+  menu.style.cssText=`position:fixed;z-index:3000;left:${clientX}px;top:${clientY}px`;
+  menu.innerHTML=`<button>${label}</button>`;
   document.body.appendChild(menu);
-  menu.querySelector('.ctxitem').addEventListener('click',()=>{ onClick(); menu.remove(); });
+  menu.querySelector('button').addEventListener('click',()=>{ onClick(); menu.remove(); });
   const close=e=>{ if(!menu.contains(e.target)){ menu.remove(); window.removeEventListener('mousedown',close); } };
   setTimeout(()=>window.addEventListener('mousedown',close),0);
 }
