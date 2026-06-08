@@ -511,8 +511,6 @@ function applyZoom(){
 function profileGuides(){ const p=profile(); if(!p.guides) p.guides=[]; return p.guides; }
 function rulerOn(){ const p=profile(); return p.ruler !== false; }
 
-let guideLayer = null;   // Konva layer between grid and content
-
 function drawRuler(){
   const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
   const on=rulerOn();
