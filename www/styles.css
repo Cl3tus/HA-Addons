@@ -368,11 +368,15 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   position: fixed; pointer-events: none; z-index: 200;
 }
 #guide-preview-h {
-  height: 0; border-top: 1px dashed rgba(0,120,255,0.65);
+  height: 0;
+  border-top: 1px dotted rgba(140,140,140,0.75);
 }
 #guide-preview-v {
-  width: 0; border-left: 1px dashed rgba(0,120,255,0.65);
+  width: 0;
+  border-left: 1px dotted rgba(140,140,140,0.75);
 }
+body.light #guide-preview-h { border-top-color: rgba(80,80,80,0.6); }
+body.light #guide-preview-v { border-left-color: rgba(80,80,80,0.6); }
 /* #stage-frame — positioned/styled in the ruler block above */
 body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8bcc6, 0 0 0 9px #d8dbe2, 0 0 0 10px #c2c6d0; }
 #stage-frame.eink { filter: none; }

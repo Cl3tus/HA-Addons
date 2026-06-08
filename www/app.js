@@ -726,8 +726,8 @@ function drawGuides(){
   const p=profile(); const W=p.device.w, H=p.device.h;
   profileGuides().forEach(g=>{
     const line = g.axis==='h'
-      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:'rgba(0,100,220,0.55)', strokeWidth:0.5, dash:[5,4], listening:true})
-      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:'rgba(0,100,220,0.55)', strokeWidth:0.5, dash:[5,4], listening:true});
+      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:'rgba(0,100,220,0.7)', strokeWidth:1, dash:[4,3], listening:true})
+      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:'rgba(0,100,220,0.7)', strokeWidth:1, dash:[4,3], listening:true});
     line.on('contextmenu',ev=>{ ev.evt.preventDefault();
       const arr=profileGuides(); const idx=arr.indexOf(g); if(idx>=0) arr.splice(idx,1);
       persistGuides(); drawGuides(); drawRuler(); });
@@ -1041,18 +1041,21 @@ function buildNode(el){
       rx = Math.round((pos.x+ox)/g)*g - ox;
       ry = Math.round((pos.y+oy)/g)*g - oy;
     }
-    // guide snap
+    // guide snap — use the live bounding box so anchor-offset elements (wifi/clock/icon) snap correctly
     if(snapGuide && rulerOn()){
       const THRESH=8, guides=profileGuides();
-      const bx=pos.x+ox, by=pos.y+oy;
-      const bw=node.width?node.width():0, bh=node.height?node.height():0;
+      // get current bbox in canvas coords; relativeTo:contentLayer gives canvas pixels
+      const bbox=node.getClientRect({relativeTo:contentLayer});
+      // bbox is the CURRENT position of the node; delta from current pos to desired pos
+      const curX=node.x(), curY=node.y();
+      const bLeft=bbox.x, bTop=bbox.y, bRight=bbox.x+bbox.width, bBot=bbox.y+bbox.height;
       guides.forEach(gd=>{
         if(gd.axis==='v'){
-          if(Math.abs(bx-gd.pos)<THRESH)         rx=gd.pos-ox;
-          else if(Math.abs(bx+bw-gd.pos)<THRESH) rx=gd.pos-bw-ox;
+          if(Math.abs(bLeft-gd.pos)<THRESH)        rx=pos.x+(gd.pos-bLeft);
+          else if(Math.abs(bRight-gd.pos)<THRESH)  rx=pos.x+(gd.pos-bRight);
         } else {
-          if(Math.abs(by-gd.pos)<THRESH)         ry=gd.pos-oy;
-          else if(Math.abs(by+bh-gd.pos)<THRESH) ry=gd.pos-bh-oy;
+          if(Math.abs(bTop-gd.pos)<THRESH)         ry=pos.y+(gd.pos-bTop);
+          else if(Math.abs(bBot-gd.pos)<THRESH)    ry=pos.y+(gd.pos-bBot);
         }
       });
     }
