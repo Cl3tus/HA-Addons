@@ -3,6 +3,17 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.3.1
+- Profile dropdown re-sorts on every change (no reload needed).
+- Refresh clock renamed to **Refresh Time** in palette + default element name.
+- Clock text-offset X now auto-scales with the icon size; added dedicated X/Y offset fields.
+- MDI path field greyed out in Font Source (path shown, not editable).
+- Layer drag auto-scrolls the list near the top/bottom edge.
+- Click-through uses pixel-accurate hit-test (getAllIntersections).
+- QR: **Name & ID** section at the top of the inspector.
+- Graph legend label is now a **dropdown of your sources** (or "no sources").
+- Prefix/suffix presets localized (gem/avg etc.).
+
 ## 3.3.0
 - Profiles are listed **alphabetically (numbers first)** in both the top-bar and
   Profile-settings dropdowns.

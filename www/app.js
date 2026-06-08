@@ -203,7 +203,7 @@ function pushUndo(){ undoStack.push(snapshot()); if(undoStack.length>60) undoSta
 function undo(){ if(!undoStack.length) return; redoStack.push(snapshot()); setEls(JSON.parse(undoStack.pop())); afterChange(); }
 function redo(){ if(!redoStack.length) return; undoStack.push(snapshot()); setEls(JSON.parse(redoStack.pop())); afterChange(); }
 
-function afterChange(){ persist(); renderCanvas(); renderLayers(); renderInspector(); if($('#code-drawer').classList.contains('open')) renderCode(); }
+function afterChange(){ persist(); renderCanvas(); renderLayers(); renderInspector(); renderProfiles(); if($('#code-drawer').classList.contains('open')) renderCode(); }
 
 /* ============================================================
    FONT LOADING (preview)
@@ -966,16 +966,15 @@ function selectNode(el, node){
    element below the one currently chosen (top → bottom, then wraps). */
 let _cycleAt=null;
 function cyclePick(topEl){
-  const rp=stage && stage.getRelativePointerPosition(); if(!rp) return null;
-  // every visible element whose box contains the pointer, top of z-order first
-  const ids=[];
-  els().slice().reverse().forEach(e=>{ if(e.visible===false) return;
-    const n=contentLayer.getChildren(x=>x._elId===e.id)[0]; if(!n) return;
-    const b=n.getClientRect({relativeTo:contentLayer});
-    if(rp.x>=b.x && rp.x<=b.x+b.width && rp.y>=b.y && rp.y<=b.y+b.height) ids.push(e.id);
-  });
-  if(ids.length<2) { _cycleAt=null; return null; }   // nothing stacked → normal select
-  const same=_cycleAt && Math.abs(_cycleAt.x-rp.x)<5 && Math.abs(_cycleAt.y-rp.y)<5 && _cycleAt.ids.join()===ids.join();
+  const pos=stage && stage.getPointerPosition(); const rp=stage && stage.getRelativePointerPosition();
+  if(!pos || !rp) return null;
+  // pixel-accurate: every shape actually under the cursor → its element id
+  let shapes=[]; try{ shapes=contentLayer.getAllIntersections(pos); }catch(_){ shapes=[]; }
+  const hit=new Set();
+  shapes.forEach(s=>{ let n=s; while(n && n._elId===undefined && n.getParent) n=n.getParent(); if(n && n._elId!==undefined) hit.add(n._elId); });
+  if(hit.size<2){ _cycleAt=null; return null; }                 // nothing stacked → normal select
+  const ids=els().slice().reverse().map(e=>e.id).filter(id=>hit.has(id));   // top of z-order first
+  const same=_cycleAt && Math.abs(_cycleAt.x-rp.x)<6 && Math.abs(_cycleAt.y-rp.y)<6 && _cycleAt.ids.join()===ids.join();
   const idx = same ? (_cycleAt.idx+1)%ids.length : 0;
   _cycleAt={x:rp.x, y:rp.y, ids, idx};
   const id=ids[idx], e=els().find(x=>x.id===id), n=contentLayer.getChildren(x=>x._elId===id)[0];
@@ -1117,6 +1116,10 @@ function moveLayerTo(srcId, targetId, before){
 function renderLayers(){
   const box=$('#layers'); box.innerHTML='';
   $('#layer-count').textContent = els().length;
+  // auto-scroll the (scrollable) list when dragging a layer near its top/bottom edge
+  box.ondragover=e=>{ if(!_dragLayerId) return; const r=box.getBoundingClientRect(); const edge=26;
+    if(e.clientY < r.top+edge) box.scrollTop -= 10;
+    else if(e.clientY > r.bottom-edge) box.scrollTop += 10; };
   // top of list = top of z-order (draw last) -> reverse
   els().slice().reverse().forEach(el=>{
     const row=document.createElement('div');
@@ -1249,7 +1252,7 @@ function elName(t){
                                  : (e.type===t && !(t==='text'&&e.role==='value'))).length+1;
   const m={text:T('Tekst','Text'),value:T('Waarde','Value'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
            circle:T('Cirkel','Circle'),triangle:T('Driehoek','Triangle'),polygon:T('Veelhoek','Polygon'),
-           ring:'Ring',gauge:T('Meter','Gauge'),qr:'QR',wifi:'WiFi',clock:T('Klok','Clock'),graph:T('Grafiek','Graph')};
+           ring:'Ring',gauge:T('Meter','Gauge'),qr:'QR',wifi:'WiFi',clock:'Refresh Time',graph:T('Grafiek','Graph')};
   return (m[t]||'Element')+' '+n; }
 
 function deleteSel(){
@@ -1384,13 +1387,14 @@ function renderInspector(){
       <input data-k="percent" type="range" min="0" max="100" step="1" value="${el.percent==null?50:el.percent}">
       <div class="hint"><span class="mono">it.filled_gauge</span> — ${T('halve cirkel (180°), vult van links over de top naar rechts. 50% = de linkerhelft.','half circle (180°), fills from the left over the top to the right. 50% = the left half.')}</div>`);
   } else if(el.type==='qr'){
+    h+=g(T('Naam & ID','Name & ID'),`<div class="row"><div><label class="fld">${T('Naam','Name')}</label><input data-k="name" type="text" value="${attr(el.name)}" title="${T('Naam in de lagenlijst.','Name in the layers list.')}"></div></div>
+      <div class="row"><div><label class="fld">${T('ID (YAML)','ID (YAML)')}</label><input data-k="qrCustomId" type="text" class="mono" value="${attr(el.qrCustomId)}" placeholder="${attr(qrId(el))}" title="${T('Eigen id voor het qr_code:-component in de YAML. Leeg = automatisch.','Custom id for the qr_code: component in the YAML. Empty = auto-generated.')}"></div></div>`);
     h+=g(T('Positie & maat','Position & size'),`<div class="row"><div><label class="fld">X</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">Y</label><input data-k="y" type="number" value="${el.y}"></div></div>
       <div class="row"><div><label class="fld">${T('Schaal (px per module)','Scale (px per module)')}</label><input data-k="scale" type="number" min="1" max="12" value="${el.scale||4}"></div>
         <div><label class="fld">${T('Foutcorrectie (ECC)','Error correction (ECC)')}</label><select data-k="ecc">
           ${['LOW','MEDIUM','QUARTILE','HIGH'].map(o=>`<option ${(el.ecc||'LOW')===o?'selected':''}>${o}</option>`).join('')}
         </select></div></div>
       <div class="row"><div><label class="fld">${T('Inhoud (tekst/URL)','Content (text/URL)')}</label><input data-k="text" type="text" value="${attr(el.text)}"></div></div>
-      <div class="row"><div><label class="fld">${T('ID (YAML)','ID (YAML)')}</label><input data-k="qrCustomId" type="text" class="mono" value="${attr(el.qrCustomId)}" placeholder="${attr(qrId(el))}" title="${T('Eigen id voor het qr_code:-component in de YAML. Leeg = automatisch.','Custom id for the qr_code: component in the YAML. Empty = auto-generated.')}"></div></div>
       ${(()=>{ const mods=qrModuleCount(el.text,el.ecc), px=mods*Math.max(1,el.scale||4);
         return `<div class="hint">${T('Geschatte grootte','Estimated size')}: <b>${mods}×${mods}</b> ${T('modules','modules')} = <b>${px}×${px} px</b> ${T('op het device.','on the device.')}</div>`; })()}
       <div class="hint">${T('ECC: LOW ~7%, MEDIUM ~15%, QUARTILE ~25%, HIGH ~30% fouttolerantie. Het patroon is een plaatshouder, maar de grootte klopt met het device.','ECC: LOW ~7%, MEDIUM ~15%, QUARTILE ~25%, HIGH ~30% error tolerance. The pattern is a placeholder, but the size matches the device.')}</div>`);
@@ -1511,7 +1515,10 @@ function renderInspector(){
       <div class="row tight" style="margin-bottom:2px"><div class="fld" style="flex:0 0 90px;margin:0">Source</div><div class="fld" style="flex:1;margin:0">${T('Label (legenda-ID)','Label (legend ID)')}</div></div>
       ${(gr.traces||[]).map((t,i)=> t.sourceId ? `<div class="row tight" style="align-items:center;margin-bottom:4px">
         <div class="mono hint" style="flex:0 0 90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0" title="${attr(t.sourceId)}">${attr(t.sourceId)}</div>
-        <div style="flex:1"><input data-trace="${i}.name" type="text" value="${attr(t.name)}" placeholder="${T('eigen label…','custom label…')}" title="${T('De legenda-tekst (ID) voor deze trace. Leeg = de sensor-id links.','The legend text (ID) for this trace. Empty = the sensor id on the left.')}"></div>
+        <div style="flex:1"><select data-trace="${i}.name" title="${T('Legenda-label: kies een bron of laat op (auto) staan.','Legend label: pick a source or leave on (auto).')}">
+          <option value="" ${!t.name?'selected':''}>${T('(auto: sensor-id)','(auto: sensor id)')}</option>
+          ${profile().sources.length ? profile().sources.map(s=>`<option value="${attr(s.id)}" ${t.name===s.id?'selected':''}>${attr(s.id)}</option>`).join('') : `<option disabled>${T('(geen bronnen ingesteld)','(no sources set)')}</option>`}
+        </select></div>
       </div>` : '').join('')}
       <div class="hint" style="margin-bottom:6px">${T('Links de bron-sensor, rechts je eigen label. Leeg = de sensor-id wordt gebruikt.','Left is the source sensor, right is your own label. Empty = the sensor id is used.')}</div>
       <div class="row tight"><div><label class="fld">${T('Naam-font','Name font')}</label><select data-legend="nameFontId" title="${T('Verplicht. Font voor de trace-namen in de legenda.','Required. Font for the trace names in the legend.')}">${fontOpts(lg.nameFontId)}</select></div>
@@ -1568,10 +1575,11 @@ function sourceEditor(el){
   else h+=`<div class="row"><div><label class="fld">${T('C++ expressie','C++ expression')}</label><input data-src="expr" class="mono" type="text" value="${attr(sc.expr)}" placeholder="id(x).state"></div></div><div class="hint">${T('Wordt rauw in printf gezet. Gebruik','Inserted raw into printf. Use')} <span class="mono">%s</span>/<span class="mono">%f</span> ${T('in de format.','in the format.')}</div>`;
   return h;
 }
-const SUFFIX_PRESETS=['','°C','°F','%','W','kW','kWh','Wh','V','A','mA','Hz','bar','pH','ppm','L','L/u','mL','m³','g','kg','lux','dB','rpm','x','€','s','min','u'];
-const PREFIX_PRESETS=['','€ ','$ ','£ ','¥ ','± ','~','≈ ','> ','< ','Ø ','Δ ','# ','~ ','max ','min ','avg '];
+// language-aware: most are units/symbols (neutral); the word-based ones differ NL/EN
+function suffixPresets(){ return ['','°C','°F','%','W','kW','kWh','Wh','V','A','mA','Hz','bar','pH','ppm','L',T('L/u','L/h'),'mL','m³','g','kg','lux','dB','rpm','x','€','s','min',T('u','h')]; }
+function prefixPresets(){ return ['','€ ','$ ','£ ','¥ ','± ','~','≈ ','> ','< ','Ø ','Δ ','# ',T('gem ','avg '),T('max ','max '),T('min ','min ')]; }
 function affixControl(which, val){
-  const presets = which==='suffix'?SUFFIX_PRESETS:PREFIX_PRESETS;
+  const presets = which==='suffix'?suffixPresets():prefixPresets();
   const known = presets.includes(val);
   // (none) first, Custom… second, then the presets
   const opts = `<option value="" ${val===''?'selected':''}>${T('(geen)','(none)')}</option>`
@@ -2108,7 +2116,7 @@ function clockOffsets(el){
   const c=el.clock||{};
   const ifont = c.icon ? (fontById(c.iconFontId)||fontById(el.fontId)||{size:30}) : null;
   const autoX = c.icon ? Math.round((ifont.size||30))+6 : 0;
-  const offX = (c.offX!=null && c.offX!=='') ? +c.offX : (c.iconGap!=null?+c.iconGap:autoX);
+  const offX = (c.offX!=null && c.offX!=='') ? +c.offX : autoX;   // auto-scales with icon size
   const offY = (c.offY!=null && c.offY!=='') ? +c.offY : 0;
   return {offX, offY, autoX};
 }
@@ -2733,7 +2741,7 @@ async function openFonts(){
          <div><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt.','Where the font comes from.')}"><option value="local">${T('Lokale fonts','Local Fonts')}</option><option value="mdi">MDI Fonts</option><option value="gfonts">Google Fonts</option><option value="web">${T('Web-fonts','Web Fonts')}</option></select></div>
        </div>
        <div class="row tight" id="nf-mdi" style="display:none">
-         <div style="flex:2"><label class="fld">${T('pad (vast)','path (fixed)')}</label><input id="nf-mdi-file" type="text" class="mono" value="fonts/materialdesignicons-webfont.ttf" readonly title="${T('De meegebundelde Material Design Icons-font; dit pad ligt vast.','The bundled Material Design Icons font; this path is fixed.')}"></div>
+         <div style="flex:2"><label class="fld">${T('pad (vast)','path (fixed)')}</label><input id="nf-mdi-file" type="text" class="mono" value="fonts/materialdesignicons-webfont.ttf" disabled style="opacity:.55" title="${T('De meegebundelde Material Design Icons-font; dit pad ligt vast.','The bundled Material Design Icons font; this path is fixed.')}"></div>
        </div>
        <div class="hint" id="nf-mdi-note" style="display:none;margin-top:4px">${T('Kies een eigen id en grootte; de glyphs worden bepaald door de gekozen icons.','Pick your own id and size; the glyphs come from the icons you use.')}</div>
        <div class="row tight" id="nf-gfonts">
