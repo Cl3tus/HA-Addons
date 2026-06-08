@@ -582,6 +582,14 @@ function drawRuler(){
   // ── X ruler ──────────────────────────────────────────────────────────────
   rxEl.innerHTML='';
   const rxR=rxEl.getBoundingClientRect();
+  // gradient: outside-left | canvas zone | outside-right
+  { const cLeft=Math.max(0,frameOffX), cRight=Math.min(rxR.width, frameOffX+W*zoom);
+    if(cLeft>0 || cRight<rxR.width){
+      const out=document.body.classList.contains('light') ? '#d8dbe2' : '#323232';
+      const grad=`linear-gradient(to right, ${out} ${cLeft}px, var(--panel-2) ${cLeft}px, var(--panel-2) ${cRight}px, ${out} ${cRight}px)`;
+      rxEl.style.background=grad;
+    } else { rxEl.style.background=''; }
+  }
   const svgX=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svgX.style.cssText='display:block;overflow:visible;width:100%;height:20px';
   svgX.setAttribute('width',rxR.width); svgX.setAttribute('height',20);
@@ -629,6 +637,13 @@ function drawRuler(){
   // ── Y ruler ──────────────────────────────────────────────────────────────
   ryEl.innerHTML='';
   const ryR=ryEl.getBoundingClientRect();
+  { const cTop=Math.max(0,frameOffY), cBot=Math.min(ryR.height, frameOffY+H*zoom);
+    if(cTop>0 || cBot<ryR.height){
+      const out=document.body.classList.contains('light') ? '#d8dbe2' : '#323232';
+      const grad=`linear-gradient(to bottom, ${out} ${cTop}px, var(--panel-2) ${cTop}px, var(--panel-2) ${cBot}px, ${out} ${cBot}px)`;
+      ryEl.style.background=grad;
+    } else { ryEl.style.background=''; }
+  }
   const svgY=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svgY.style.cssText='display:block;overflow:visible;width:20px;height:100%';
   svgY.setAttribute('width',20); svgY.setAttribute('height',ryR.height);
@@ -693,31 +708,27 @@ function drawGuides(){
   guideLayer.draw();
 }
 
-/* small ruler popup (replaces browser contextmenu on ruler strips) */
+/* small ruler popup — axis 'v' = top ruler (shows vertical guide option only),
+                        axis 'h' = left ruler (shows horizontal guide option only) */
 function showRulerMenu(clientX, clientY, axis){
   const prev=$('#ruler-menu'); if(prev) prev.remove();
   const menu=document.createElement('div'); menu.id='ruler-menu';
   const guides=profileGuides();
-  const vCount=guides.filter(g=>g.axis==='v').length;
-  const hCount=guides.filter(g=>g.axis==='h').length;
-  const items=[
-    { label: T(`Verwijder alle verticale gidsen (${vCount})`,`Remove all vertical guides (${vCount})`),
-      disabled: vCount===0,
-      onClick:()=>{ const arr=profileGuides(); const keep=arr.filter(g=>g.axis!=='v'); arr.length=0; keep.forEach(g=>arr.push(g)); persistGuides(); drawGuides(); drawRuler(); } },
-    { label: T(`Verwijder alle horizontale gidsen (${hCount})`,`Remove all horizontal guides (${hCount})`),
-      disabled: hCount===0,
-      onClick:()=>{ const arr=profileGuides(); const keep=arr.filter(g=>g.axis!=='h'); arr.length=0; keep.forEach(g=>arr.push(g)); persistGuides(); drawGuides(); drawRuler(); } },
-  ];
-  menu.innerHTML=items.map((it,i)=>
-    `<div class="ctxitem${it.disabled?' disabled':''}" data-i="${i}">${it.label}</div>`
-  ).join('');
+  const count=guides.filter(g=>g.axis===axis).length;
+  const label = axis==='v'
+    ? T(`Verwijder alle verticale gidsen (${count})`,`Remove all vertical guides (${count})`)
+    : T(`Verwijder alle horizontale gidsen (${count})`,`Remove all horizontal guides (${count})`);
+  const onClick=()=>{
+    const arr=profileGuides(); const keep=arr.filter(g=>g.axis!==axis);
+    arr.length=0; keep.forEach(g=>arr.push(g)); persistGuides(); drawGuides(); drawRuler();
+  };
+  if(count===0){ return; }   // nothing to show
+  menu.innerHTML=`<div class="ctxitem" data-i="0">${label}</div>`;
   menu.style.cssText=`position:fixed;z-index:3000;left:${clientX}px;top:${clientY}px;
     background:var(--panel-2);border:1px solid var(--line-2);border-radius:6px;
-    padding:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:200px;font-size:12px`;
+    padding:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:220px;font-size:12px`;
   document.body.appendChild(menu);
-  menu.querySelectorAll('.ctxitem:not(.disabled)').forEach(el=>{
-    el.addEventListener('click',()=>{ items[+el.dataset.i].onClick(); menu.remove(); });
-  });
+  menu.querySelector('.ctxitem').addEventListener('click',()=>{ onClick(); menu.remove(); });
   const close=e=>{ if(!menu.contains(e.target)){ menu.remove(); window.removeEventListener('mousedown',close); } };
   setTimeout(()=>window.addEventListener('mousedown',close),0);
 }
@@ -746,7 +757,7 @@ function setupRulers(){
     ev.preventDefault();
   });
   rxEl.addEventListener('contextmenu',ev=>{
-    ev.preventDefault();
+    ev.preventDefault(); ev.stopPropagation();
     const poly=ev.target.closest ? ev.target.closest('[data-guide-axis]') : null;
     if(poly && poly.getAttribute('data-guide-axis')==='v'){
       const idx=+poly.getAttribute('data-guide-idx');
@@ -779,7 +790,7 @@ function setupRulers(){
     ev.preventDefault();
   });
   ryEl.addEventListener('contextmenu',ev=>{
-    ev.preventDefault();
+    ev.preventDefault(); ev.stopPropagation();
     const poly=ev.target.closest ? ev.target.closest('[data-guide-axis]') : null;
     if(poly && poly.getAttribute('data-guide-axis')==='h'){
       const idx=+poly.getAttribute('data-guide-idx');

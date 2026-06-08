@@ -3,6 +3,11 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.4.9
+- Ruler: outside-canvas zones get a lighter grey background (gradient on the ruler strip).
+- Ruler contextmenu: top ruler shows only "Remove all vertical guides", left ruler shows only "Remove all horizontal guides".
+- Ruler contextmenu: `stopPropagation` prevents the canvas element-contextmenu from also appearing.
+
 ## 3.4.8
 - Ruler: ticks outside the canvas range (negative + beyond canvas edge) shown in a dimmer colour.
 - Ruler: right-click on a marker removes that specific guide (reliable via `data-guide-axis` attribute).
