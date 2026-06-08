@@ -721,8 +721,8 @@ function showRulerMenu(clientX, clientY, axis){
   const guides=profileGuides();
   const count=guides.filter(g=>g.axis===axis).length;
   const label = axis==='v'
-    ? T(`Verwijder alle verticale gidsen (${count})`,`Remove all vertical guides (${count})`)
-    : T(`Verwijder alle horizontale gidsen (${count})`,`Remove all horizontal guides (${count})`);
+    ? T('Verwijder gidsen','Remove guides')
+    : T('Verwijder gidsen','Remove guides');
   const onClick=()=>{
     const arr=profileGuides(); const keep=arr.filter(g=>g.axis!==axis);
     arr.length=0; keep.forEach(g=>arr.push(g)); persistGuides(); drawGuides(); drawRuler();
@@ -1000,25 +1000,29 @@ function buildNode(el){
     const b=(el.type==='text'||el.type==='icon') ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
     node._sbx=b.x-node.x(); node._sby=b.y-node.y(); });
   node.dragBoundFunc(function(pos){
-    const sn=$('#tg-snap'); if(!sn || !sn.checked || shiftDown) return pos;
-    const g=gridStep(), ox=node._sbx||0, oy=node._sby||0;
-    let rx = Math.round((pos.x+ox)/g)*g - ox;
-    let ry = Math.round((pos.y+oy)/g)*g - oy;
-    // guide snap (only when tg-snap-guides is checked and ruler is on)
-    const sg=$('#tg-snap-guides');
-    if(sg && sg.checked && rulerOn()){
+    if(shiftDown) return pos;
+    const snapGrid =$('#tg-snap')        && $('#tg-snap').checked;
+    const snapGuide=$('#tg-snap-guides') && $('#tg-snap-guides').checked;
+    if(!snapGrid && !snapGuide) return pos;
+    const ox=node._sbx||0, oy=node._sby||0;
+    let rx=pos.x, ry=pos.y;
+    // grid snap
+    if(snapGrid){
+      const g=gridStep();
+      rx = Math.round((pos.x+ox)/g)*g - ox;
+      ry = Math.round((pos.y+oy)/g)*g - oy;
+    }
+    // guide snap
+    if(snapGuide && rulerOn()){
       const THRESH=8, guides=profileGuides();
-      // bounding box of node in canvas coords = pos + offsets
       const bx=pos.x+ox, by=pos.y+oy;
       const bw=node.width?node.width():0, bh=node.height?node.height():0;
       guides.forEach(gd=>{
         if(gd.axis==='v'){
-          // vertical guide snaps X: check left edge (bx) and right edge (bx+bw)
-          if(Math.abs(bx-gd.pos)<THRESH)       rx=gd.pos-ox;
+          if(Math.abs(bx-gd.pos)<THRESH)         rx=gd.pos-ox;
           else if(Math.abs(bx+bw-gd.pos)<THRESH) rx=gd.pos-bw-ox;
         } else {
-          // horizontal guide snaps Y: check top edge (by) and bottom edge (by+bh)
-          if(Math.abs(by-gd.pos)<THRESH)       ry=gd.pos-oy;
+          if(Math.abs(by-gd.pos)<THRESH)         ry=gd.pos-oy;
           else if(Math.abs(by+bh-gd.pos)<THRESH) ry=gd.pos-bh-oy;
         }
       });

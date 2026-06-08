@@ -3,6 +3,10 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.5.1
+- Snap ruler fixed: now works independently of snap grid (snap grid being off no longer blocks it).
+- Ruler contextmenu label simplified to "Remove guides".
+
 ## 3.5.0
 - Grid off → Snap raster checkbox hidden and unchecked automatically (same behaviour as Ruler/Snap lineaal).
 
