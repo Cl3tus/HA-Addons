@@ -146,9 +146,13 @@ function seedProfile(name='My display'){
     output: outputDefaults(),   // which YAML blocks to generate
   };
   function f(id,kind,file,family,weight,size,dynamic,base){
+    // an icon font (MDI) has NO text/digit glyphs — forcing the safety charset onto it
+    // makes the ESPHome build fail with "missing N glyphs". Keep its charset empty.
+    const isMdi=/materialdesignicons/i.test(file||'');
+    const charset = isMdi ? '' : (base || ' -.:%/°0123456789');
     return {id,kind,file,family,weight,size,dynamic:!!dynamic,
-            baseCharset: base || ' -.:%/°0123456789',
-            dataUrl:null, seedGlyphs: base ? base.split('') : []};
+            baseCharset: charset,
+            dataUrl:null, seedGlyphs: charset ? charset.split('') : []};
   }
   function c(id,r,g,b,w,css){ return {id,r,g,b,w,css}; }
   function s(id,entityId,kind,sample){ return {id,entityId,kind,sample}; }
@@ -4023,8 +4027,10 @@ function doImport(textArg){
   function parseFont(o){
     const file = typeof o.file==='string'?o.file:null;
     const g = (o.file&&o.file.type==='gfonts')?o.file:null;
+    const isMdi=/materialdesignicons/i.test(file||'');
     return { id:o.id, kind:g?'gfonts':'local', file, family:g?g.family:null, weight:g?g.weight:null,
-      size:o.size||20, dynamic:!o.glyphs && /digital/i.test(file||''), baseCharset:' -.:%/°0123456789',
+      size:o.size||20, dynamic:!o.glyphs && /digital/i.test(file||''),
+      baseCharset: isMdi ? '' : ' -.:%/°0123456789',
       dataUrl:null, seedGlyphs: Array.isArray(o.glyphs)?o.glyphs:[] };
   }
   function parseColor(o){ const css=rgbwToCss(o); return {id:o.id, r:pct(o.red),g:pct(o.green),b:pct(o.blue),w:pct(o.white),css}; }
@@ -4578,6 +4584,21 @@ function migrateDanglingFonts(){
   });
   if(changed) persist();
 }
+/* Strip text/digit glyphs from MDI icon fonts in existing profiles. An icon font has
+   no such glyphs, so a leftover baseCharset (' -.:%/°0123456789') makes ESPHome fail
+   with "Font … is missing N glyphs". New profiles already keep MDI charsets empty. */
+function migrateMdiCharset(){
+  let changed=false;
+  (state.profiles||[]).forEach(p=>{
+    (p.fonts||[]).forEach(f=>{
+      if(/materialdesignicons/i.test(f.file||'')){
+        if(f.baseCharset){ f.baseCharset=''; changed=true; }
+        if(f.seedGlyphs && f.seedGlyphs.length){ f.seedGlyphs=[]; changed=true; }
+      }
+    });
+  });
+  if(changed) persist();
+}
 /* Fetch HA states now. silent=true suppresses the success toast (auto-refresh). */
 async function refreshLive(silent){
   LIVE_ON=true;
@@ -4635,6 +4656,8 @@ async function boot(){
   // font no longer present — e.g. an old 'font_klein' after the default became
   // 'font_small' — would fail the ESPHome build. Repoint them to a valid text font.
   migrateDanglingFonts();
+  // migrate MDI fonts: strip leftover text/digit safety charset that ESPHome rejects.
+  migrateMdiCharset();
   { const we=profile()?profile().waitEnabled!==false:true;
     const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!we; }
   const gs=$('#grid-size'); if(gs) gs.value=String(gridStep());

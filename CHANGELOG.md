@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.6.11
+- **Fixes "Font … is missing N glyphs" build error on the MDI font.** An icon font has no text/digit glyphs, but the bundled `font_mdi_small` was wrongly seeded with a text safety-charset (space, digits, %, °, …), which ESPHome rejects. New profiles now keep MDI fonts' charset empty, the YAML importer does the same, and existing profiles are auto-migrated on load (the stray charset is stripped). The generated `glyphs:` block for an MDI font now contains only its actual icons.
+
 ## 3.6.10
 - MDI icon-font glyphs: the generated `glyphs:` block now uses a multi-line inline `[ … ]` array (a valid ESPHome form). The MDI icons still sit one-per-line so each keeps its `# mdi:<name>` comment, but the plain "safety" characters (space, digits, %, °, …) are now clustered into a single quoted string on one line instead of sprawling over many lines.
 
