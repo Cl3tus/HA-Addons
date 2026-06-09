@@ -2897,6 +2897,60 @@ function usedFontIds(p){
   return used;
 }
 
+/* Pre-flight validation: find references the ESPHome build would choke on — a value
+   element bound to a missing/empty source (→ id(undefined)), a condition or graph
+   trace on a missing source, or an element using a font id that doesn't exist.
+   Returns [{el, screen, label, problem}], empty when the design is clean. */
+function validateDesign(){
+  const p=profile(); if(!p) return [];
+  const srcOk=id=> id && (p.sources||[]).some(s=>s.id===id);
+  const fontOk=id=> id && (p.fonts||[]).some(f=>f.id===id);
+  const issues=[];
+  const scan=(arr, screen)=>{
+    (arr||[]).forEach(el=>{
+      const label=el.name||elTypeLabel(el);
+      // value element bound to a sensor source
+      const sc=el.source;
+      if(sc && sc.kind==='sensor' && !srcOk(sc.sourceId)){
+        issues.push({el, screen, label,
+          problem: sc.sourceId
+            ? T(`bron "${sc.sourceId}" bestaat niet meer`, `source "${sc.sourceId}" no longer exists`)
+            : T('geen bron gekozen', 'no source selected')});
+      }
+      // condition on a missing source
+      if(el.condition && el.condition.enabled && !srcOk(el.condition.sourceId)){
+        issues.push({el, screen, label,
+          problem: el.condition.sourceId
+            ? T(`conditie-bron "${el.condition.sourceId}" bestaat niet meer`, `condition source "${el.condition.sourceId}" no longer exists`)
+            : T('conditie aan zonder bron', 'condition enabled without a source')});
+      }
+      // graph traces / legend
+      if(el.type==='graph' && el.graph){
+        (el.graph.traces||[]).forEach((t,i)=>{ if(!srcOk(t.sourceId))
+          issues.push({el, screen, label, problem: t.sourceId
+            ? T(`grafiek-trace ${i+1} bron "${t.sourceId}" bestaat niet`, `graph trace ${i+1} source "${t.sourceId}" doesn't exist`)
+            : T(`grafiek-trace ${i+1} heeft geen bron`, `graph trace ${i+1} has no source`)}); });
+      }
+      // font reference (only for elements that actually use a text/icon font)
+      if(el.fontId && !fontOk(el.fontId)){
+        issues.push({el, screen, label,
+          problem: T(`font "${el.fontId}" bestaat niet`, `font "${el.fontId}" doesn't exist`)});
+      }
+    });
+  };
+  scan(p.elements, T('Hoofd','Main'));
+  if(p.waitEnabled!==false) scan(p.waitElements, T('Wachten','Waiting'));
+  return issues;
+}
+/* a readable type label for an element (used in validation messages) */
+function elTypeLabel(el){
+  const m={text:T('Tekst','Text'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
+    circle:T('Cirkel','Circle'),triangle:T('Driehoek','Triangle'),polygon:T('Veelhoek','Polygon'),
+    ring:'Ring',gauge:T('Meter','Gauge'),qr:'QR',wifi:'WiFi',clock:'Refresh Time',graph:T('Grafiek','Graph')};
+  if(el.type==='text' && el.role==='value') return T('Waarde','Value');
+  return m[el.type]||'Element';
+}
+
 function genYAML(){
   const p=profile(), d=p.device, gl=collectGlyphs();
   let out='';
@@ -4216,6 +4270,41 @@ function applyTheme(){
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1800); }
 
 /* lightweight in-app confirm — avoids the browser's native confirm() dialog */
+/* validation popup before generating YAML: lists the layers that would break the
+   ESPHome build (missing source/font). Clicking a row selects that element; OK
+   generates anyway, Cancel aborts so you can fix it first. */
+function showValidationPopup(issues, onGenerateAnyway){
+  const prev=$('#app-confirm'); if(prev) prev.remove();
+  const he=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rows=issues.map((it,i)=>{
+    const where = it.screen ? `<span class="vchk-screen">${he(it.screen)}</span>` : '';
+    return `<button class="vchk-row" data-issue="${i}">
+      <span class="vchk-bullet">⚠</span>
+      <span class="vchk-text"><b>${he(it.label)}</b> ${where}<br><span class="vchk-why">${he(it.problem)}</span></span>
+    </button>`;
+  }).join('');
+  const box=document.createElement('div'); box.id='app-confirm'; box.className='vchk-wide';
+  box.innerHTML=`<div class="app-confirm-msg">
+      <div class="vchk-title">⚠ ${T('Niet alles is goed ingesteld','Some layers aren\'t set up correctly')}</div>
+      <div class="vchk-sub">${T('Deze elementen verwijzen naar een ontbrekende bron of font. ESPHome geeft hierop een build-fout (bv.','These elements point at a missing source or font. ESPHome will fail to build on this (e.g.')} <span class="mono">Couldn't find ID 'undefined'</span>). ${T('Klik een regel om het element te selecteren.','Click a row to select the element.')}</div>
+      <div class="vchk-list">${rows}</div>
+    </div>
+    <div class="app-confirm-btns">
+      <button class="btn ghost sm" id="app-confirm-cancel">${T('Terug — ik fix het','Back — I\'ll fix it')}</button>
+      <button class="btn primary sm" id="app-confirm-ok">${T('Toch genereren','Generate anyway')}</button>
+    </div>`;
+  document.body.appendChild(box);
+  box.querySelectorAll('.vchk-row').forEach(b=>b.onclick=()=>{
+    const it=issues[+b.dataset.issue]; if(!it) return;
+    // switch to the right screen, then select the offending element
+    const want = it.screen===T('Wachten','Waiting') ? 'wait' : 'main';
+    if(editScreen!==want){ const ss=$('#screen-select'); if(ss){ ss.value=want; ss.onchange&&ss.onchange(); } }
+    box.remove();
+    select(it.el.id);
+  });
+  box.querySelector('#app-confirm-ok').onclick=()=>{ box.remove(); if(onGenerateAnyway) onGenerateAnyway(); };
+  box.querySelector('#app-confirm-cancel').onclick=()=>{ box.remove(); };
+}
 function showAppConfirm(msg, onOk, onCancel){
   const prev=$('#app-confirm'); if(prev) prev.remove();
   const box=document.createElement('div'); box.id='app-confirm';
@@ -4365,9 +4454,13 @@ function wire(){
   $('#btn-load').onclick=loadProject;
 
   $('#btn-code').onclick=()=>{ const d=$('#code-drawer');
-    if(d.classList.contains('open')) d.classList.remove('open');
-    else { renderCode(); saveGeneratedYaml(true); d.classList.add('open'); setTimeout(_fitB64,220); }   // re-fit after the open animation
-    document.body.classList.toggle('code-open', d.classList.contains('open')); };
+    if(d.classList.contains('open')){ d.classList.remove('open'); document.body.classList.remove('code-open'); return; }
+    const openDrawer=()=>{ renderCode(); saveGeneratedYaml(true); d.classList.add('open'); setTimeout(_fitB64,220);
+      document.body.classList.add('code-open'); };
+    const issues=validateDesign();
+    if(issues.length){ showValidationPopup(issues, openDrawer); }   // OK = generate anyway
+    else openDrawer();
+  };
   $('#code-close').onclick=()=>{ $('#code-drawer').classList.remove('open'); document.body.classList.remove('code-open'); };
   { const rz=$('#code-resizer'), drawer=$('#code-drawer');
     if(rz) rz.addEventListener('mousedown', e=>{ e.preventDefault();

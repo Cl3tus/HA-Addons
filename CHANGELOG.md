@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.7.3
+- **Pre-flight check on Generate YAML.** Before the code drawer opens, the design is validated; if a layer points at a missing/empty **source** (the cause of ESPHome's `Couldn't find ID 'undefined'` build error), a missing **condition source**, a missing **graph-trace source** or a missing **font**, a popup lists exactly which layers are wrong and on which screen. Click a row to jump to that element and fix it, or **Generate anyway**.
+
 ## 3.7.2
 - Documentation overhaul: the **About** tab, **Documentation** tab and the GitHub README now describe the rulers & guide lines, pixel-perfect snapping, layer-order controls, the zoom/status bar, the graph legend's custom labels and pixel-accurate placement.
 - Added a full **bilingual (EN/NL) wiki** under `docs/wiki/` (15 pages) ready to publish to the GitHub Wiki, plus a screenshot checklist.

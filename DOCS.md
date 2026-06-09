@@ -201,6 +201,10 @@ Open the **⚙** next to the profile picker.
 
 Click **&lt;/&gt; Generate YAML** to open the (resizable) code drawer.
 
+- **Pre-flight check** — if any layer points at a missing/empty source (which would
+  make ESPHome fail with `Couldn't find ID 'undefined'`), a missing condition/graph
+  source, or a missing font, a popup lists exactly which layers are wrong and on which
+  screen. Click a row to jump to that element, or **Generate anyway**.
 - **Copy** / **Download .yaml**.
 - The **base64 recovery code** at the bottom (`# eink-editor:v…:`) stores your full
   editable design. Paste that YAML back via **Import YAML** to restore everything
