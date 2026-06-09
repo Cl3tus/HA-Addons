@@ -3,6 +3,11 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.6.3
+- Font editor: live preview now also updates when you use the size stepper buttons (▲/▼), and the Google-Fonts weight is now reflected live in the preview too.
+- Font editor: preview sample scales across a wider size range (up to 96px).
+- Ruler guides: blue guide line on the canvas is now redrawn and kept on top on every canvas render, so it reliably shows over your elements.
+
 ## 3.6.2
 - Ruler guides: the blue guide line is drawn on the canvas again (now on a top overlay layer, so it stays visible over full-canvas backdrop elements). Remove a guide via its ruler marker.
 - Font editor: the "Local Fonts" source option is renamed to "Upload Font".

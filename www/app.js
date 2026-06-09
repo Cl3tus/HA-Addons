@@ -214,9 +214,10 @@ function previewFamily(font){
   return 'IBM Plex Sans';
 }
 /* inline font preview inside the Fonts modal (#nf-preview) */
-async function previewFontInline(f, host, sizeOverride){
+async function previewFontInline(f, host, sizeOverride, weightOverride){
   host=host||$('#nf-preview'); if(!host||!f) return;
-  const curSize = (sizeOverride!=null && !isNaN(sizeOverride)) ? sizeOverride : (f.size||30);
+  const curSize = (sizeOverride!=null && !isNaN(sizeOverride) && sizeOverride>0) ? sizeOverride : (f.size||30);
+  const curWeight = (weightOverride!=null && !isNaN(weightOverride) && weightOverride>0) ? weightOverride : (f.weight||400);
   let fam=previewFamily(f);
   const isMdi=/materialdesignicons/i.test(f.file||'');
   // a local font stored on the server (no inline bytes) → fetch + register it so the preview renders
@@ -233,12 +234,12 @@ async function previewFontInline(f, host, sizeOverride){
   }
   const sample = isMdi ? '4 0 8 C 5 6 4'
                        : 'AaBbCc Gg 0123 .,:%/°€';
-  const sz=Math.max(14,Math.min(curSize,56));
+  const sz=Math.max(8,Math.min(curSize,96));
   host.style.display='block';
   if(isMdi){
     // real MDI icons via the bundled .mdi webfont classes (a few fun ones)
     const fun=['rocket-launch','robot-happy','heart','weather-sunny','coffee','cat','ghost','pac-man','music-note','star'];
-    const isz=Math.max(22,Math.min(curSize,64));
+    const isz=Math.max(16,Math.min(curSize,96));
     host.innerHTML=`<div class="fld" style="margin-bottom:2px">Preview</div>`
       +`<div class="hint" style="margin:0 0 6px">${esc(f.id)} (${curSize}px)</div>`
       +`<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;line-height:1">`
@@ -246,8 +247,8 @@ async function previewFontInline(f, host, sizeOverride){
       +`</div>`;
     return;
   }
-  host.innerHTML=`<div class="fld" style="margin-bottom:4px">Preview · ${esc(f.id)} — ${curSize}px · ${esc(fam)}</div>`+
-    `<div style="font-family:'${fam.replace(/'/g,'')}', sans-serif;font-size:${sz}px;line-height:1.25;word-break:break-word">${sample}</div>`;
+  host.innerHTML=`<div class="fld" style="margin-bottom:4px">Preview · ${esc(f.id)} — ${curSize}px${f.kind==='gfonts'?' · '+curWeight:''} · ${esc(fam)}</div>`+
+    `<div style="font-family:'${fam.replace(/'/g,'')}', sans-serif;font-size:${sz}px;font-weight:${curWeight};line-height:1.25;word-break:break-word">${sample}</div>`;
 }
 var _previewLoaded=new Set();
 function fontLoaded(font){
@@ -729,8 +730,8 @@ function drawGuides(){
   const p=profile(); const W=p.device.w, H=p.device.h;
   profileGuides().forEach(g=>{
     const line = g.axis==='h'
-      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:'rgba(0,100,220,0.7)', strokeWidth:1, dash:[4,3], listening:false})
-      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:'rgba(0,100,220,0.7)', strokeWidth:1, dash:[4,3], listening:false});
+      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:'#1a7fe8', strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false})
+      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:'#1a7fe8', strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false});
     guideLayer.add(line);
   });
   guideLayer.draw();
@@ -1395,6 +1396,8 @@ function renderCanvas(){
     ids.forEach(id=>{ const n=contentLayer.getChildren(x=>x._elId===id)[0]; if(n) _selOutlines[id]=outlineNode(n); });
   }
   contentLayer.draw();
+  // keep the blue guide overlay on top of freshly-rendered content and redraw it
+  if(guideLayer){ guideLayer.moveToTop(); drawGuides(); }
 }
 
 /* during live graph resize: redraw element nodes but keep current selection visuals */
@@ -3263,9 +3266,10 @@ function editFont(i){
          f.size=+$('#ef-size').value||f.size||30;
          persist(); afterChange(); openFonts(); toast(T('Font bijgewerkt','Font updated')); }}],
       _revertFontsIfUnsaved);
-    // live preview — re-renders when the size field changes
+    // live preview — re-renders when the size field changes (steppers fire 'change')
     const mP=$('#ef-preview'), mS=$('#ef-size');
-    if(mP && mS){ const r=()=>previewFontInline(f, mP, +mS.value); r(); mS.addEventListener('input',r); }
+    if(mP && mS){ const r=()=>previewFontInline(f, mP, +mS.value);
+      r(); mS.addEventListener('input',r); mS.addEventListener('change',r); }
     return;
   }
   const kind0 = f.kind==='gfonts'?'gfonts':(f.kind==='web'?'web':'local');
@@ -3326,10 +3330,14 @@ function editFont(i){
     $('#ef-web').style.display=k==='web'?'':'none'; $('#ef-web-link').style.display=k==='web'?'':'none'; };
   let efUpload=null;
   const up=$('#ef-upload'); if(up) up.onchange=e=>{ const file=e.target.files[0]; if(!file) return; const rd=new FileReader(); rd.onload=()=>{ efUpload=rd.result; if($('#ef-file') && !$('#ef-file').value) $('#ef-file').value='fonts/'+file.name; }; rd.readAsDataURL(file); };
-  // live preview — re-renders when the size field changes
-  const efPrev=$('#ef-preview'), efSize=$('#ef-size');
-  const renderEfPrev=()=>previewFontInline(f, efPrev, +efSize.value);
-  if(efPrev && efSize){ renderEfPrev(); efSize.addEventListener('input',renderEfPrev); }
+  // live preview — re-renders when the size or weight changes (steppers fire 'change')
+  const efPrev=$('#ef-preview'), efSize=$('#ef-size'), efWeight=$('#ef-weight');
+  const renderEfPrev=()=>previewFontInline(f, efPrev, +efSize.value, efWeight?+efWeight.value:undefined);
+  if(efPrev && efSize){
+    renderEfPrev();
+    efSize.addEventListener('input',renderEfPrev); efSize.addEventListener('change',renderEfPrev);
+    if(efWeight){ efWeight.addEventListener('input',renderEfPrev); efWeight.addEventListener('change',renderEfPrev); }
+  }
 }
 
 /* fonts that share the same TTF filename share one upload — different sizes of
