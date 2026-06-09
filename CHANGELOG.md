@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.6.9
+- MDI icon-font glyphs: the plain "safety" characters (space, digits, %, °, …) that are added to prevent build errors are now grouped under an explanatory comment in the generated `glyphs:` block. They still need one line each — YAML doesn't allow mixing a block list (each MDI glyph carries its own `# mdi:<name>` comment) with an inline `[…]` array in the same sequence — but it's now clear why they're there.
+
 ## 3.6.8
 - Ruler guides now sit **behind** your elements (sent to the back, just above the grid) instead of overlaying everything.
 - Default text font id is now always **`font_small`** (it was language-dependent `font_klein` in Dutch), so the id in the generated YAML is stable.

@@ -3076,11 +3076,18 @@ function glyphBlock(f, g){
     else return ''; // full font (no glyph restriction)
   }
   const plain=Array.from(chars).filter(c=>c && c.codePointAt(0)<0xF0000).sort();
-  // icon font (has MDI glyphs): one per line with a "# mdi:<name>" comment
+  // icon font (has MDI glyphs): one per line with a "# mdi:<name>" comment.
+  // The MDI glyphs MUST stay one-per-line (each carries its own mdi:<name> comment);
+  // YAML can't mix block items and an inline [..] array in the same sequence, so the
+  // plain "safety" chars (space, digits, %, °, …) also stay one-per-line — but we group
+  // them under a header comment so it's clear they're only there to prevent build errors.
   if(icons.size){
     let out='    glyphs:\n';
     icons.forEach((name,hex)=>{ out+=`      - "\\U${hex}"${name?` # mdi:${name}`:''}\n`; });
-    plain.forEach(ch=>{ out+=`      - ${glyphQ1(ch)}\n`; });   // any stray plain chars
+    if(plain.length){
+      out+=`      # ${T('extra glyphs — voorkomen build-errors als dit font ook tekst/cijfers tekent','extra glyphs — prevent build errors if this font also draws text/digits')}:\n`;
+      plain.forEach(ch=>{ out+=`      - ${glyphQ1(ch)}\n`; });
+    }
     return out;
   }
   // regular font: compact single-line array, e.g. glyphs: ['A', 'Q', 'U']
