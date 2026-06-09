@@ -3,6 +3,10 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.6.6
+- **Alignment grid is back** — the 9-block anchor/alignment picker (top-left … bottom-right) returns in the Position section for text, value, icon and Wi-Fi elements, so you can place text around its anchor point just like ESPHome's `TextAlign`. Changing the anchor keeps the element visually in place.
+- **Refresh Time clock fixed**: the time now sits **optically centred** next to its icon (aligned on the visible glyphs, not the font box, so digits no longer float high), and the horizontal gap is based on the icon's actual width instead of a fixed offset — so the time is no longer pushed too far right. Canvas and device stay identical. Empty offset-X/Y fields now auto-compute these; type a value to override.
+
 ## 3.6.5
 - Ruler guides: the blue guide line is now shown live on the canvas **while** you drag a new guide out of the ruler (not only after you release).
 - Snap-to-ruler fixed: dragging an element near a guide no longer makes it jitter/oscillate. The snap now tests the element's bounding box at its *intended* position and snaps only the single closest edge per axis.

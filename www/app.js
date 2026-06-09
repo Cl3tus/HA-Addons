@@ -1946,7 +1946,12 @@ function renderInspector(){
       <div class="row"><div><label class="fld">${T('Breedte','Width')}</label><input data-k="w" type="number" value="${el.w}"></div><div><label class="fld">${T('Hoogte','Height')}</label><input data-k="h" type="number" value="${el.h}"></div></div>
       <div class="hint">${T('De golf in de preview is een voorbeeld; op het device tekent ESPHome de echte sensorgeschiedenis. De Y-as-getallen verschijnen pas als je hieronder een vaste Y-min én Y-max invult.','The wave in the preview is a placeholder; on the device ESPHome draws the real sensor history. The Y-axis numbers only appear once you set a fixed Y-min and Y-max below.')}</div>`);
   } else {
-    h+=g(T('Positie','Position'),`<div class="row"><div><label class="fld">${T('Anker X','Anchor X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Anker Y','Anchor Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>`);
+    let posH=`<div class="row"><div><label class="fld">${T('Anker X','Anchor X')}</label><input data-k="x" type="number" value="${el.x}"></div><div><label class="fld">${T('Anker Y','Anchor Y')}</label><input data-k="y" type="number" value="${el.y}"></div></div>`;
+    if(el.type==='text'||el.type==='icon'||el.type==='wifi'){
+      posH+=`<label class="fld" style="margin-top:8px">${T('Uitlijning (anker)','Alignment (anchor)')}</label>${anchorGrid(el)}`
+          + `<div class="hint">${T('Bepaalt hoe de tekst rond het ankerpunt valt — net als TextAlign in ESPHome.','Sets how the text sits around the anchor point — like ESPHome\'s TextAlign.')}</div>`;
+    }
+    h+=g(T('Positie','Position'), posH);
   }
 
   // font + color
@@ -2008,7 +2013,7 @@ function renderInspector(){
         <div><button class="btn sm" id="pick-clock-icon">${T('Icoon kiezen…','Choose icon…')}</button></div>
         <div><label class="fld">${T('Icoon-font','Icon font')}</label><select data-clock="iconFontId">${fontOpts(c.iconFontId)}</select></div></div>
       <div class="row tight"><div><label class="fld">${T('Tekst-offset X','Text offset X')}</label><input data-clock="offX" class="spin" type="number" value="${attr(c.offX)}" placeholder="${clockOffsets(el).autoX} (auto)" title="${T('Horizontale afstand van de tekst t.o.v. het icoon. Leeg = automatisch op de iconbreedte.','Horizontal text distance from the icon. Empty = auto from the icon width.')}"></div>
-        <div><label class="fld">${T('Tekst-offset Y','Text offset Y')}</label><input data-clock="offY" class="spin" type="number" value="${attr(c.offY)}" placeholder="0" title="${T('Verticale verschuiving. 0 = verticaal gecentreerd op het icoon.','Vertical shift. 0 = vertically centred on the icon.')}"></div></div>`:''}`);
+        <div><label class="fld">${T('Tekst-offset Y','Text offset Y')}</label><input data-clock="offY" class="spin" type="number" value="${attr(c.offY)}" placeholder="${clockOffsets(el).autoY} (auto)" title="${T('Verticale verschuiving t.o.v. het icoon. Leeg = automatisch optisch gecentreerd op het icoon.','Vertical shift relative to the icon. Empty = auto, optically centred on the icon.')}"></div></div>`:''}`);
   }
 
   // graph smart element
@@ -2085,7 +2090,7 @@ function renderInspector(){
 
 function anchorGrid(el){
   let h='<div class="anchor-grid">';
-  ANCHORS.forEach(row=>row.forEach(a=>{ h+=`<button data-anchor="${a}" class="${(el.anchor||'TOP_LEFT')===a?'on':''}" title="${a}"></button>`; }));
+  ANCHORS.forEach(row=>row.forEach(a=>{ h+=`<button data-anchor="${a}" class="${(el.anchor||'CENTER')===a?'on':''}" title="${a}"></button>`; }));
   return h+'</div>';
 }
 function fontOpts(sel){ return profile().fonts.map(f=>`<option value="${f.id}" ${f.id===sel?'selected':''}>${f.id} (${f.size}px)</option>`).join(''); }
@@ -2377,7 +2382,7 @@ function bindInspector(host, el){
   host.querySelectorAll('[data-anchor]').forEach(b=>b.addEventListener('click',()=>{ pushUndo();
     // keep the text visually in place: convert anchor point between old and new alignment
     const node=contentLayer.getChildren(n=>n._elId===el.id)[0];
-    if(node && (el.type==='text'||el.type==='icon')){
+    if(node && (el.type==='text'||el.type==='icon'||el.type==='wifi')){
       const w=node.width(), h=node.height();
       const oldO=anchorOffset(el.anchor||'CENTER', w, h);
       const topLeftX=el.x+oldO.ox, topLeftY=el.y+oldO.oy; // current visual top-left
@@ -2651,13 +2656,41 @@ function wifiCode(el, I, color, anchor){
 /* clock text offset: horizontal auto-scales with the icon size (so the time doesn't
    land on top of big icons) unless the user set offX; offY shifts the text vertically
    (0 = vertically centred on the icon). */
+/* ink (visible-glyph) metrics for one clock part, relative to the box top-left where
+   the glyph is drawn (baseline at y=ascender). Lets us optically centre icon + time. */
+function _clockInk(font, str){
+  const em=esTextMetrics(font, str);                         // {ascender, height, width}
+  const fam=previewFamily(font).replace(/'/g,'');
+  const ctx=_measCtx(); ctx.font=font.size+"px '"+fam+"'";
+  const m=ctx.measureText(str||'');
+  const aAsc =(m.actualBoundingBoxAscent !=null)?m.actualBoundingBoxAscent :em.ascender;
+  const aDesc=(m.actualBoundingBoxDescent!=null)?m.actualBoundingBoxDescent:0;
+  const aRight=(m.actualBoundingBoxRight!=null)?m.actualBoundingBoxRight:em.width;
+  const aLeft =(m.actualBoundingBoxLeft !=null)?m.actualBoundingBoxLeft :0;
+  const inkTop=em.ascender-aAsc, inkBottom=em.ascender+aDesc;
+  return { width:em.width, height:em.height,
+           centerOffset:(inkTop+inkBottom)/2 - em.height/2,   // visible centre vs box centre
+           inkRight:aRight,                                   // visible right edge from box-left
+           inkLeft:-aLeft };                                  // visible left edge from box-left
+}
 function clockOffsets(el){
   const c=el.clock||{};
-  const ifont = c.icon ? (fontById(c.iconFontId)||fontById(el.fontId)||{size:30}) : null;
-  const autoX = c.icon ? Math.round((ifont.size||30))+6 : 0;
-  const offX = (c.offX!=null && c.offX!=='') ? +c.offX : autoX;   // auto-scales with icon size
-  const offY = (c.offY!=null && c.offY!=='') ? +c.offY : 0;
-  return {offX, offY, autoX};
+  const hasIcon=!!c.icon;
+  const ifont = hasIcon ? (fontById(c.iconFontId)||fontById(el.fontId)||{size:30}) : null;
+  const tfont = fontById(el.fontId)||{size:18};
+  let autoX=0, autoY=0;
+  if(hasIcon){
+    // icon and time are both ESPHome-CENTER'd; align them by their VISIBLE ink, not the
+    // (font-dependent) box, so they look truly centred and the gap matches the icon glyph.
+    const ii=_clockInk(ifont, mdiChar(c.iconHex||'F044C'));
+    const ti=_clockInk(tfont, strftimePreview(c.strftime||'%H:%M'));
+    const GAP=Math.max(4, Math.round((ifont.size||30)*0.2));
+    autoX = Math.round((-ii.width/2 + ii.inkRight) + GAP + ti.width/2 - ti.inkLeft);
+    autoY = Math.round(ii.centerOffset - ti.centerOffset);   // line up the visible centres
+  }
+  const offX = (c.offX!=null && c.offX!=='') ? +c.offX : autoX;
+  const offY = (c.offY!=null && c.offY!=='') ? +c.offY : autoY;
+  return {offX, offY, autoX, autoY};
 }
 function clockCode(el, I, color, anchor){
   const c=el.clock||{}; const font=(fontById(el.fontId)||{id:'font_small_book'}).id;
