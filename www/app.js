@@ -3080,17 +3080,13 @@ function glyphBlock(f, g){
     else return ''; // full font (no glyph restriction)
   }
   const plain=Array.from(chars).filter(c=>c && c.codePointAt(0)<0xF0000).sort();
-  // icon font (has MDI glyphs): use a multi-line inline [ … ] array (an ESPHome-valid
-  // form — a flow sequence may span lines and carry # comments at line ends). The MDI
-  // glyphs stay one-per-line so each keeps its "# mdi:<name>" comment; the plain
-  // "safety" chars (space, digits, %, °, …) are clustered into ONE quoted string so
-  // they no longer sprawl over many lines.
+  // icon font (has MDI glyphs): emit ONLY the icons, as a multi-line inline [ … ] array
+  // (an ESPHome-valid form — a flow sequence may span lines and carry # comments). Plain
+  // text/digit chars are deliberately dropped: an icon font has no such glyphs, so adding
+  // them makes ESPHome fail with "Font … is missing N glyphs".
   if(icons.size){
     let out='    glyphs: [\n';
     icons.forEach((name,hex)=>{ out+=`      "\\U${hex}",${name?` # mdi:${name}`:''}\n`; });
-    if(plain.length){
-      out+=`      ${glyphCluster(plain)}, # ${T('extra glyphs (build-errors voorkomen)','extra glyphs (prevent build errors)')}\n`;
-    }
     out+='      ]\n';
     return out;
   }
@@ -3101,13 +3097,6 @@ function glyphBlock(f, g){
 }
 /* single-quoted YAML scalar (a literal ' is doubled; backslash stays literal) */
 function glyphQ1(ch){ return "'"+String(ch).replace(/'/g,"''")+"'"; }
-/* cluster several plain chars into ONE double-quoted YAML string. Inside double
-   quotes only " and \ are special, so commas/colons/#/spaces/° are all literal —
-   this lets the safety chars sit on a single line instead of one item each. */
-function glyphCluster(chars){
-  const body=chars.map(c=>String(c).replace(/\\/g,'\\\\').replace(/"/g,'\\"')).join('');
-  return '"'+body+'"';
-}
 function usedSources(){
   const ids=new Set();
   els().forEach(el=>{
