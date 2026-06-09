@@ -3,6 +3,10 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.6.5
+- Ruler guides: the blue guide line is now shown live on the canvas **while** you drag a new guide out of the ruler (not only after you release).
+- Snap-to-ruler fixed: dragging an element near a guide no longer makes it jitter/oscillate. The snap now tests the element's bounding box at its *intended* position and snaps only the single closest edge per axis.
+
 ## 3.6.4
 - **Pixel-accurate text placement** — the canvas now positions text/icons exactly like the device. ESPHome anchors text on the font's real baseline inside its full line-height box (read from the font's hhea/head metrics), where the canvas previously used the browser's own text box. Decorative fonts (display digits, icon fonts, script titles) that looked shifted on the physical e-paper vs. the editor now line up 1:1.
 - Affects text, icons, the WiFi-strength icon and the refresh-time clock. The clock now mirrors the generated YAML exactly: icon and time are centred vertically on the same line.

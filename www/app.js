@@ -823,6 +823,26 @@ function drawRuler(){
 
 function persistGuides(){ persist(); }
 
+/* ephemeral blue guide drawn live on the canvas WHILE dragging a guide from the
+   ruler (or repositioning an existing one). Committed to profileGuides() on mouseup. */
+let _dragGuide=null;
+function showDragGuide(axis, pos){
+  if(!guideLayer) return;
+  const p=profile(); const W=p.device.w, H=p.device.h;
+  pos=Math.max(0, Math.min(pos, axis==='v'?W:H));
+  const pts = axis==='h' ? [0,pos,W,pos] : [pos,0,pos,H];
+  if(!_dragGuide){
+    _dragGuide=new Konva.Line({points:pts, stroke:'#1a7fe8', strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false});
+    guideLayer.add(_dragGuide); guideLayer.moveToTop();
+  } else {
+    _dragGuide.points(pts);
+  }
+  guideLayer.batchDraw();
+}
+function clearDragGuide(){
+  if(_dragGuide){ _dragGuide.destroy(); _dragGuide=null; if(guideLayer) guideLayer.batchDraw(); }
+}
+
 function drawGuides(){
   if(!guideLayer) return;
   guideLayer.destroyChildren();
@@ -877,9 +897,11 @@ function setupRulers(){
     preview.style.top=rxR.bottom+'px';
     preview.style.height=(fr.top-rxR.bottom)+'px';
     document.body.appendChild(preview);
-    const onMove=mv=>{ preview.style.left=mv.clientX+'px'; };
+    showDragGuide('v', Math.round((ev.clientX-fr.left)/zoom));
+    const onMove=mv=>{ preview.style.left=mv.clientX+'px';
+      showDragGuide('v', Math.round((mv.clientX-fr.left)/zoom)); };
     const onUp=mv=>{
-      preview.remove();
+      preview.remove(); clearDragGuide();
       window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp);
       const pos=Math.max(0,Math.round((mv.clientX-fr.left)/zoom));
       profileGuides().push({axis:'v',pos}); persistGuides(); drawGuides(); drawRuler();
@@ -914,9 +936,11 @@ function setupRulers(){
     preview.style.left=ryR.right+'px';
     preview.style.width=(fr.left-ryR.right)+'px';
     document.body.appendChild(preview);
-    const onMove=mv=>{ preview.style.top=mv.clientY+'px'; };
+    showDragGuide('h', Math.round((ev.clientY-fr.top)/zoom));
+    const onMove=mv=>{ preview.style.top=mv.clientY+'px';
+      showDragGuide('h', Math.round((mv.clientY-fr.top)/zoom)); };
     const onUp=mv=>{
-      preview.remove();
+      preview.remove(); clearDragGuide();
       window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp);
       const pos=Math.max(0,Math.round((mv.clientY-fr.top)/zoom));
       profileGuides().push({axis:'h',pos}); persistGuides(); drawGuides(); drawRuler();
@@ -1148,23 +1172,33 @@ function buildNode(el){
       rx = Math.round((pos.x+ox)/g)*g - ox;
       ry = Math.round((pos.y+oy)/g)*g - oy;
     }
-    // guide snap — use the live bounding box so anchor-offset elements (wifi/clock/icon) snap correctly
+    // guide snap — use the bounding box PROJECTED to the desired position so
+    // anchor-offset elements (wifi/clock/icon) snap correctly and without jitter.
     if(snapGuide && rulerOn()){
       const THRESH=8, guides=profileGuides();
-      // get current bbox in canvas coords; relativeTo:contentLayer gives canvas pixels
+      // current bbox in canvas coords (relativeTo:contentLayer = canvas pixels)
       const bbox=node.getClientRect({relativeTo:contentLayer});
-      // bbox is the CURRENT position of the node; delta from current pos to desired pos
-      const curX=node.x(), curY=node.y();
-      const bLeft=bbox.x, bTop=bbox.y, bRight=bbox.x+bbox.width, bBot=bbox.y+bbox.height;
+      // the bbox reflects the node's CURRENT position; the desired move is (pos - current).
+      // Project the bbox edges to where they WOULD be at `pos`, then test against guides.
+      // Testing the projected (not current) box is what stops the snap from oscillating.
+      const dx=pos.x-node.x(), dy=pos.y-node.y();
+      const bLeft=bbox.x+dx, bRight=bbox.x+bbox.width+dx;
+      const bTop=bbox.y+dy,  bBot=bbox.y+bbox.height+dy;
+      // pick the single closest edge per axis within threshold (avoids fighting snaps)
+      let bestVx=null, bestVdist=THRESH, bestHy=null, bestHdist=THRESH;
       guides.forEach(gd=>{
         if(gd.axis==='v'){
-          if(Math.abs(bLeft-gd.pos)<THRESH)        rx=pos.x+(gd.pos-bLeft);
-          else if(Math.abs(bRight-gd.pos)<THRESH)  rx=pos.x+(gd.pos-bRight);
+          const dl=Math.abs(bLeft-gd.pos), dr=Math.abs(bRight-gd.pos);
+          if(dl<bestVdist){ bestVdist=dl; bestVx=gd.pos-bLeft; }
+          if(dr<bestVdist){ bestVdist=dr; bestVx=gd.pos-bRight; }
         } else {
-          if(Math.abs(bTop-gd.pos)<THRESH)         ry=pos.y+(gd.pos-bTop);
-          else if(Math.abs(bBot-gd.pos)<THRESH)    ry=pos.y+(gd.pos-bBot);
+          const dt=Math.abs(bTop-gd.pos), db=Math.abs(bBot-gd.pos);
+          if(dt<bestHdist){ bestHdist=dt; bestHy=gd.pos-bTop; }
+          if(db<bestHdist){ bestHdist=db; bestHy=gd.pos-bBot; }
         }
       });
+      if(bestVx!==null) rx=pos.x+bestVx;
+      if(bestHy!==null) ry=pos.y+bestHy;
     }
     return { x:rx, y:ry };
   });
