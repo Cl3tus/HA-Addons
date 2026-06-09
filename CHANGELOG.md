@@ -3,6 +3,10 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.6.4
+- **Pixel-accurate text placement** — the canvas now positions text/icons exactly like the device. ESPHome anchors text on the font's real baseline inside its full line-height box (read from the font's hhea/head metrics), where the canvas previously used the browser's own text box. Decorative fonts (display digits, icon fonts, script titles) that looked shifted on the physical e-paper vs. the editor now line up 1:1.
+- Affects text, icons, the WiFi-strength icon and the refresh-time clock. The clock now mirrors the generated YAML exactly: icon and time are centred vertically on the same line.
+
 ## 3.6.3
 - Font editor: live preview now also updates when you use the size stepper buttons (▲/▼), and the Google-Fonts weight is now reflected live in the preview too.
 - Font editor: preview sample scales across a wider size range (up to 96px).

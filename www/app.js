@@ -274,10 +274,110 @@ async function registerUploadedFonts(){
       const fname=_fontFileName(font);
       if(fname && SERVER_FONTS.has(fname)){
         try{ const r=await fetch('api/fonts/'+encodeURIComponent(fname));
-          if(r.ok){ const buf=await r.arrayBuffer(); const ff=new FontFace(fam,buf); await ff.load(); document.fonts.add(ff); LOADED_FONT_IDS.add(font.id); } }catch(e){}
+          if(r.ok){ const buf=await r.arrayBuffer(); FONT_VM[font.id]=_vmFromBuffer(buf)||'fallback'; const ff=new FontFace(fam,buf); await ff.load(); document.fonts.add(ff); LOADED_FONT_IDS.add(font.id); } }catch(e){}
       }
     }
   }
+  // make sure every font used has vertical metrics resolved (drives 1:1 text placement)
+  for(const font of profile().fonts){ if(FONT_VM[font.id]===undefined) ensureFontVM(font); }
+}
+
+/* ============================================================
+   ESPHome-accurate TEXT METRICS  (1:1 canvas ↔ device placement)
+   ------------------------------------------------------------
+   ESPHome positions text via Display::get_text_bounds(): the text box is as tall
+   as the FONT's line height (height_ = ceil(face.size.height/64)) and the glyph
+   sits on the baseline (ascender = ceil(face.size.ascender/64)). FreeType derives
+   those from the font's hhea/head tables. Konva instead uses its own pixel-size
+   box and baseline, so decorative fonts land visibly off. We replicate ESPHome by
+   reading the real hhea/head metrics from the font bytes and drawing each text
+   element with textBaseline='alphabetic' at y=ascender inside a height_ box.
+   Horizontal note: for CENTER/RIGHT the x_offset term cancels out, so the box
+   width is simply the advance width (which measureText already gives us).
+   ============================================================ */
+var FONT_VM = {};            // fontId -> {unitsPerEm,ascender,descender,lineGap} | 'fallback' | undefined
+var _vmPending = new Set();  // fontIds currently being fetched
+var _vmRerender = null;      // debounced re-render once metrics arrive
+var _measCanvas = null;      // reused offscreen 2d context for measuring
+function _measCtx(){ if(!_measCanvas) _measCanvas=document.createElement('canvas'); return _measCanvas.getContext('2d'); }
+function _dataUrlToBuf(durl){
+  try{ const b64=durl.split(',')[1]||''; const bin=atob(b64); const u=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u.buffer; }catch(e){ return null; }
+}
+/* read unitsPerEm + hhea ascender/descender/lineGap straight from an sfnt
+   (ttf/otf) buffer; returns null for woff/woff2 (compressed) or on any error */
+function _vmFromBuffer(buf){
+  try{
+    if(!buf) return null;
+    const dv=new DataView(buf); let off=0;
+    const tag=dv.getUint32(0);
+    if(tag===0x74746366){ off=dv.getUint32(12); }                                 // 'ttcf' collection -> first font
+    else if(tag!==0x00010000 && tag!==0x4F54544F && tag!==0x74727565) return null; // not ttf/otf/'true' (woff(2)=compressed)
+    const numTables=dv.getUint16(off+4);
+    let head=null,hhea=null;
+    for(let i=0;i<numTables;i++){ const rec=off+12+i*16; const t=dv.getUint32(rec), to=dv.getUint32(rec+8);
+      if(t===0x68656164) head=to; else if(t===0x68686561) hhea=to; }
+    if(head==null||hhea==null) return null;
+    return { unitsPerEm:dv.getUint16(head+18), ascender:dv.getInt16(hhea+4),
+             descender:dv.getInt16(hhea+6), lineGap:dv.getInt16(hhea+8) };
+  }catch(e){ return null; }
+}
+/* the URL whose bytes back this font's on-canvas rendering (null = use fallback) */
+function _vmUrlFor(font){
+  if(/materialdesignicons/i.test(font.file||'')) return 'vendor/mdi/fonts/materialdesignicons-webfont.ttf';
+  if(font.dataUrl) return font.dataUrl;
+  if(font.kind==='local'){ const fn=_fontFileName(font); if(fn && typeof SERVER_FONTS!=='undefined' && SERVER_FONTS.has && SERVER_FONTS.has(fn)) return 'api/fonts/'+encodeURIComponent(fn); }
+  return null;   // gfonts / unresolved -> measureText fallback
+}
+function _scheduleVmRerender(){ if(_vmRerender) return;
+  _vmRerender=setTimeout(()=>{ _vmRerender=null; if(typeof renderCanvas==='function') renderCanvas(); }, 30); }
+/* resolve a font's vertical metrics (async); marks 'fallback' if unobtainable */
+function ensureFontVM(font){
+  if(!font || FONT_VM[font.id]!==undefined || _vmPending.has(font.id)) return;
+  if(font.dataUrl){ FONT_VM[font.id]=_vmFromBuffer(_dataUrlToBuf(font.dataUrl))||'fallback'; return; }
+  const url=_vmUrlFor(font);
+  if(!url){ FONT_VM[font.id]='fallback'; return; }
+  _vmPending.add(font.id);
+  fetch(url).then(r=>r.ok?r.arrayBuffer():null).then(buf=>{
+    FONT_VM[font.id]=_vmFromBuffer(buf)||'fallback'; _vmPending.delete(font.id); _scheduleVmRerender();
+  }).catch(()=>{ FONT_VM[font.id]='fallback'; _vmPending.delete(font.id); });
+}
+/* ESPHome text box metrics for a given string: {ascender, height, width} in px */
+function esTextMetrics(font, text){
+  const fam=previewFamily(font).replace(/'/g,'');
+  const ctx=_measCtx(); ctx.font=font.size+"px '"+fam+"'";
+  const width=ctx.measureText(text||'').width;
+  let ascender, height;
+  const vm=FONT_VM[font.id];
+  if(vm && vm!=='fallback' && vm.unitsPerEm){
+    const s=font.size/vm.unitsPerEm;                          // FreeType set_pixel_sizes scale
+    ascender=Math.ceil(vm.ascender*s);                        // FT_PIX_CEIL → pt_to_px
+    height=Math.round((vm.ascender - vm.descender + vm.lineGap)*s);  // face->height, rounded
+  } else {
+    if(vm===undefined) ensureFontVM(font);                    // kick off real metrics, re-render when ready
+    const m=ctx.measureText((text&&text.length)?text:'Hg');   // browser fallback (no hhea line-gap)
+    const a=(m.fontBoundingBoxAscent!=null)?m.fontBoundingBoxAscent:(m.actualBoundingBoxAscent!=null?m.actualBoundingBoxAscent:font.size*0.8);
+    const d=(m.fontBoundingBoxDescent!=null)?m.fontBoundingBoxDescent:(m.actualBoundingBoxDescent!=null?m.actualBoundingBoxDescent:font.size*0.2);
+    ascender=Math.round(a); height=Math.round(a+d);
+  }
+  return { ascender, height, width };
+}
+/* a Konva shape that draws one line of text exactly like ESPHome: top-left at the
+   node origin, glyph baseline at y=ascender, box = advance width × line height */
+function makeTextShape(text, font, fill, m){
+  const fam=previewFamily(font).replace(/'/g,'');
+  const size=font.size;
+  const node=new Konva.Shape({ width:Math.max(0,m.width), height:Math.max(0,m.height), fill:fill, listening:true,
+    sceneFunc:function(ctx, shape){
+      ctx.setAttr('font', size+"px '"+fam+"'");
+      ctx.setAttr('textAlign','left');
+      ctx.setAttr('textBaseline','alphabetic');
+      ctx.setAttr('fillStyle', shape.fill());
+      ctx.fillText(text||'', 0, m.ascender);
+    },
+    hitFunc:function(ctx, shape){ ctx.beginPath(); ctx.rect(0,0,Math.max(1,m.width),Math.max(1,m.height)); ctx.closePath(); ctx.fillStrokeShape(shape); }
+  });
+  return node;
 }
 
 /* ============================================================
@@ -882,11 +982,10 @@ function buildNode(el){
   if(E.type==='text' || E.type==='icon'){
     const font = fontById(E.fontId) || profile().fonts[0];
     const txt = E.type==='icon' ? mdiChar(E.iconHex) : displayText(E);
-    node = new Konva.Text({ text:txt, fontFamily:previewFamily(font), fontSize:font.size,
-                            fill:color.css, listening:true });
-    // measure then position by anchor
-    const w=node.width(), h=node.height();
-    const {ox,oy}=anchorOffset(E.anchor||'CENTER', w, h);
+    // ESPHome-accurate box: line-height tall, glyph on the baseline (see esTextMetrics)
+    const m=esTextMetrics(font, txt);
+    node=makeTextShape(txt, font, color.css, m);
+    const {ox,oy}=anchorOffset(E.anchor||'CENTER', m.width, m.height);
     node.x(E.x+ox); node.y(E.y+oy);
     if(!fontLoaded(font)){ node.opacity(0.75); }
   }
@@ -949,27 +1048,34 @@ function buildNode(el){
   }
   else if(E.type==='wifi'){
     const font=fontById(E.fontId)||profile().fonts[0];
-    node=new Konva.Text({ text:mdiChar(wifiPreviewHex(E)), fontFamily:previewFamily(font), fontSize:font.size, fill:color.css, listening:true });
-    const w=node.width(), h=node.height(); const {ox,oy}=anchorOffset(E.anchor||'CENTER', w, h);
+    const wtxt=mdiChar(wifiPreviewHex(E));
+    const m=esTextMetrics(font, wtxt);
+    node=makeTextShape(wtxt, font, color.css, m);
+    const {ox,oy}=anchorOffset(E.anchor||'CENTER', m.width, m.height);
     node.x(E.x+ox); node.y(E.y+oy);
   }
   else if(E.type==='clock'){
+    // mirror clockCode() exactly: icon + time are each ESPHome-CENTER'd vertically on
+    // E.y (the vertical part of the anchor is intentionally ignored, like the YAML),
+    // horizontally aligned per the anchor's horizontal part; time sits at E.x+offX.
     const font=fontById(E.fontId)||profile().fonts[0];
     const g=new Konva.Group({listening:true});
     const txt=strftimePreview(E.clock&&E.clock.strftime||'%H:%M');
     const hasIcon=E.clock&&E.clock.icon;
     const ifont=hasIcon?(fontById(E.clock.iconFontId)||font):null;
-    // build text node first to know its height
-    const txtNode=new Konva.Text({text:txt, fontFamily:previewFamily(font), fontSize:font.size, fill:color.css});
-    let iconNode=null;
-    if(hasIcon) iconNode=new Konva.Text({text:mdiChar(E.clock.iconHex), fontFamily:previewFamily(ifont), fontSize:ifont.size, fill:color.css});
-    const midH=Math.max(txtNode.height(), iconNode?iconNode.height():0);
-    if(iconNode){ iconNode.x(0); iconNode.y((midH-iconNode.height())/2); g.add(iconNode); }
+    const anc=E.anchor||'CENTER';
+    const hRight=/RIGHT$/.test(anc), hCenter=!hRight && /CENTER$/.test(anc);  // else LEFT
+    const place=(t, fnt, ax, ay)=>{
+      const m=esTextMetrics(fnt, t);
+      let ox=0; if(hRight) ox=-m.width; else if(hCenter) ox=-m.width/2;
+      const n=makeTextShape(t, fnt, color.css, m);
+      n.x(ax+ox); n.y(ay - m.height/2);   // ESPHome forces vertical CENTER for the clock
+      g.add(n);
+    };
+    if(hasIcon) place(mdiChar(E.clock.iconHex), ifont, E.x, E.y);
     const {offX,offY}=hasIcon?clockOffsets(E):{offX:0,offY:0};
-    txtNode.x(offX); txtNode.y((midH-txtNode.height())/2 + offY); g.add(txtNode);
-    // anchor by group bbox
-    const b=g.getClientRect(); const {ox,oy}=anchorOffset(E.anchor||'CENTER', b.width, b.height);
-    g.x(E.x+ox); g.y(E.y+oy); node=g;
+    place(txt, font, E.x+offX, E.y+offY);
+    node=g;
   }
   else if(E.type==='graph'){
     const g=new Konva.Group({listening:true});
@@ -1110,10 +1216,9 @@ function buildNode(el){
       // these use node.x()/y() as their origin (centre for shapes, top-left for QR group)
       el.x=Math.round(node.x()); el.y=Math.round(node.y());
     } else if(el.type==='clock'){
-      // anchored group: convert the group's top-left back to the anchor point
-      const b=node.getClientRect({relativeTo:contentLayer});
-      const {ox,oy}=anchorOffset(el.anchor||'TOP_CENTER', b.width, b.height);
-      el.x=Math.round(node.x()-ox); el.y=Math.round(node.y()-oy);
+      // children live in absolute canvas coords with the group parked at (0,0);
+      // a drag moves the group, so fold its delta back into the anchor point
+      el.x=Math.round(el.x+node.x()); el.y=Math.round(el.y+node.y()); node.position({x:0,y:0});
     } else {
       const w=node.width(), h=node.height();
       const {ox,oy}=anchorOffset(el.anchor||'CENTER', w, h);
