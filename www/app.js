@@ -1172,19 +1172,24 @@ function buildNode(el){
       rx = Math.round((pos.x+ox)/g)*g - ox;
       ry = Math.round((pos.y+oy)/g)*g - oy;
     }
-    // guide snap — use the bounding box PROJECTED to the desired position so
-    // anchor-offset elements (wifi/clock/icon) snap correctly and without jitter.
+    // guide snap — snap the element's VISIBLE-INK box (the same tight box the
+    // selection outline uses), projected to the desired position. This makes the
+    // snap land exactly where the pixels start, not on the looser font-metric box.
+    // Both axes are evaluated independently, so an element can snap to a vertical
+    // guide (left/right edge) AND a horizontal guide (top/bottom edge) at the same
+    // time — i.e. snap into the cross where two guides meet.
     if(snapGuide && rulerOn()){
       const THRESH=8, guides=profileGuides();
-      // current bbox in canvas coords (relativeTo:contentLayer = canvas pixels)
-      const bbox=node.getClientRect({relativeTo:contentLayer});
-      // the bbox reflects the node's CURRENT position; the desired move is (pos - current).
-      // Project the bbox edges to where they WOULD be at `pos`, then test against guides.
-      // Testing the projected (not current) box is what stops the snap from oscillating.
-      const dx=pos.x-node.x(), dy=pos.y-node.y();
-      const bLeft=bbox.x+dx, bRight=bbox.x+bbox.width+dx;
-      const bTop=bbox.y+dy,  bBot=bbox.y+bbox.height+dy;
-      // pick the single closest edge per axis within threshold (avoids fighting snaps)
+      // use the snap box cached at dragstart (edges relative to node position); fall
+      // back to a live box if dragging started without one (e.g. programmatic drag).
+      let sb=node._snapBox;
+      if(!sb){ const bbox=(el.type==='text'||el.type==='icon') ? inkBounds(node)
+                                                               : node.getClientRect({relativeTo:contentLayer});
+        sb={ ox:bbox.x-node.x(), oy:bbox.y-node.y(), w:bbox.width, h:bbox.height }; }
+      // place the box at the DESIRED position pos (its edges = pos + cached offset).
+      const bLeft=pos.x+sb.ox, bRight=pos.x+sb.ox+sb.w;
+      const bTop=pos.y+sb.oy,  bBot=pos.y+sb.oy+sb.h;
+      // per axis: pick the single closest edge within threshold (avoids fighting snaps)
       let bestVx=null, bestVdist=THRESH, bestHy=null, bestHdist=THRESH;
       guides.forEach(gd=>{
         if(gd.axis==='v'){
@@ -1197,8 +1202,8 @@ function buildNode(el){
           if(db<bestHdist){ bestHdist=db; bestHy=gd.pos-bBot; }
         }
       });
-      if(bestVx!==null) rx=pos.x+bestVx;
-      if(bestHy!==null) ry=pos.y+bestHy;
+      if(bestVx!==null) rx=pos.x+bestVx;   // snap X to nearest vertical guide
+      if(bestHy!==null) ry=pos.y+bestHy;   // snap Y to nearest horizontal guide (independent → cross)
     }
     return { x:rx, y:ry };
   });
@@ -1221,6 +1226,14 @@ function buildNode(el){
     selectNode(el, node);
   });
   node.on('dragstart', ()=>{ pushUndo(); if(selectionVisual) selectionVisual.hide();
+    // cache the snap box ONCE per drag (ink box for text/icons is expensive to
+    // rasterize every frame): store its edges relative to the node's position so
+    // the snap function can re-project it cheaply on each mousemove.
+    try{
+      const sb = (el.type==='text'||el.type==='icon') ? inkBounds(node)
+                                                       : node.getClientRect({relativeTo:contentLayer});
+      node._snapBox = { ox:sb.x-node.x(), oy:sb.y-node.y(), w:sb.width, h:sb.height };
+    }catch(_){ node._snapBox=null; }
     // group move: capture the other selected nodes + all outline boxes so they
     // move LIVE together with the node you grabbed
     if(selectedIds.size>1 && isSelected(el.id)){
@@ -1272,6 +1285,7 @@ function buildNode(el){
         });
       }
     }
+    node._snapBox=null;
     afterChange();
   });
   return node;

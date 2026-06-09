@@ -3,6 +3,11 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.6.7
+- **Pixel-perfect snap to guides** — snapping now uses the element's *visible-ink* box (the same tight box the selection outline hugs) instead of the looser font-metric box, so text/icons snap exactly where their pixels begin.
+- **Cross snapping** — the two axes snap independently, so an element can lock onto a vertical guide (left/right edge) and a horizontal guide (top/bottom edge) at the same time, landing in the cross where two guides meet.
+- The snap box is measured once when the drag starts (cached), so live snapping stays smooth even for large text.
+
 ## 3.6.6
 - **Alignment grid is back** — the 9-block anchor/alignment picker (top-left … bottom-right) returns in the Position section for text, value, icon and Wi-Fi elements, so you can place text around its anchor point just like ESPHome's `TextAlign`. Changing the anchor keeps the element visually in place.
 - **Refresh Time clock fixed**: the time now sits **optically centred** next to its icon (aligned on the visible glyphs, not the font box, so digits no longer float high), and the horizontal gap is based on the icon's actual width instead of a fixed offset — so the time is no longer pushed too far right. Canvas and device stay identical. Empty offset-X/Y fields now auto-compute these; type a value to override.
