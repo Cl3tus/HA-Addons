@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.7.5
+- **Docs:** documented the new *Download Fonts (.zip)* button across the Documentation tab, the GitHub README/About tab and the bilingual (EN/NL) **Fonts & Colours** wiki page — including why E-ink Studio never writes into the ESPHome config itself.
+
 ## 3.7.4
 - **Download Fonts (.zip).** The Font Editor now has a *Download Fonts (.zip)* button (bottom-left, next to Cancel/Save) that bundles every font in the add-on's `fonts/` folder into one archive. Drop it into your ESPHome `config/fonts/` folder by hand — ESPHome only reads fonts that live next to its own YAML, so the add-on never writes into the ESPHome config itself (that would need a broad read/write mount into another add-on's config, which we deliberately avoid).
 

@@ -4,7 +4,7 @@
 
 # Home Assistant Add-on: E-ink Studio
 
-[![GitHub release](https://img.shields.io/badge/version-3.7.4-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App)
+[![GitHub release](https://img.shields.io/badge/version-3.7.5-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App)
 [![Project Stage](https://img.shields.io/badge/project%20stage-experimental-yellow.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App)
 [![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/blob/main/LICENSE)
@@ -40,8 +40,9 @@ yourself. Everything runs offline, with all libraries and fonts bundled.
 - **Conditions (if/else)** per element, a separate **waiting-for-data** screen,
   multi-select, alignment, undo/redo and **cut/copy/paste**.
 - **Graphs** with a configurable **legend** (custom per-trace labels, fonts, units).
-- **Fonts** (Google + local TTF, with live preview), colours by display type, and a
-  **per-block YAML generator** with a base64 **recovery code** for round-tripping.
+- **Fonts** (Google + local TTF, with live preview) — plus a **Download Fonts (.zip)**
+  button to grab them all for your ESPHome `config/fonts/` — colours by display type,
+  and a **per-block YAML generator** with a base64 **recovery code** for round-tripping.
 - **YAML import** that reads font/color/sensor blocks and reverse-engineers the
   display lambda back into editable elements.
 - A built-in **file manager** (tree, text editor, font preview), also over SAMBA.

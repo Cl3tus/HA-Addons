@@ -160,6 +160,10 @@ Open **Fonts**:
 - The same TTF filename is uploaded only once (de-duplicated).
 - **Material Design Icons** (v7.4.47) is bundled and also placed in your `fonts/`
   folder so you can replace it with your own build.
+- **Download Fonts (.zip)** — the button bottom-left of the Fonts dialog bundles your
+  whole `fonts/` folder into one archive; unpack it into ESPHome's `config/fonts/` by
+  hand. The add-on never writes into the ESPHome config itself (that would need a broad
+  read/write mount into another add-on's config — a security risk we avoid).
 - **Colours** follow the display's colour type (mono / black-white-red / 7-colour)
   automatically — set the model in **Profile settings**.
 
