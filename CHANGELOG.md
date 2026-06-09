@@ -3,6 +3,14 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.6.2
+- Ruler guides: the blue guide line is drawn on the canvas again (now on a top overlay layer, so it stays visible over full-canvas backdrop elements). Remove a guide via its ruler marker.
+- Font editor: the "Local Fonts" source option is renamed to "Upload Font".
+- Font editor: selecting "MDI Fonts" now shows a link to the Material Design Icons library (pictogrammers.com).
+- Font editor: the preview now refreshes live while you change the font size.
+- Graph legend: per-trace label is now a free-text field, so you can give a trace any custom name (empty = the sensor id).
+- Stacked elements: a click now always selects the topmost element (highest in the layers panel) instead of cycling through the stack.
+
 ## 3.5.2
 - Ruler context menu now uses the same styling as the canvas context menu (consistent look).
 

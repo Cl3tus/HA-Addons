@@ -214,8 +214,9 @@ function previewFamily(font){
   return 'IBM Plex Sans';
 }
 /* inline font preview inside the Fonts modal (#nf-preview) */
-async function previewFontInline(f){
-  const host=$('#nf-preview'); if(!host||!f) return;
+async function previewFontInline(f, host, sizeOverride){
+  host=host||$('#nf-preview'); if(!host||!f) return;
+  const curSize = (sizeOverride!=null && !isNaN(sizeOverride)) ? sizeOverride : (f.size||30);
   let fam=previewFamily(f);
   const isMdi=/materialdesignicons/i.test(f.file||'');
   // a local font stored on the server (no inline bytes) → fetch + register it so the preview renders
@@ -232,20 +233,20 @@ async function previewFontInline(f){
   }
   const sample = isMdi ? '4 0 8 C 5 6 4'
                        : 'AaBbCc Gg 0123 .,:%/°€';
-  const sz=Math.max(14,Math.min(f.size||30,56));
+  const sz=Math.max(14,Math.min(curSize,56));
   host.style.display='block';
   if(isMdi){
     // real MDI icons via the bundled .mdi webfont classes (a few fun ones)
     const fun=['rocket-launch','robot-happy','heart','weather-sunny','coffee','cat','ghost','pac-man','music-note','star'];
-    const isz=Math.max(22,Math.min(f.size||30,64));
+    const isz=Math.max(22,Math.min(curSize,64));
     host.innerHTML=`<div class="fld" style="margin-bottom:2px">Preview</div>`
-      +`<div class="hint" style="margin:0 0 6px">${esc(f.id)} (${f.size}px)</div>`
+      +`<div class="hint" style="margin:0 0 6px">${esc(f.id)} (${curSize}px)</div>`
       +`<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;line-height:1">`
       +fun.map(n=>`<span class="mdi mdi-${n}" style="font-size:${isz}px" title="mdi-${n}"></span>`).join('')
       +`</div>`;
     return;
   }
-  host.innerHTML=`<div class="fld" style="margin-bottom:4px">Preview · ${esc(f.id)} — ${f.size}px · ${esc(fam)}</div>`+
+  host.innerHTML=`<div class="fld" style="margin-bottom:4px">Preview · ${esc(f.id)} — ${curSize}px · ${esc(fam)}</div>`+
     `<div style="font-family:'${fam.replace(/'/g,'')}', sans-serif;font-size:${sz}px;line-height:1.25;word-break:break-word">${sample}</div>`;
 }
 var _previewLoaded=new Set();
@@ -385,9 +386,11 @@ function initStage(){
   $('#konva-host').innerHTML='';
   stage = new Konva.Stage({ container:'#konva-host', width:p.device.w, height:p.device.h });
   gridLayer = new Konva.Layer({listening:false});
-  guideLayer = new Konva.Layer({listening:true});   // above grid, below content
   contentLayer = new Konva.Layer();
-  stage.add(gridLayer); stage.add(guideLayer); stage.add(contentLayer);
+  guideLayer = new Konva.Layer({listening:false}); // ON TOP of content so blue guides
+                                                    // stay visible over backdrop elements;
+                                                    // removal is via the ruler markers.
+  stage.add(gridLayer); stage.add(contentLayer); stage.add(guideLayer);
   setupMarquee();
   setupRulers();
   applyZoom();
@@ -726,11 +729,8 @@ function drawGuides(){
   const p=profile(); const W=p.device.w, H=p.device.h;
   profileGuides().forEach(g=>{
     const line = g.axis==='h'
-      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:'rgba(0,100,220,0.7)', strokeWidth:1, dash:[4,3], listening:true})
-      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:'rgba(0,100,220,0.7)', strokeWidth:1, dash:[4,3], listening:true});
-    line.on('contextmenu',ev=>{ ev.evt.preventDefault();
-      const arr=profileGuides(); const idx=arr.indexOf(g); if(idx>=0) arr.splice(idx,1);
-      persistGuides(); drawGuides(); drawRuler(); });
+      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:'rgba(0,100,220,0.7)', strokeWidth:1, dash:[4,3], listening:false})
+      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:'rgba(0,100,220,0.7)', strokeWidth:1, dash:[4,3], listening:false});
     guideLayer.add(line);
   });
   guideLayer.draw();
@@ -1336,22 +1336,21 @@ function selectNode(el, node){
   contentLayer.draw();
   renderLayers(); renderInspector();
 }
-/* click-through stacked elements: clicking the same spot repeatedly steps to the next
-   element below the one currently chosen (top → bottom, then wraps). */
-let _cycleAt=null;
+/* stacked elements: a click always selects the TOPMOST element under the pointer —
+   the one highest in z-order (= top of the layers panel). No cycling: clicking the
+   same spot keeps the topmost selected, which is the predictable behaviour the
+   layers panel implies. To reach a lower element, click it where it sticks out,
+   or select it from the layers panel. */
 function cyclePick(topEl){
-  const pos=stage && stage.getPointerPosition(); const rp=stage && stage.getRelativePointerPosition();
-  if(!pos || !rp) return null;
+  const pos=stage && stage.getPointerPosition();
+  if(!pos) return null;
   // pixel-accurate: every shape actually under the cursor → its element id
   let shapes=[]; try{ shapes=contentLayer.getAllIntersections(pos); }catch(_){ shapes=[]; }
   const hit=new Set();
   shapes.forEach(s=>{ let n=s; while(n && n._elId===undefined && n.getParent) n=n.getParent(); if(n && n._elId!==undefined) hit.add(n._elId); });
-  if(hit.size<2){ _cycleAt=null; return null; }                 // nothing stacked → normal select
+  if(hit.size<2) return null;                                   // nothing stacked → normal select
   const ids=els().slice().reverse().map(e=>e.id).filter(id=>hit.has(id));   // top of z-order first
-  const same=_cycleAt && Math.abs(_cycleAt.x-rp.x)<6 && Math.abs(_cycleAt.y-rp.y)<6 && _cycleAt.ids.join()===ids.join();
-  const idx = same ? (_cycleAt.idx+1)%ids.length : 0;
-  _cycleAt={x:rp.x, y:rp.y, ids, idx};
-  const id=ids[idx], e=els().find(x=>x.id===id), n=contentLayer.getChildren(x=>x._elId===id)[0];
+  const id=ids[0], e=els().find(x=>x.id===id), n=contentLayer.getChildren(x=>x._elId===id)[0];
   return e&&n ? {el:e, node:n} : null;
 }
 
@@ -1916,12 +1915,9 @@ function renderInspector(){
       <div class="row tight" style="margin-bottom:2px"><div class="fld" style="flex:0 0 90px;margin:0">Source</div><div class="fld" style="flex:1;margin:0">${T('Label (legenda-ID)','Label (legend ID)')}</div></div>
       ${(gr.traces||[]).map((t,i)=> t.sourceId ? `<div class="row tight" style="align-items:center;margin-bottom:4px">
         <div class="mono hint" style="flex:0 0 90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0" title="${attr(t.sourceId)}">${attr(t.sourceId)}</div>
-        <div style="flex:1"><select data-trace="${i}.name" title="${T('Legenda-label: kies een bron of laat op (auto) staan.','Legend label: pick a source or leave on (auto).')}">
-          <option value="" ${!t.name?'selected':''}>${T('(auto: sensor-id)','(auto: sensor id)')}</option>
-          ${profile().sources.length ? profile().sources.map(s=>`<option value="${attr(s.id)}" ${t.name===s.id?'selected':''}>${attr(s.id)}</option>`).join('') : `<option disabled>${T('(geen bronnen ingesteld)','(no sources set)')}</option>`}
-        </select></div>
+        <div style="flex:1"><input type="text" data-trace="${i}.name" value="${attr(t.name)}" placeholder="${attr(t.sourceId)}" title="${T('Legenda-label: je eigen tekst. Leeg = de sensor-id wordt gebruikt.','Legend label: your own text. Empty = the sensor id is used.')}"></div>
       </div>` : '').join('')}
-      <div class="hint" style="margin-bottom:6px">${T('Links de bron-sensor, rechts je eigen label. Leeg = de sensor-id wordt gebruikt.','Left is the source sensor, right is your own label. Empty = the sensor id is used.')}</div>
+      <div class="hint" style="margin-bottom:6px">${T('Links de bron-sensor, rechts je eigen label-tekst. Leeg = de sensor-id wordt gebruikt.','Left is the source sensor, right is your own label text. Empty = the sensor id is used.')}</div>
       <div class="row tight"><div><label class="fld">${T('Naam-font','Name font')}</label><select data-legend="nameFontId" title="${T('Verplicht. Font voor de trace-namen in de legenda.','Required. Font for the trace names in the legend.')}">${fontOpts(lg.nameFontId)}</select></div>
         <div><label class="fld">${T('Waarde-font','Value font')}</label><select data-legend="valueFontId" title="${T('Optioneel. Font voor de actuele waarden. Leeg = geen waarden.','Optional. Font for the current values. Empty = no values.')}"><option value="" ${lg.valueFontId?'':'selected'}>${T('(geen)','(none)')}</option>${fontOpts(lg.valueFontId)}</select></div></div>
       <div class="row tight"><div><label class="fld">${T('Waarden tonen','Show values')}</label><select data-legend="showValues" title="${T('NONE=geen, AUTO=automatisch, BESIDE=naast de naam, BELOW=onder de naam.','NONE=none, AUTO=automatic, BESIDE=next to name, BELOW=below name.')}">${['NONE','AUTO','BESIDE','BELOW'].map(o=>`<option ${(lg.showValues||'AUTO')===o?'selected':''}>${o}</option>`).join('')}</select></div>
@@ -3139,12 +3135,13 @@ async function openFonts(){
        <div class="row tight">
          <div style="flex:2"><label class="fld">id</label><input id="nf-id" type="text" class="mono" placeholder="${T('bv. font_groot','e.g. font_large')}" title="${T('De id waarmee je dit font in elementen kiest en die in de YAML verschijnt. Letters, cijfers en _.','The id you select this font by in elements and that appears in the YAML. Letters, digits and _.')}"></div>
          <div><label class="fld">${T('grootte (size)','size')}</label><input id="nf-size" class="spin" type="number" placeholder="size" value="30" style="width:90px" title="${T('Tekenhoogte in pixels (font size).','Glyph height in pixels (font size).')}"></div>
-         <div><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt.','Where the font comes from.')}"><option value="local">${T('Lokale fonts','Local Fonts')}</option><option value="mdi">MDI Fonts</option><option value="gfonts">Google Fonts</option><option value="web">${T('Web-fonts','Web Fonts')}</option></select></div>
+         <div><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt.','Where the font comes from.')}"><option value="local">${T('Upload font','Upload Font')}</option><option value="mdi">MDI Fonts</option><option value="gfonts">Google Fonts</option><option value="web">${T('Web-fonts','Web Fonts')}</option></select></div>
        </div>
        <div class="row tight" id="nf-mdi" style="display:none">
          <div style="flex:2"><label class="fld">${T('pad (vast)','path (fixed)')}</label><input id="nf-mdi-file" type="text" class="mono" value="fonts/materialdesignicons-webfont.ttf" disabled style="opacity:.55" title="${T('De meegebundelde Material Design Icons-font; dit pad ligt vast.','The bundled Material Design Icons font; this path is fixed.')}"></div>
        </div>
        <div class="hint" id="nf-mdi-note" style="display:none;margin-top:4px">${T('Kies een eigen id en grootte; de glyphs worden bepaald door de gekozen icons.','Pick your own id and size; the glyphs come from the icons you use.')}</div>
+       <div class="hint" id="nf-mdi-link" style="display:none;margin-top:4px">↗ <a href="https://pictogrammers.com/library/mdi/" target="_blank" rel="noopener">${T('Blader door de MDI icon-bibliotheek','Browse the MDI icon library')}</a> ${T('(opent in nieuw tabblad)','(opens in a new tab)')}</div>
        <div class="row tight" id="nf-gfonts">
          <div style="flex:2"><label class="fld">family</label><input id="nf-family" type="text" placeholder="${T('bv.','e.g.')} Roboto" title="${T('Exacte Google-Fonts-naam, bv. “Roboto”, “Noto Sans Display”.','Exact Google Fonts family name, e.g. “Roboto”, “Noto Sans Display”.')}"></div>
          <div><label class="fld">weight</label><input id="nf-weight" class="spin" type="number" placeholder="weight" value="400" style="width:90px" title="${T('Letterdikte: 100=thin, 400=normaal, 700=bold, 900=black. Moet bestaan voor deze family.','Font weight: 100=thin, 400=regular, 700=bold, 900=black. Must exist for this family.')}"></div>
@@ -3207,6 +3204,7 @@ async function openFonts(){
     $('#nf-web-link').style.display   = k==='web'?'':'none';
     $('#nf-mdi').style.display        = k==='mdi'?'':'none';
     $('#nf-mdi-note').style.display   = k==='mdi'?'':'none';
+    $('#nf-mdi-link').style.display   = k==='mdi'?'':'none';
   };
   kindSel.onchange=syncKind; syncKind();
   let pendingUpload=null;
@@ -3254,6 +3252,7 @@ function editFont(i){
          <div style="flex:2"><label class="fld">id</label><input id="ef-id" class="mono" value="${attr(f.id)}" title="${T('Wordt overal bijgewerkt waar dit icoon-font gebruikt wordt.','Updated everywhere this icon font is used.')}"></div>
          <div><label class="fld">${T('grootte (px)','size (px)')}</label><input id="ef-size" class="spin" type="number" min="6" value="${f.size||30}" style="width:90px" title="${T('Tekenhoogte in pixels.','Glyph height in pixels.')}"></div>
        </div>
+       <div id="ef-preview" style="margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)"></div>
        <div class="hint" style="margin-top:6px">${T('Van de meegebundelde Material Design Icons-font kun je de id en de grootte aanpassen; de bron ligt vast.','For the bundled Material Design Icons font you can change the id and the size; the source is fixed.')}</div>`,
       [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:openFonts},
        {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
@@ -3264,6 +3263,9 @@ function editFont(i){
          f.size=+$('#ef-size').value||f.size||30;
          persist(); afterChange(); openFonts(); toast(T('Font bijgewerkt','Font updated')); }}],
       _revertFontsIfUnsaved);
+    // live preview — re-renders when the size field changes
+    const mP=$('#ef-preview'), mS=$('#ef-size');
+    if(mP && mS){ const r=()=>previewFontInline(f, mP, +mS.value); r(); mS.addEventListener('input',r); }
     return;
   }
   const kind0 = f.kind==='gfonts'?'gfonts':(f.kind==='web'?'web':'local');
@@ -3272,7 +3274,7 @@ function editFont(i){
        <div style="flex:2"><label class="fld">id</label><input id="ef-id" class="mono" value="${attr(f.id)}" title="${T('Wordt overal bijgewerkt waar dit font gebruikt wordt.','Updated everywhere this font is used.')}"></div>
        <div><label class="fld">${T('grootte','size')}</label><input id="ef-size" class="spin" type="number" min="6" value="${f.size||30}" style="width:90px" title="${T('Tekenhoogte in pixels.','Glyph height in pixels.')}"></div>
        <div><label class="fld">Font Source</label><select id="ef-kind" title="${T('Lokaal font-bestand, Google Fonts of een download-URL.','Local font file, Google Fonts or a download URL.')}">
-         <option value="local" ${kind0==='local'?'selected':''}>${T('Lokale fonts','Local Fonts')}</option>
+         <option value="local" ${kind0==='local'?'selected':''}>${T('Upload font','Upload Font')}</option>
          <option value="gfonts" ${kind0==='gfonts'?'selected':''}>Google Fonts</option>
          <option value="web" ${kind0==='web'?'selected':''}>${T('Web-fonts','Web Fonts')}</option></select></div>
      </div>
@@ -3290,6 +3292,7 @@ function editFont(i){
        <div style="flex:2"><label class="fld">URL</label><input id="ef-url" class="mono" value="${attr(f.url||'')}" placeholder="https://…/Font.ttf" title="${T('Directe download-URL (type: web).','Direct download URL (type: web).')}"></div>
      </div>
      <div class="hint" id="ef-web-link" style="${kind0==='web'?'':'display:none'};margin-top:4px">↗ <a href="https://fontsource.org/" target="_blank" rel="noopener">${T('Zoek een download-URL op Fontsource','Find a download URL on Fontsource')}</a></div>
+     <div id="ef-preview" style="margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)"></div>
      <div class="hint" style="margin-top:6px">${T('Tip: het wisselen van bron vervangt het font; elementen blijven gekoppeld via de id.','Tip: changing the source swaps the font; elements stay linked through the id.')}</div>`,
     [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:openFonts},
      {label:T('Opslaan','Save'),cls:'primary',onClick:async()=>{
@@ -3323,6 +3326,10 @@ function editFont(i){
     $('#ef-web').style.display=k==='web'?'':'none'; $('#ef-web-link').style.display=k==='web'?'':'none'; };
   let efUpload=null;
   const up=$('#ef-upload'); if(up) up.onchange=e=>{ const file=e.target.files[0]; if(!file) return; const rd=new FileReader(); rd.onload=()=>{ efUpload=rd.result; if($('#ef-file') && !$('#ef-file').value) $('#ef-file').value='fonts/'+file.name; }; rd.readAsDataURL(file); };
+  // live preview — re-renders when the size field changes
+  const efPrev=$('#ef-preview'), efSize=$('#ef-size');
+  const renderEfPrev=()=>previewFontInline(f, efPrev, +efSize.value);
+  if(efPrev && efSize){ renderEfPrev(); efSize.addEventListener('input',renderEfPrev); }
 }
 
 /* fonts that share the same TTF filename share one upload — different sizes of
