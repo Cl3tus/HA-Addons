@@ -3,8 +3,11 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.6.10
+- MDI icon-font glyphs: the generated `glyphs:` block now uses a multi-line inline `[ … ]` array (a valid ESPHome form). The MDI icons still sit one-per-line so each keeps its `# mdi:<name>` comment, but the plain "safety" characters (space, digits, %, °, …) are now clustered into a single quoted string on one line instead of sprawling over many lines.
+
 ## 3.6.9
-- MDI icon-font glyphs: the plain "safety" characters (space, digits, %, °, …) that are added to prevent build errors are now grouped under an explanatory comment in the generated `glyphs:` block. They still need one line each — YAML doesn't allow mixing a block list (each MDI glyph carries its own `# mdi:<name>` comment) with an inline `[…]` array in the same sequence — but it's now clear why they're there.
+- MDI icon-font glyphs: the plain "safety" characters (space, digits, %, °, …) that are added to prevent build errors are now grouped under an explanatory comment in the generated `glyphs:` block.
 
 ## 3.6.8
 - Ruler guides now sit **behind** your elements (sent to the back, just above the grid) instead of overlaying everything.
