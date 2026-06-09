@@ -35,11 +35,20 @@ matching YAML blocks. No more hand-counting pixels.
 - **Left panel** — the **element palette** (drag onto the canvas) and the **Layers**
   list (reorder by dragging the handle, toggle visibility 👁, rename by double-click,
   delete 🗑).
-- **Canvas toolbar** — screen selector (Main / Waiting), zoom −/+/Fit, grid + grid
-  size, Snap, alignment, undo/redo, copy/cut/paste, duplicate, delete.
+- **Canvas toolbar** — screen selector (Main / Waiting), **alignment**, **layer order**
+  (bring to front / send to back / step forward / step backward), undo/redo,
+  copy/cut/paste, duplicate, delete.
+- **Canvas status bar** (sticky, bottom of the canvas) — **zoom** (− / editable % field
+  / + / *Fit*), **grid** + grid size, **Ruler**, **Snap grid** and **Snap ruler**.
 - **Right panel (inspector)** — all properties of the selected element.
 
 Hover any button for a tooltip (NL/EN).
+
+### Zoom
+
+The zoom field is editable: type a percentage and press **Enter**, or use **−/+**
+(they snap to the nearest 10 %). **Fit** scales the canvas to the available space.
+Maximum zoom is 500 %. When the canvas is bigger than the viewport the area scrolls.
 
 ---
 
@@ -68,11 +77,31 @@ In the layers list, **T** marks a text element and **#** marks a value.
 
 ### Moving, aligning & snapping
 
-- Drag elements on the canvas; with **Snap** on they align to the **grid lines**
+- Drag elements on the canvas. With **Snap grid** on they align to the **grid lines**
   (grid size 8/10/16/20/25/40 px). Hold **Shift** to move freely.
 - Nudge with the **arrow keys** (Shift = 10 px).
 - The **alignment** buttons move the *whole selection* to the left/right/center or
   top/bottom/middle of the panel.
+- The **layer-order** buttons change stacking: bring to front / send to back and
+  step one forward / backward. Stacking equals the order in the **Layers** list.
+- Clicking a stack of overlapping elements selects the **topmost** one (the highest
+  in the Layers list); pick a lower one from the Layers list.
+
+### Rulers & guide lines (Figma-style)
+
+Turn on **Ruler** in the status bar to get rulers along the top and left edges.
+
+- **Drag out of a ruler** to drop a **guide line** (top ruler → vertical guide, left
+  ruler → horizontal guide). A blue line appears on the canvas while you drag.
+- Drag a guide's **marker** in the ruler to reposition it; **right-click** a marker
+  to remove that guide, or right-click an empty ruler for *Remove guides*.
+- Guides are **per profile** and saved with the design.
+- With **Snap ruler** on, an element snaps its **visible-ink edges** to the guides —
+  exactly where its pixels start, not the looser font box. Both axes snap
+  independently, so you can lock onto a vertical *and* a horizontal guide at once
+  (snap into the cross where two guides meet). Hold **Shift** to bypass.
+- **Snap grid** and **Snap ruler** are mutually exclusive — enabling one disables the
+  other. The guide lines sit *behind* your elements so they never cover your design.
 
 ### Conditions (if/else)
 
@@ -244,7 +273,7 @@ Open **📁 Files** (or `files.html`):
 | Ctrl+A | Select all (or select the YAML when the code drawer is open) |
 | Del / Backspace | Delete selection |
 | Arrows (Shift = 10 px) | Nudge |
-| Shift while dragging | Bypass grid snap |
+| Shift while dragging | Bypass grid/ruler snap |
 
 ---
 
@@ -272,6 +301,25 @@ Edit and back them up from your computer, or use the built-in **📁 Files** man
 
 ---
 
+## 📈 Graphs & legend
+
+A **Graph** draws one or more sensor traces via ESPHome's `graph:`. Per trace you set
+the sensor, line type, thickness and colour. Enable **Draw legend** to render a
+separate legend box; per trace you can give a **custom label** (free text — empty uses
+the sensor id), and choose the name/value fonts, whether to show values/units, the
+direction and the legend position.
+
+---
+
+## 🎯 Pixel-accurate placement
+
+The canvas mirrors the device: text and icons are positioned on the font's **real
+baseline** inside its full line-height box (read from the font metrics), exactly like
+ESPHome's `TextAlign`. What you see in the editor lines up 1-to-1 with the e-paper,
+including decorative display fonts and icon fonts.
+
+---
+
 ## ⚠️ Good to know
 
 - The add-on **does not** write to your ESPHome config — you copy the generated YAML
@@ -279,6 +327,8 @@ Edit and back them up from your computer, or use the built-in **📁 Files** man
 - The **graph** preview shows a sample wave; the real history is drawn on the device
   by ESPHome. Y-axis numbers appear once you set a fixed Y-min/Y-max.
 - For an exact font preview, upload your TTF via **Fonts**.
+- **Icon (MDI) fonts** generate only the icons you actually use; they carry no
+  text/digit glyphs (adding those would fail the ESPHome build).
 - Date/time name transforms generate a small helper block in the lambda (with a
   length guard, so an empty/unknown value at boot can't crash the device).
 

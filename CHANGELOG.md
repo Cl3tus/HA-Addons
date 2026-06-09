@@ -3,6 +3,10 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.7.2
+- Documentation overhaul: the **About** tab, **Documentation** tab and the GitHub README now describe the rulers & guide lines, pixel-perfect snapping, layer-order controls, the zoom/status bar, the graph legend's custom labels and pixel-accurate placement.
+- Added a full **bilingual (EN/NL) wiki** under `docs/wiki/` (15 pages) ready to publish to the GitHub Wiki, plus a screenshot checklist.
+
 ## 3.7.1
 - MDI icon fonts now generate **only their icons** in the `glyphs:` block — the extra plain text/digit characters are dropped entirely (an icon font has no such glyphs, so they caused the "Font … is missing N glyphs" build error). This also covers chars that an element happened to reference while bound to an MDI font, which the charset migration alone didn't catch.
 

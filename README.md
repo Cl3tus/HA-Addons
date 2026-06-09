@@ -4,7 +4,7 @@
 
 # Home Assistant Add-on: E-ink Studio
 
-[![GitHub release](https://img.shields.io/badge/version-3.7.1-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App/releases)
+[![GitHub release](https://img.shields.io/badge/version-3.7.2-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App/releases)
 [![Project Stage](https://img.shields.io/badge/project%20stage-experimental-yellow.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/releases)
 [![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/blob/main/LICENSE)
@@ -29,11 +29,18 @@ yourself. Everything runs offline, with all libraries and fonts bundled.
 - A drag-and-drop canvas with text, **sensor values** (with format & transforms),
   MDI icons, lines, rectangles, circles, triangles, polygons, rings, gauges,
   QR codes, graphs, a Wi-Fi icon and a refresh clock.
+- **Pixel-accurate placement** — text/icons are anchored on the real font baseline,
+  so the editor matches the e-paper 1-to-1.
+- **Figma-style rulers & guide lines** with **pixel-perfect snapping** to the
+  visible ink (snap into the cross of two guides), plus a grid + grid snap.
+- **Layer order** controls (front/back/forward/backward) and a sticky **status bar**
+  with editable zoom up to 500 %.
 - **Live HA data** preview, value transforms (numbers, on/off labels, time, dates,
   weekday/month names NL & EN, and a custom date/time format), prefix/suffix.
 - **Conditions (if/else)** per element, a separate **waiting-for-data** screen,
   multi-select, alignment, undo/redo and **cut/copy/paste**.
-- **Fonts** (Google + local TTF, with preview), colours by display type, and a
+- **Graphs** with a configurable **legend** (custom per-trace labels, fonts, units).
+- **Fonts** (Google + local TTF, with live preview), colours by display type, and a
   **per-block YAML generator** with a base64 **recovery code** for round-tripping.
 - **YAML import** that reads font/color/sensor blocks and reverse-engineers the
   display lambda back into editable elements.
