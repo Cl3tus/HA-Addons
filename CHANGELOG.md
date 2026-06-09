@@ -3,6 +3,11 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.6.8
+- Ruler guides now sit **behind** your elements (sent to the back, just above the grid) instead of overlaying everything.
+- Default text font id is now always **`font_small`** (it was language-dependent `font_klein` in Dutch), so the id in the generated YAML is stable.
+- The **waiting screen** text now uses `font_small` by default. Existing profiles are auto-migrated: any element (including the waiting screen and graph axis/legend) pointing at a font that no longer exists is repointed to a valid text font, so the ESPHome build no longer fails on a missing `font_klein`.
+
 ## 3.6.7
 - **Pixel-perfect snap to guides** — snapping now uses the element's *visible-ink* box (the same tight box the selection outline hugs) instead of the looser font-metric box, so text/icons snap exactly where their pixels begin.
 - **Cross snapping** — the two axes snap independently, so an element can lock onto a vertical guide (left/right edge) and a horizontal guide (top/bottom edge) at the same time, landing in the cross where two guides meet.

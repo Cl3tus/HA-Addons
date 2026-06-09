@@ -114,7 +114,7 @@ function paletteType(colors){
 /* default "WAITING FOR DATA..." element, centred on the profile's device */
 function makeWaitText(p){
   const d=(p&&p.device)||{w:480,h:800};
-  const fid=(p&&p.fonts&&p.fonts[0]&&p.fonts[0].id)||'font_klein';
+  const fid=(p&&p.fonts&&p.fonts[0]&&p.fonts[0].id)||'font_small';
   return { id:uid(), type:'text', name:T('Tekst','Text')+' 1', visible:true,
     x:Math.round(d.w/2), y:Math.round(d.h/2), colorId:'color_text', anchor:'CENTER', fontId:fid,
     source:{kind:'static',text:'WAITING FOR DATA...',sourceId:'',expr:''},
@@ -131,9 +131,11 @@ function seedProfile(name='My display'){
     schema_version: 1,
     device: { name:'eink-display', comment:'E-ink Display',
               model:'7.50in-bV3-bwr', rotation:90, w:480, h:800, bg:'#d4d6d7' },
-    // minimal default font set: one text font + one icon font
+    // minimal default font set: one text font + one icon font.
+    // font ids go verbatim into the generated YAML, so they must NOT be translated —
+    // always use the stable id 'font_small' (was language-dependent 'font_klein'/'font_small').
     fonts: [
-      f(T('font_klein','font_small'),'gfonts',null,'Roboto',400,25,false),
+      f('font_small','gfonts',null,'Roboto',400,25,false),
       f('font_mdi_small','local','fonts/materialdesignicons-webfont.ttf',null,null,30,false),
     ],
     colors: colorSetFor('bwr'),   // palette matches the model's colour capability
@@ -487,11 +489,11 @@ function initStage(){
   $('#konva-host').innerHTML='';
   stage = new Konva.Stage({ container:'#konva-host', width:p.device.w, height:p.device.h });
   gridLayer = new Konva.Layer({listening:false});
+  guideLayer = new Konva.Layer({listening:false}); // BEHIND content (just above the grid)
+                                                    // so guides sit at the back and don't
+                                                    // overlay your elements.
   contentLayer = new Konva.Layer();
-  guideLayer = new Konva.Layer({listening:false}); // ON TOP of content so blue guides
-                                                    // stay visible over backdrop elements;
-                                                    // removal is via the ruler markers.
-  stage.add(gridLayer); stage.add(contentLayer); stage.add(guideLayer);
+  stage.add(gridLayer); stage.add(guideLayer); stage.add(contentLayer);
   setupMarquee();
   setupRulers();
   applyZoom();
@@ -833,7 +835,7 @@ function showDragGuide(axis, pos){
   const pts = axis==='h' ? [0,pos,W,pos] : [pos,0,pos,H];
   if(!_dragGuide){
     _dragGuide=new Konva.Line({points:pts, stroke:'#1a7fe8', strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false});
-    guideLayer.add(_dragGuide); guideLayer.moveToTop();
+    guideLayer.add(_dragGuide);
   } else {
     _dragGuide.points(pts);
   }
@@ -1549,8 +1551,8 @@ function renderCanvas(){
     ids.forEach(id=>{ const n=contentLayer.getChildren(x=>x._elId===id)[0]; if(n) _selOutlines[id]=outlineNode(n); });
   }
   contentLayer.draw();
-  // keep the blue guide overlay on top of freshly-rendered content and redraw it
-  if(guideLayer){ guideLayer.moveToTop(); drawGuides(); }
+  // guides live BEHIND content (just above the grid); keep that order and redraw them
+  if(guideLayer){ guideLayer.moveToBottom(); if(gridLayer) gridLayer.moveToBottom(); drawGuides(); }
 }
 
 /* during live graph resize: redraw element nodes but keep current selection visuals */
@@ -4535,6 +4537,33 @@ function migrateTextRoles(){
   });
   if(changed) persist();
 }
+/* Repoint elements whose fontId no longer exists in their profile's font set onto a
+   valid text font. Fixes old waiting-screen text stuck on 'font_klein' after the
+   default font id became 'font_small', which otherwise breaks the ESPHome build. */
+function migrateDanglingFonts(){
+  let changed=false;
+  (state.profiles||[]).forEach(p=>{
+    const fonts=p.fonts||[]; if(!fonts.length) return;
+    const has=id=>fonts.some(f=>f.id===id);
+    const isText=f=>!/materialdesignicons/i.test(f.file||'');
+    // best replacement: prefer the canonical small text font, else first non-MDI, else first
+    const fallback = (fonts.find(f=>f.id==='font_small') && 'font_small')
+                  || (fonts.find(f=>f.id==='font_klein') && 'font_klein')
+                  || (fonts.find(isText)||fonts[0]).id;
+    [].concat(p.elements||[], p.waitElements||[]).forEach(el=>{
+      if(el.fontId && !has(el.fontId)){ el.fontId=fallback; changed=true; }
+      // graph axis / legend fonts can dangle too
+      if(el.graph){
+        if(el.graph.axes && el.graph.axes.fontId && !has(el.graph.axes.fontId)){ el.graph.axes.fontId=fallback; changed=true; }
+        if(el.graph.legend){
+          if(el.graph.legend.nameFontId && !has(el.graph.legend.nameFontId)){ el.graph.legend.nameFontId=fallback; changed=true; }
+          if(el.graph.legend.valueFontId && !has(el.graph.legend.valueFontId)){ el.graph.legend.valueFontId=fallback; changed=true; }
+        }
+      }
+    });
+  });
+  if(changed) persist();
+}
 /* Fetch HA states now. silent=true suppresses the success toast (auto-refresh). */
 async function refreshLive(silent){
   LIVE_ON=true;
@@ -4588,6 +4617,10 @@ async function boot(){
   } }
   // migrate existing text elements: infer text vs value role from their source
   migrateTextRoles();
+  // migrate dangling font ids: elements (esp. the waiting screen) that point at a
+  // font no longer present — e.g. an old 'font_klein' after the default became
+  // 'font_small' — would fail the ESPHome build. Repoint them to a valid text font.
+  migrateDanglingFonts();
   { const we=profile()?profile().waitEnabled!==false:true;
     const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!we; }
   const gs=$('#grid-size'); if(gs) gs.value=String(gridStep());
