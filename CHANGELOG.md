@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.7.4
+- **Download Fonts (.zip).** The Font Editor now has a *Download Fonts (.zip)* button (bottom-left, next to Cancel/Save) that bundles every font in the add-on's `fonts/` folder into one archive. Drop it into your ESPHome `config/fonts/` folder by hand — ESPHome only reads fonts that live next to its own YAML, so the add-on never writes into the ESPHome config itself (that would need a broad read/write mount into another add-on's config, which we deliberately avoid).
+
 ## 3.7.3
 - **Pre-flight check on Generate YAML.** Before the code drawer opens, the design is validated; if a layer points at a missing/empty **source** (the cause of ESPHome's `Couldn't find ID 'undefined'` build error), a missing **condition source**, a missing **graph-trace source** or a missing **font**, a popup lists exactly which layers are wrong and on which screen. Click a row to jump to that element and fix it, or **Generate anyway**.
 

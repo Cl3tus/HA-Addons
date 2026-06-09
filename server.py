@@ -15,10 +15,12 @@ ESPHome config; fonts/projects live only inside this add-on's volume.
 """
 
 import os
+import io
 import json
 import base64
 import re
 import shutil
+import zipfile
 import asyncio
 from pathlib import Path
 from urllib.parse import quote
@@ -177,6 +179,29 @@ async def project_delete(request: web.Request) -> web.Response:
 async def fonts_list(request: web.Request) -> web.Response:
     items = [p.name for p in sorted(FONTS_DIR.glob("*")) if p.is_file()]
     return web.json_response({"fonts": items})
+
+
+async def fonts_zip(request: web.Request) -> web.Response:
+    """Bundle every file in fonts/ into a single .zip for download.
+
+    Read-only: streams the add-on's own fonts folder so the user can drop the
+    archive into ESPHome's config/fonts/ by hand. ESPHome only reads fonts that
+    live next to its YAML, so we never write there ourselves (that would need a
+    broad rw mount into another add-on's config — the security risk we avoid)."""
+    files = [p for p in sorted(FONTS_DIR.glob("*")) if p.is_file()]
+    if not files:
+        return web.json_response({"error": "no_fonts"}, status=404)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for p in files:
+            zf.write(str(p), arcname=p.name)
+    return web.Response(
+        body=buf.getvalue(),
+        headers={
+            "Content-Type": "application/zip",
+            "Content-Disposition": 'attachment; filename="eink-fonts.zip"',
+        },
+    )
 
 
 async def font_put(request: web.Request) -> web.Response:
@@ -395,6 +420,7 @@ def build_app() -> web.Application:
     app.router.add_put("/api/projects/{name}", project_put)
     app.router.add_delete("/api/projects/{name}", project_delete)
     app.router.add_get("/api/fonts", fonts_list)
+    app.router.add_get("/api/fonts.zip", fonts_zip)
     app.router.add_put("/api/fonts/{name}", font_put)
     app.router.add_get("/api/fonts/{name}", font_get)
     app.router.add_get("/api/profiles", profiles_list)

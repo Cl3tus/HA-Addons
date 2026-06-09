@@ -3221,7 +3221,7 @@ let _modalClose=null;   // optional callback when the modal is dismissed (✕ / 
 function openModal(title, body, footerBtns, onClose){
   $('#modal-title').textContent=title; $('#modal-body').innerHTML=body;
   const f=$('#modal-footer'); f.innerHTML='';
-  (footerBtns||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'ghost'); el.textContent=b.label; el.onclick=b.onClick; f.appendChild(el); });
+  (footerBtns||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'ghost'); el.textContent=b.label; el.onclick=b.onClick; if(b.style) el.style.cssText=b.style; if(b.id) el.id=b.id; f.appendChild(el); });
   _modalClose = onClose||null;
   addSteppers($('#modal-body'));   // ▲/▼ steppers for any .spin field in modals (font size/weight)
   $('#modal-back').classList.add('open');
@@ -3343,6 +3343,23 @@ var _fontsSnapshot=null;   // fonts state when the editor opened (for Cancel / �
 function _revertFontsIfUnsaved(){
   if(_fontsSnapshot){ profile().fonts=_fontsSnapshot; _fontsSnapshot=null; persist(); afterChange(); renderInspector(); }
 }
+/* Download every font in the server fonts/ folder as a single .zip, so the user
+   can drop it into ESPHome's own config/fonts/ by hand. We never write into the
+   ESPHome config ourselves — that would need a broad rw mount into another
+   add-on's config (the security risk we deliberately avoid). */
+async function downloadFontsZip(){
+  try{
+    const r=await fetch('api/fonts.zip');
+    if(!r.ok){ toast(T('Geen fonts om te downloaden','No fonts to download')); return; }
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='eink-fonts.zip';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    toast(T('Fonts gedownload','Fonts downloaded'));
+  }catch(e){ toast(T('Download mislukt: ','Download failed: ')+e.message); }
+}
+
 async function openFonts(){
   await refreshServerFonts();
   if(_fontsSnapshot===null) _fontsSnapshot=JSON.parse(JSON.stringify(profile().fonts));   // snapshot once per session
@@ -3412,7 +3429,8 @@ async function openFonts(){
        <div class="hint" style="margin-top:6px">${T('Het','The')} <span class="mono">id</span> ${T('gebruik je in elementen; het','is used in elements; the')} <span class="mono">${T('pad','path')}</span> ${T('moet kloppen met je ESPHome','must match your ESPHome')} <span class="mono">fonts/</span>${T('-map.',' folder.')}</div>
      </div>
      <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')} ${T('Wijzigingen gelden pas na Opslaan.','Changes apply only after Save.')}</div>`,
-    [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:()=>{ _revertFontsIfUnsaved(); closeModal(); }},
+    [{label:T('Download Fonts (.zip)','Download Fonts (.zip)'),cls:'ghost',style:'margin-right:auto',onClick:downloadFontsZip},
+     {label:T('Annuleren','Cancel'),cls:'ghost',onClick:()=>{ _revertFontsIfUnsaved(); closeModal(); }},
      {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
        // warn if the "add font" form has data that hasn't been added via +
        const pendingId=($('#nf-id')&&$('#nf-id').value||'').trim();
