@@ -3,11 +3,15 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.5
+- **Warning when a graph trace uses a non-numeric source.** A graph expects a numeric sensor; binding a trace to a string/time/bool source (or a non-numeric Home Assistant entity such as an `ai_task`) can crash the ESPHome graph at runtime. The pre-generate check now flags this so you can fix it before flashing.
+- **Honest wording for 3.9.3 / 3.9.4.** Those entries claimed to fix a multi-screen bootloop. That bootloop turned out to be an unrelated ESPHome graph bug (a graph trace on a non-numeric `ai_task` entity), not a studio problem — the 3.9.3/3.9.4 changes were defensive hardening, not the fix. Re-worded below.
+
 ## 3.9.4
-- **Fix: bootloop persisted — removed `restore_value` from the screen select.** A restored template select publishes its stored value during early boot setup (before the graph/QR/sensor components exist), and rendering then crashes (LoadProhibited). The select no longer restores from NVS, so it can't render at boot; combined with the 3.9.3 redraw guard the device boots cleanly. Trade-off: the active screen resets to the first screen after a reboot (manual switching and rotation are unaffected).
+- **Screen-control hardening (not the bootloop fix it was first described as).** Dropped `restore_value` from the HA screen `select` so it can't publish a restored value during early boot. Side effect: the active screen resets to the first screen after a reboot (manual switching and rotation are unaffected).
 
 ## 3.9.3
-- **Fix: bootloop (LoadProhibited crash) with multiple screens.** An optimistic/restored template select publishes its value during boot setup, which fired the screen `on_value` → `component.update` and rendered the display *before* sensors/time/graphs were initialised → null-pointer crash, repeating forever. The redraw on screen-change is now guarded by `initial_data_received`, so the first real render still happens via `on_boot` (after everything is set up), exactly like before. Screen switching afterwards is unaffected.
+- **Screen-control hardening (not the bootloop fix it was first described as).** A screen-change redraw is now guarded by `initial_data_received`, so switching screens can never render the display before boot completes — the first render still happens via `on_boot`, as before.
 
 ## 3.9.2
 - **Fix: multi-screen YAML no longer needs a `current_screen` global** (which caused `Couldn't find ID 'current_screen'` when merged into a config that keeps its own `globals:` block). The display lambda now reads the active screen straight from the HA select via `active_index()`, so the select is the single source of truth — nothing to add to `globals:`. The select also restores its choice across reboots (`restore_value: true`).

@@ -3110,10 +3110,22 @@ function validateDesign(){
       }
       // graph traces / legend
       if(el.type==='graph' && el.graph){
-        (el.graph.traces||[]).forEach((t,i)=>{ if(!srcOk(t.sourceId))
-          issues.push({el, screen, screenId, label, problem: t.sourceId
-            ? T(`grafiek-trace ${i+1} bron "${t.sourceId}" bestaat niet`, `graph trace ${i+1} source "${t.sourceId}" doesn't exist`)
-            : T(`grafiek-trace ${i+1} heeft geen bron`, `graph trace ${i+1} has no source`)}); });
+        (el.graph.traces||[]).forEach((t,i)=>{
+          if(!srcOk(t.sourceId)){
+            issues.push({el, screen, screenId, label, problem: t.sourceId
+              ? T(`grafiek-trace ${i+1} bron "${t.sourceId}" bestaat niet`, `graph trace ${i+1} source "${t.sourceId}" doesn't exist`)
+              : T(`grafiek-trace ${i+1} heeft geen bron`, `graph trace ${i+1} has no source`)});
+          } else {
+            // a graph trace must be a numeric sensor — feeding it a string/time/bool
+            // (or a non-numeric HA entity like an ai_task) can crash the ESPHome graph
+            const src=(p.sources||[]).find(s=>s.id===t.sourceId);
+            if(src && src.kind && src.kind!=='number'){
+              issues.push({el, screen, screenId, label, problem: T(
+                `grafiek-trace ${i+1} bron "${t.sourceId}" is niet-numeriek (${src.kind}) — een grafiek verwacht een getalsensor; dit kan tijdens runtime crashen`,
+                `graph trace ${i+1} source "${t.sourceId}" is non-numeric (${src.kind}) — a graph expects a numeric sensor; this can crash at runtime`)});
+            }
+          }
+        });
       }
       // font reference (only for elements that actually use a text/icon font)
       if(el.fontId && !fontOk(el.fontId)){
@@ -4604,7 +4616,7 @@ function showValidationPopup(issues, onGenerateAnyway){
   const box=document.createElement('div'); box.id='app-confirm'; box.className='vchk-wide';
   box.innerHTML=`<div class="app-confirm-msg">
       <div class="vchk-title">⚠ ${T('Niet alles is goed ingesteld','Some layers aren\'t set up correctly')}</div>
-      <div class="vchk-sub">${T('Deze elementen verwijzen naar een ontbrekende bron of font. ESPHome geeft hierop een build-fout (bv.','These elements point at a missing source or font. ESPHome will fail to build on this (e.g.')} <span class="mono">Couldn't find ID 'undefined'</span>). ${T('Klik een regel om het element te selecteren.','Click a row to select the element.')}</div>
+      <div class="vchk-sub">${T('Deze lagen zijn niet goed ingesteld. De meeste geven een ESPHome build-fout (bv.','These layers aren\'t set up correctly. Most cause an ESPHome build error (e.g.')} <span class="mono">Couldn't find ID 'undefined'</span>); ${T('een niet-numerieke grafiek-bron kan tijdens runtime crashen. Klik een regel om het element te selecteren.','a non-numeric graph source can crash at runtime. Click a row to select the element.')}</div>
       <div class="vchk-list">${rows}</div>
     </div>
     <div class="app-confirm-btns">
