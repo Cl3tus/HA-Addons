@@ -3533,6 +3533,24 @@ $('#modal-back').addEventListener('mouseup', e=>{
 });
 
 /* ---- Sources modal ---- */
+/* Best-effort: infer a value source's type (number/bool/time/string) from its live HA
+   state — domain + device_class + the value itself. Used by the entity picker and the
+   type auto-detection in the Sources modal. Conservative: only calls "number" when the
+   state really looks like a plain number (so a timestamp like 2026-06-10 isn't mistaken
+   for one), and falls back to "string" when the value is unknown/unavailable. */
+function detectKindFromHA(eid, st){
+  st = st || {};
+  const dom = String(eid||'').split('.')[0].toLowerCase();
+  const dc  = String(st.device_class||'').toLowerCase();
+  const s   = (st.state==null?'':String(st.state)).trim();
+  const sl  = s.toLowerCase();
+  if(dom==='input_datetime' || dc==='timestamp' || dc==='date') return 'time';
+  if(/^(input_boolean|switch|binary_sensor|light|fan|lock|cover|valve|automation|script|remote|siren|input_button|button)$/.test(dom)) return 'bool';
+  if(['on','off','true','false','open','closed','locked','unlocked'].includes(sl)) return 'bool';
+  if(sl===''||sl==='unknown'||sl==='unavailable'||sl==='none') return 'string';
+  if(/^-?\d+(\.\d+)?$/.test(s)) return 'number';
+  return 'string';
+}
 function openSources(){
   const liveOn = HA_LIVE && HA_STATES;
   const rows=profile().sources.map((s,i)=>{
@@ -3540,12 +3558,18 @@ function openSources(){
     const liveCell = st
       ? `<span class="tag" style="color:var(--ok)">${attr(st.state)}${st.unit?(' '+attr(st.unit)):''}</span>`
       : (liveOn ? `<span class="tag" style="color:var(--red)">—</span>` : '');
+    // type detected from live HA — shown under the dropdown; a mismatch becomes a one-click "apply" chip
+    const det = st ? detectKindFromHA(s.entityId, st) : null;
+    const detChip = !det ? ''
+      : det===s.kind
+        ? `<div class="hint" style="margin-top:3px;color:var(--ok)">✓ HA: ${det}</div>`
+        : `<button class="btn ghost sm" data-detect="${i}" data-kind="${attr(det)}" style="margin-top:3px;padding:1px 7px;font-size:11px" title="${T('Home Assistant ziet dit als '+det+' — klik om over te nemen','Home Assistant sees this as '+det+' — click to apply')}">HA: ${det} ↺</button>`;
     return `<tr>
     <td><input data-i="${i}" data-f="id" class="mono" value="${attr(s.id)}"></td>
     <td><input data-i="${i}" data-f="entityId" class="mono" value="${attr(s.entityId)}"></td>
     <td><select data-i="${i}" data-f="kind">
       ${['number','string','time','bool'].map(k=>`<option ${s.kind===k?'selected':''}>${k}</option>`).join('')}
-    </select></td>
+    </select>${detChip}</td>
     <td><input data-i="${i}" data-f="sample" value="${attr(s.sample)}"></td>
     <td>${liveCell}</td>
     <td><button class="btn ghost sm danger" data-del="${i}">✕</button></td></tr>`;}).join('');
@@ -3568,13 +3592,22 @@ function openSources(){
      <div class="row tight" style="margin-top:10px">
        <button class="btn sm" id="src-ha">⌂ ${T('Uit Home Assistant…','From Home Assistant…')}</button>
        <button class="btn ghost sm" id="src-add">+ ${T('Handmatig toevoegen','Add manually')}</button>
+       ${liveOn?`<button class="btn ghost sm" id="src-detect" title="${T('Zet het type van elke bron op wat Home Assistant detecteert','Set each source type to what Home Assistant detects')}">↺ ${T('Types detecteren','Detect types')}</button>`:''}
      </div>`,
     [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ persist(); closeModal(); renderInspector(); }}]);
   const body=$('#src-body');
   body.querySelectorAll('input,select').forEach(inp=>inp.addEventListener('change',()=>{ const i=+inp.dataset.i; profile().sources[i][inp.dataset.f]=inp.value; persist(); }));
   body.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ profile().sources.splice(+b.dataset.del,1); persist(); openSources(); });
+  // per-row "HA: <type> ↺" chip → adopt the detected type for that one source
+  body.querySelectorAll('[data-detect]').forEach(b=>b.onclick=()=>{ profile().sources[+b.dataset.detect].kind=b.dataset.kind; persist(); openSources(); });
   $('#src-add').onclick=()=>{ profile().sources.push({id:uid('s'),entityId:'sensor.new',kind:'number',sample:0}); persist(); openSources(); };
   $('#src-ha').onclick=openEntityPicker;
+  { const b=$('#src-detect'); if(b) b.onclick=()=>{
+      let n=0;
+      profile().sources.forEach(s=>{ const st=HA_STATES&&HA_STATES[s.entityId]; if(st){ const det=detectKindFromHA(s.entityId, st); if(det!==s.kind){ s.kind=det; n++; } } });
+      persist(); openSources();
+      toast(n? T(`${n} type(s) bijgewerkt vanuit HA`, `${n} type(s) updated from HA`) : T('Alle types kloppen al','All types already match'));
+    }; }
 }
 
 /* Searchable Home Assistant entity picker — adds a value source from live data */
@@ -3614,11 +3647,7 @@ async function openEntityPicker(){
 
 function addSourceFromEntity(eid){
   const st=HA_STATES[eid]||{};
-  // guess kind from domain / value
-  let kind='string';
-  if(/^input_datetime\./.test(eid)) kind='time';
-  else if(/^(input_boolean|switch|binary_sensor|light|fan|lock)\./.test(eid)) kind='bool';
-  else if(!isNaN(parseFloat(st.state))) kind='number';
+  const kind = detectKindFromHA(eid, st);   // domain + device_class + value
   // generate a clean lambda id from the object_id
   let base=(eid.split('.')[1]||eid).replace(/[^A-Za-z0-9_]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase();
   if(!/^[a-z_]/.test(base)) base='s_'+base;

@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.6
+- **Auto-detect a source's type from Home Assistant.** In Sources (sensor mapping), with Live data on, each row shows the type HA detects (number / bool / time / string) from the entity's domain, `device_class` and live value. A mismatch becomes a one-click **HA: \<type\> ↺** chip, and a **Detect types** button sets them all at once. The manual dropdown still wins — it's only a suggestion from the live entity. (Would have caught the classic "marked an `ai_task` entity as number" mistake.)
+
 ## 3.9.5
 - **Warning when a graph trace uses a non-numeric source.** A graph expects a numeric sensor; binding a trace to a string/time/bool source (or a non-numeric Home Assistant entity such as an `ai_task`) can crash the ESPHome graph at runtime. The pre-generate check now flags this so you can fix it before flashing.
 - **Honest wording for 3.9.3 / 3.9.4.** Those entries claimed to fix a multi-screen bootloop. That bootloop turned out to be an unrelated ESPHome graph bug (a graph trace on a non-numeric `ai_task` entity), not a studio problem — the 3.9.3/3.9.4 changes were defensive hardening, not the fix. Re-worded below.
