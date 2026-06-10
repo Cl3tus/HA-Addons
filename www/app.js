@@ -567,6 +567,9 @@ function setupMarquee(){
       if(e.button!==0) return;
       if($('#konva-host').contains(e.target)) return;             // inside canvas → Konva handles it
       if(e.target.closest && e.target.closest('#code-drawer')) return;
+      // the rulers live inside #stage-wrap and have their own drag (place/move a
+      // guide) — don't also start a marquee, which flashed a stray selection box
+      if(e.target.closest && e.target.closest('#ruler-x, #ruler-y, #ruler-corner')) return;
       const add = e.ctrlKey||e.metaKey||e.shiftKey;
       _marqueeStart = clientToStage(e.clientX, e.clientY);
       _marqueeBase = add ? new Set(selectedIds) : new Set();

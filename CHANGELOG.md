@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.7.9
+- **No stray selection box when placing a guide.** Dragging a new guide off the ruler no longer also starts a marquee selection (the rulers live inside the canvas wrap, so their mousedown was triggering the rubber-band box) — the orange selection rectangle that flashed at the top is gone.
+
 ## 3.7.8
 - **Ruler guide arrows follow the HA theme too** — the little triangular markers on the rulers now use the same primary colour as the guide lines (no longer hardcoded blue).
 - **Single insertion line when reordering layers** — dragging a layer into a gap now shows exactly one orange bar (on the top edge of the row below the cursor) instead of flipping between "below the upper row" and "above the lower row".
