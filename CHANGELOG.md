@@ -3,6 +3,10 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.7.8
+- **Ruler guide arrows follow the HA theme too** — the little triangular markers on the rulers now use the same primary colour as the guide lines (no longer hardcoded blue).
+- **Single insertion line when reordering layers** — dragging a layer into a gap now shows exactly one orange bar (on the top edge of the row below the cursor) instead of flipping between "below the upper row" and "above the lower row".
+
 ## 3.7.7
 - **Light/Dark choice now sticks across windows.** A manual theme toggle is carried from the editor into the file manager (and back) for the session; leaving the add-on and re-entering via Home Assistant resets to the theme configured on the Configuration tab (Auto/Light/Dark). The NL/EN language toggle behaves identically. (Session handoff via `sessionStorage`; a fresh entry or browser refresh follows the configured default again.)
 - **Straight insertion line when reordering layers.** The drag-drop indicator is now a crisp full-width bar instead of a box-shadow that rounded with the row corners.

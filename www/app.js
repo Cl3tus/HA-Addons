@@ -678,7 +678,7 @@ function drawRuler(){
   const MARKER=5;
   const colDim   = cssVar('--txt-dim');
   const colFaint  = cssVar('--txt-faint');
-  const colGuide  = '#1a7fe8';
+  const colGuide  = guideCol();
   // outside-canvas ticks: dimmer / slightly tinted
   const colDimOut   = cssVar('--txt-faint');
   const colFaintOut = cssVar('--line-2') || '#444';
@@ -1699,9 +1699,21 @@ function renderLayers(){
     handle.ondragstart=e=>{ _dragLayerId=el.id; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',el.id);}catch(_){} };
     handle.ondragend=()=>{ _dragLayerId=null; clearDrop(); };
     row.ondragover=e=>{ if(!_dragLayerId || _dragLayerId===el.id) return; e.preventDefault();
-      const r=row.getBoundingClientRect(); const before=(e.clientY-r.top) < r.height/2;
-      clearDrop(); row.classList.add(before?'drop-before':'drop-after'); row._dropBefore=before; };
-    row.ondragleave=()=>row.classList.remove('drop-before','drop-after');
+      const r=row.getBoundingClientRect(); const lowerHalf=(e.clientY-r.top) >= r.height/2;
+      clearDrop();
+      // ONE consistent insertion line per gap: always drawn on the TOP edge of the
+      // row below the cursor (drop-before on the next row), so hovering the lower
+      // half of a row and the upper half of the row below it show the SAME line —
+      // no more "two states" for one gap. drop-after is only the last-row fallback.
+      // The drop is still computed against THIS row (before = upper half).
+      row._dropBefore = !lowerHalf;
+      if(!lowerHalf){ row.classList.add('drop-before'); }
+      else {
+        const next=row.nextElementSibling;
+        if(next && next.classList.contains('layer')) next.classList.add('drop-before');
+        else row.classList.add('drop-after');
+      } };
+    row.ondragleave=()=>clearDrop();
     row.ondrop=e=>{ e.preventDefault(); const before=row._dropBefore!==false; clearDrop(); if(_dragLayerId) moveLayerTo(_dragLayerId, el.id, before); _dragLayerId=null; };
     const nameEl=row.querySelector('.lname');
     let clickTimer=null;
