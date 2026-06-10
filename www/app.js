@@ -521,7 +521,7 @@ function setupMarquee(){
     if(!_marqueeStart) return;
     _marqueeBase = add ? new Set(selectedIds) : new Set();
     _marqueeRect=new Konva.Rect({x:_marqueeStart.x,y:_marqueeStart.y,width:0,height:0,
-      stroke:'#e8a13a',dash:[4,3],fill:'rgba(232,161,58,0.08)',listening:false});
+      stroke:accentCol(),dash:[4,3],fill:'rgba(232,161,58,0.08)',listening:false});
     contentLayer.add(_marqueeRect); contentLayer.draw();
   });
   stage.on('mousemove touchmove', ()=>{
@@ -571,7 +571,7 @@ function setupMarquee(){
       _marqueeStart = clientToStage(e.clientX, e.clientY);
       _marqueeBase = add ? new Set(selectedIds) : new Set();
       _marqueeRect=new Konva.Rect({x:_marqueeStart.x,y:_marqueeStart.y,width:0,height:0,
-        stroke:'#e8a13a',dash:[4,3],fill:'rgba(232,161,58,0.08)',listening:false});
+        stroke:accentCol(),dash:[4,3],fill:'rgba(232,161,58,0.08)',listening:false});
       contentLayer.add(_marqueeRect); contentLayer.draw();
       const move=ev=>{ if(!_marqueeStart||!_marqueeRect) return; const p=clientToStage(ev.clientX,ev.clientY);
         _marqueeRect.setAttrs({x:Math.min(_marqueeStart.x,p.x),y:Math.min(_marqueeStart.y,p.y),
@@ -656,6 +656,11 @@ function rulerFrameOffset(){
 function cssVar(name){
   return getComputedStyle(document.body).getPropertyValue(name).trim() || '#888';
 }
+/* UI accent (orange-by-default; follows HA --accent-color when in ingress) and the
+   ruler/guide colour (blue-by-default; follows HA --primary-color). Read live so a
+   theme change re-renders with the new value. */
+function accentCol(){ return cssVar('--accent') || '#ff9800'; }
+function guideCol(){ return cssVar('--guide') || '#1a7fe8'; }
 
 function drawRuler(){
   const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
@@ -838,7 +843,7 @@ function showDragGuide(axis, pos){
   pos=Math.max(0, Math.min(pos, axis==='v'?W:H));
   const pts = axis==='h' ? [0,pos,W,pos] : [pos,0,pos,H];
   if(!_dragGuide){
-    _dragGuide=new Konva.Line({points:pts, stroke:'#1a7fe8', strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false});
+    _dragGuide=new Konva.Line({points:pts, stroke:guideCol(), strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false});
     guideLayer.add(_dragGuide);
   } else {
     _dragGuide.points(pts);
@@ -855,9 +860,10 @@ function drawGuides(){
   if(!rulerOn()){ guideLayer.draw(); return; }
   const p=profile(); const W=p.device.w, H=p.device.h;
   profileGuides().forEach(g=>{
+    const gc=guideCol();
     const line = g.axis==='h'
-      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:'#1a7fe8', strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false})
-      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:'#1a7fe8', strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false});
+      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:gc, strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false})
+      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:gc, strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false});
     guideLayer.add(line);
   });
   guideLayer.draw();
@@ -1433,7 +1439,7 @@ function attachSelection(el, node){
     const g=new Konva.Group();
     const HS=11; // handle size
     const endpoint=(px,py,which)=>{
-      const h=new Konva.Rect({x:px-HS/2,y:py-HS/2,width:HS,height:HS,fill:'#fff',stroke:'#e8a13a',strokeWidth:2,draggable:true});
+      const h=new Konva.Rect({x:px-HS/2,y:py-HS/2,width:HS,height:HS,fill:'#fff',stroke:accentCol(),strokeWidth:2,draggable:true});
       h.on('mousedown touchstart', e=>{ e.cancelBubble=true; });
       h.on('dragstart', e=>{ e.cancelBubble=true; pushUndo(); });
       h.on('dragmove', e=>{ e.cancelBubble=true;
@@ -1464,8 +1470,9 @@ function attachSelection(el, node){
     const dx=el.x2-el.x, dy=el.y2-el.y, len=Math.hypot(dx,dy)||1;
     let nx=-dy/len, ny=dx/len; if(ny>0){ nx=-nx; ny=-ny; }   // point towards the top
     const off=26;
-    const rh=new Konva.Circle({x:mx+nx*off,y:my+ny*off,radius:6,fill:'#e8a13a',stroke:'#fff',strokeWidth:2,draggable:true});
-    g.add(new Konva.Line({points:[mx,my,mx+nx*off,my+ny*off],stroke:'#e8a13a',strokeWidth:1,dash:[3,3],listening:false}));
+    const ac=accentCol();
+    const rh=new Konva.Circle({x:mx+nx*off,y:my+ny*off,radius:6,fill:ac,stroke:'#fff',strokeWidth:2,draggable:true});
+    g.add(new Konva.Line({points:[mx,my,mx+nx*off,my+ny*off],stroke:ac,strokeWidth:1,dash:[3,3],listening:false}));
     rh.on('mousedown touchstart', e=>{ e.cancelBubble=true; });
     rh.on('dragstart', e=>{ e.cancelBubble=true; pushUndo(); });
     rh.on('dragmove', e=>{ e.cancelBubble=true;
@@ -1484,7 +1491,7 @@ function attachSelection(el, node){
     const b=(el.type==='text'||el.type==='icon') ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
     // hug the actual ink with a small margin; bold + clearly visible
     selectionVisual=new Konva.Rect({x:b.x-3,y:b.y-3,width:b.width+6,height:b.height+6,
-      stroke:'#ff9800',strokeWidth:3,dash:[7,4],fill:'rgba(255,152,0,0.16)',
+      stroke:accentCol(),strokeWidth:3,dash:[7,4],fill:'rgba(255,152,0,0.16)',
       shadowColor:'#000',shadowBlur:3,shadowOpacity:.5,listening:false});
     contentLayer.add(selectionVisual);
   }
@@ -1534,7 +1541,7 @@ function outlineNode(node){
   const b=(node._elId && (()=>{const e=els().find(x=>x.id===node._elId);return e&&(e.type==='text'||e.type==='icon');})()) ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
   // bright, slightly filled box so multi-selected items stand out clearly
   const o=new Konva.Rect({x:b.x-4,y:b.y-4,width:b.width+8,height:b.height+8,
-    stroke:'#ff9800',strokeWidth:3,dash:[8,4],fill:'rgba(255,152,0,0.16)',
+    stroke:accentCol(),strokeWidth:3,dash:[8,4],fill:'rgba(255,152,0,0.16)',
     shadowColor:'#000',shadowBlur:2,shadowOpacity:.4,listening:false});
   contentLayer.add(o);
   return o;
@@ -4588,7 +4595,11 @@ function wire(){
   });
 }
 // re-render ruler after theme switch so gradient colours update
-window.onThemeChanged = function(){ requestAnimationFrame(drawRuler); };
+window.onThemeChanged = function(){ requestAnimationFrame(function(){
+  try{ drawRuler(); }catch(e){}
+  try{ if(stage && typeof drawGuides==='function') drawGuides(); }catch(e){}
+  try{ if(stage && typeof renderCanvas==='function') renderCanvas(); }catch(e){}   // re-colour selection/handles
+}); };
 
 // re-render all dynamic UI after a language toggle so open panels/inspector update
 window.onLangChanged = function(){

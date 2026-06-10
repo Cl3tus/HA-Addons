@@ -150,13 +150,36 @@
     'Sleep bestanden hierheen of gebruik': 'Drop files here or use',
   };
 
-  var _override = null;   // session-only manual toggle (NOT persisted) — resets on reload
+  var _override = null;   // manual toggle — handed off across in-app navigation only
+
+  /* session handoff (same rationale as theme.js): carry the manual NL/EN choice
+     across editor <-> file-manager navigation, but reset to the configured
+     default on a fresh entry via Home Assistant (no in-app link click). */
+  function readLangHandoff() {
+    try {
+      var v = sessionStorage.getItem('eink:lang');
+      sessionStorage.removeItem('eink:lang');
+      return (v === 'nl' || v === 'en') ? v : null;
+    } catch (_) { return null; }
+  }
+  function armLangHandoff() {
+    try {
+      if (_override === 'nl' || _override === 'en') sessionStorage.setItem('eink:lang', _override);
+      else sessionStorage.removeItem('eink:lang');
+    } catch (_) {}
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a) return;
+    var href = a.getAttribute('href') || '';
+    if (/(?:^|\/)(?:index|files)\.html(?:[?#]|$)/.test(href)) armLangHandoff();
+  }, true);
 
   /* ---- detect ----
      Priority:
-       session toggle (in-app button) → addon option (nl|en) → auto
+       session handoff/toggle (in-app) → addon option (nl|en) → auto
      auto = Home Assistant's UI language, then the browser.
-     Nothing is persisted, so after a reload it follows the config again. */
+     A fresh entry has no handoff, so it follows the config again. */
   function detectLang() {
     if (_override === 'nl' || _override === 'en') return _override;
     if (window.ADDON_LANGUAGE === 'nl' || window.ADDON_LANGUAGE === 'en') return window.ADDON_LANGUAGE;
@@ -177,6 +200,7 @@
     return nav.indexOf('nl') === 0 ? 'nl' : 'en';
   }
 
+  _override = readLangHandoff();   // honour a choice handed off from the other in-app page
   var _lang = detectLang();
   window.APP_LANG = _lang;
 

@@ -100,9 +100,78 @@
     apply(detect());
   }
 
+  /* ---- session handoff: carry a manual light/dark choice ACROSS in-app
+     navigation only (editor <-> file manager). The key is read-once on load,
+     and only (re)written when an in-app link is clicked — so re-entering the
+     add-on via Home Assistant (no in-app click) starts fresh on the configured
+     default, exactly the session behaviour we want. ---- */
+  function readHandoff() {
+    try {
+      var v = sessionStorage.getItem('eink:theme');
+      sessionStorage.removeItem('eink:theme');
+      return (v === 'light' || v === 'dark') ? v : null;
+    } catch (_) { return null; }
+  }
+  function armHandoff() {
+    try {
+      if (_override === 'light' || _override === 'dark') sessionStorage.setItem('eink:theme', _override);
+      else sessionStorage.removeItem('eink:theme');
+    } catch (_) {}
+  }
+  function watchInAppNav() {
+    document.addEventListener('click', function (e) {
+      var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      if (!a) return;
+      var href = a.getAttribute('href') || '';
+      if (/(?:^|\/)(?:index|files)\.html(?:[?#]|$)/.test(href)) armHandoff();
+    }, true);
+  }
+
+  /* ---- follow HA's accent (--accent-color) and primary (--primary-color):
+     UI orange = HA accent, ruler/guide blue = HA primary. Set inline on <body>
+     so they win over the light/dark stylesheet vars; removed when HA exposes
+     none (standalone) so the bundled amber/blue defaults apply. ---- */
+  var _haColKey = null;
+  function readHAColors() {
+    var frames = [];
+    try { if (window.parent && window.parent !== window) frames.push(window.parent); } catch (_) {}
+    try { if (window.top && window.top !== window && frames.indexOf(window.top) === -1) frames.push(window.top); } catch (_) {}
+    for (var i = 0; i < frames.length; i++) {
+      try {
+        var cs = getComputedStyle(frames[i].document.documentElement);
+        var acc = (cs.getPropertyValue('--accent-color') || '').trim();
+        var pri = (cs.getPropertyValue('--primary-color') || '').trim();
+        if (acc || pri) return { accent: acc, primary: pri };
+      } catch (_) {}
+    }
+    return { accent: '', primary: '' };
+  }
+  function applyHAColors() {
+    var c = readHAColors();
+    var key = c.accent + '|' + c.primary;
+    if (key === _haColKey) return;            // nothing changed since last poll
+    _haColKey = key;
+    var s = document.body && document.body.style;
+    if (!s) return;
+    if (c.accent) {
+      s.setProperty('--accent', c.accent);
+      s.setProperty('--accent-2', c.accent);
+      var l = lum(c.accent);                  // auto-contrast text on the accent
+      s.setProperty('--accent-ink', (l !== null && l < 0.55) ? '#fff' : '#1a1407');
+    } else {
+      s.removeProperty('--accent'); s.removeProperty('--accent-2'); s.removeProperty('--accent-ink');
+    }
+    if (c.primary) s.setProperty('--guide', c.primary);
+    else s.removeProperty('--guide');
+    if (typeof window.onThemeChanged === 'function') window.onThemeChanged();
+  }
+
   /* ---- init + poll for live HA switches ---- */
   function init() {
+    _override = readHandoff();        // honour a choice handed off from the other in-app page
+    watchInAppNav();
     apply(detect());
+    applyHAColors();
 
     // Fetch the add-on Configuration option (auto/light/dark)
     fetch('api/info').then(function (r) { return r.json(); }).then(function (info) {
@@ -110,7 +179,8 @@
     }).catch(function () {});
 
     setInterval(function () {
-      if (_override) return;          // honour the session override until reload
+      applyHAColors();                // keep UI accent / guide colour in sync with HA
+      if (_override) return;          // honour the session override until a fresh entry
       var s = detect();
       if (s !== _current) apply(s);
     }, 500);
