@@ -641,6 +641,21 @@ function updateSnapRulerUI(){
   if(sgLabel){ sgLabel.style.display = gridEnabled ? '' : 'none'; }
   if(!gridEnabled && sg && sg.checked){ sg.checked=false; }
 }
+/* persist the two snap toggles per-profile (mirrors profile().ruler) so they
+   survive a refresh / profile switch */
+function persistSnap(){
+  const p=profile(); if(!p) return;
+  p.snapGrid  = !!($('#tg-snap')        && $('#tg-snap').checked);
+  p.snapGuide = !!($('#tg-snap-guides') && $('#tg-snap-guides').checked);
+  persist();
+}
+/* restore the snap toggles onto the checkboxes from the active profile (snap grid
+   defaults ON for profiles saved before this was stored) */
+function restoreSnapUI(){
+  const p=profile();
+  const sg=$('#tg-snap');        if(sg) sg.checked = (p && p.snapGrid!==undefined) ? !!p.snapGrid : true;
+  const sr=$('#tg-snap-guides'); if(sr) sr.checked = !!(p && p.snapGuide);
+}
 
 /* Returns the canvas-left offset of #stage-frame relative to the ruler-x strip.
    ruler-x sits in grid column 2, so its left edge = right edge of ruler-y (20px).
@@ -4607,8 +4622,8 @@ function wire(){
   { const tr=$('#tg-ruler'); if(tr) tr.onchange=()=>{ profile().ruler=tr.checked; persist(); drawRuler(); updateSnapRulerUI(); }; }
   // snap grid and snap ruler are mutually exclusive; snap ruler hidden when ruler is off
   { const sg=$('#tg-snap'), sr=$('#tg-snap-guides');
-    if(sg) sg.onchange=()=>{ if(sg.checked && sr){ sr.checked=false; } updateSnapRulerUI(); };
-    if(sr) sr.onchange=()=>{ if(sr.checked && sg){ sg.checked=false; } updateSnapRulerUI(); }; }
+    if(sg) sg.onchange=()=>{ if(sg.checked && sr){ sr.checked=false; } updateSnapRulerUI(); persistSnap(); };
+    if(sr) sr.onchange=()=>{ if(sr.checked && sg){ sg.checked=false; } updateSnapRulerUI(); persistSnap(); }; }
 
   $('#btn-bring-front').onclick=bringToFront; $('#btn-bring-back').onclick=sendToBack;
   $('#btn-step-forward').onclick=stepForward; $('#btn-step-back').onclick=stepBackward;
@@ -4860,6 +4875,7 @@ async function boot(){
     const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!we; }
   const gs=$('#grid-size'); if(gs) gs.value=String(gridStep());
   { const tr=$('#tg-ruler'); if(tr) tr.checked=rulerOn(); }
+  restoreSnapUI();
   updateSnapRulerUI();
   injectGoogleFonts();
   try{ await registerUploadedFonts(); }catch(e){ console.warn(e); }
