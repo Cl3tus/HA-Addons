@@ -3313,12 +3313,15 @@ function genYAML(){
   // global is needed (and nothing to remember when you merge this into an existing config).
   // Picking a screen forces an immediate redraw (component.update), independent of the
   // data-driven update_screen script, so switching works even without fresh sensor data.
-  // The redraw is GUARDED by initial_data_received: an optimistic/restored select
-  // publishes its value during boot setup, which would otherwise render the display
-  // before sensors/time/graphs exist → a LoadProhibited crash + bootloop. The first
-  // real render happens via on_boot (which sets initial_data_received) as before.
+  // Two boot-safety measures, both needed to avoid a LoadProhibited crash + bootloop:
+  //  1. NO restore_value on the select — restoring from NVS publishes the value during
+  //     early setup (before the graph/qr/sensor components exist), and rendering then
+  //     dereferences not-yet-set-up components. The screen resets to #0 on reboot, fine.
+  //  2. The on_value redraw is GUARDED by initial_data_received: an optimistic select
+  //     still publishes its initial_option once at setup, firing on_value — without the
+  //     guard that would render too early. The first real render happens via on_boot.
   if(multi){
-    out+=`select:\n  - platform: template\n    name: "${esc(friendly)} Screen"\n    id: screen_select\n    optimistic: true\n    restore_value: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - if:\n            condition:\n              lambda: 'return id(initial_data_received);'\n            then:\n              - component.update: eink_display\n\n`;
+    out+=`select:\n  - platform: template\n    name: "${esc(friendly)} Screen"\n    id: screen_select\n    optimistic: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - if:\n            condition:\n              lambda: 'return id(initial_data_received);'\n            then:\n              - component.update: eink_display\n\n`;
 
     out+=`button:\n`;
     scrNames.forEach((nm)=>{

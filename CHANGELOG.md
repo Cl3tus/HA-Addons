@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.4
+- **Fix: bootloop persisted — removed `restore_value` from the screen select.** A restored template select publishes its stored value during early boot setup (before the graph/QR/sensor components exist), and rendering then crashes (LoadProhibited). The select no longer restores from NVS, so it can't render at boot; combined with the 3.9.3 redraw guard the device boots cleanly. Trade-off: the active screen resets to the first screen after a reboot (manual switching and rotation are unaffected).
+
 ## 3.9.3
 - **Fix: bootloop (LoadProhibited crash) with multiple screens.** An optimistic/restored template select publishes its value during boot setup, which fired the screen `on_value` → `component.update` and rendered the display *before* sensors/time/graphs were initialised → null-pointer crash, repeating forever. The redraw on screen-change is now guarded by `initial_data_received`, so the first real render still happens via `on_boot` (after everything is set up), exactly like before. Screen switching afterwards is unaffected.
 
