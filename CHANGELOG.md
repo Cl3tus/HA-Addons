@@ -3,6 +3,13 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.0
+- **Multiple screens, switchable from Home Assistant.** Next to the screen selector above the canvas you can now **add, duplicate, rename and remove** designed screens (up to 5), each with its own elements — the waiting screen stays separate. When you have two or more screens the generated YAML gains a `current_screen` global and the display lambda branches per screen, plus:
+  - a **template `select`** entity (the screen names become the dropdown options) to pick the active screen from HA;
+  - one **push-button** per screen for dashboards;
+  - an optional **"Rotate Screens" switch** (toggle *Auto-rotate screens* under Profile settings → Generated YAML Blocks) that advances to the next screen on every refresh interval.
+  Switching a screen forces an immediate redraw, independent of new sensor data. Single-screen designs generate exactly the same YAML as before. Your existing layout migrates automatically into the first screen, and the base64 recovery code round-trips all screens.
+
 ## 3.7.15
 - **Fix: snap-grid / snap-ruler now reliably stick after a refresh.** Two issues: the change was only written to the server after a 2s debounce (a quick refresh reloaded the stale copy and lost it — now it flushes immediately), and toggling the grid/ruler could leave the profile with a stale snap combo (now those toggles persist the snap state too, so you don't end up with both snaps off).
 

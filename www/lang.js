@@ -52,6 +52,10 @@
     'Vernieuw live data nu': 'Refresh live data now',
     'Live data automatisch vernieuwen': 'Auto-refresh live data',
     'Scherm': 'Screen',
+    'Scherm toevoegen': 'Add screen',
+    'Scherm dupliceren': 'Duplicate screen',
+    'Scherm hernoemen': 'Rename screen',
+    'Scherm verwijderen': 'Delete screen',
     'Rastergrootte': 'Grid size',
     "Voegt onderaan een herstelcode toe. Plak die YAML later terug via 'YAML importeren' om je volledige ontwerp te herstellen.":
       "Adds a restore code at the bottom. Paste that YAML back via 'Import YAML' to restore your whole design.",

@@ -174,10 +174,111 @@ window.addEventListener('keyup',   e=>{ if(e.key==='Shift') shiftDown=false; });
 window.addEventListener('blur',    ()=>{ shiftDown=false; });
 
 function profile(){ return state.profiles.find(p=>p.id===state.current); }
-let editScreen='main';   // 'main' | 'wait' — which screen's elements you're editing
-function activeKey(){ return editScreen==='wait' ? 'waitElements' : 'elements'; }
-function els(){ const p=profile(); if(!p[activeKey()]) p[activeKey()]=[]; return p[activeKey()]; }
-function setEls(arr){ profile()[activeKey()]=arr; }
+let editScreen='main';   // 'wait' | a screen id — which screen's elements you're editing
+const MAX_SCREENS=5;
+/* Every profile carries screens[]: an ordered list of designed screens (screens[0] =
+   the original "main" screen). The waiting screen stays separate — it's the boot
+   fallback (if initial_data_received == false), not a user-selectable carousel screen.
+   ensureScreens migrates a legacy profile that still has a flat p.elements array. */
+function ensureScreens(p){
+  p=p||profile(); if(!p) return [];
+  if(!Array.isArray(p.screens) || !p.screens.length){
+    p.screens=[{ id:'scr_main', name:T('Hoofdscherm','Main screen'),
+                 elements: Array.isArray(p.elements)?p.elements:[] }];
+    delete p.elements;   // folded into screens[0]
+  }
+  return p.screens;
+}
+function screensList(){ return ensureScreens(profile()); }
+function activeScreen(){ const ss=screensList(); return ss.find(s=>s.id===editScreen) || ss[0]; }
+function isWaitScreen(){ return editScreen==='wait'; }
+function els(){
+  const p=profile();
+  if(isWaitScreen()){ if(!p.waitElements) p.waitElements=[]; return p.waitElements; }
+  const s=activeScreen(); if(!s.elements) s.elements=[]; return s.elements;
+}
+function setEls(arr){
+  const p=profile();
+  if(isWaitScreen()){ p.waitElements=arr; } else { activeScreen().elements=arr; }
+}
+/* every element across all designed screens + the waiting screen. Used wherever the
+   whole design must be seen (glyph/font/source collection, lint, migrations) — not just
+   the screen currently being edited. Tolerates a not-yet-migrated profile (flat p.elements). */
+function allElements(p){
+  p=p||profile(); if(!p) return [];
+  const out=[];
+  const scr = Array.isArray(p.screens) ? p.screens
+            : (Array.isArray(p.elements) ? [{elements:p.elements}] : []);
+  scr.forEach(s=>{ (s.elements||[]).forEach(e=>out.push(e)); });
+  (p.waitElements||[]).forEach(e=>out.push(e));
+  return out;
+}
+
+/* ---------------- screen management (carousel of designed screens) ---------------- */
+function newScreenId(){ const ids=new Set(screensList().map(s=>s.id)); let n=2; while(ids.has('scr_'+n)) n++; return 'scr_'+n; }
+/* rebuild the toolbar screen-select <option>s + enable/disable the add/dup/ren/del
+   buttons. Call after any screen mutation and on boot. */
+function renderScreenSelect(){
+  const ss=$('#screen-select'); if(!ss) return;
+  const p=profile(); if(!p) return;
+  const list=screensList();
+  const waitOn = p.waitEnabled!==false;
+  // keep editScreen valid (deleting/importing can leave it dangling)
+  if(editScreen!=='wait' && !list.some(s=>s.id===editScreen)) editScreen=list[0].id;
+  if(editScreen==='wait' && !waitOn) editScreen=list[0].id;
+  let html=`<option value="wait"${waitOn?'':' disabled'}>${esc(T('Wachtscherm','Waiting screen'))}</option>`;
+  list.forEach(s=>{ html+=`<option value="${attr(s.id)}">${esc(s.name||T('Scherm','Screen'))}</option>`; });
+  ss.innerHTML=html;
+  ss.value=editScreen;
+  const onScreen = editScreen!=='wait';
+  const set=(id,dis)=>{ const b=$(id); if(b) b.disabled=!!dis; };
+  set('#scr-add', list.length>=MAX_SCREENS);
+  set('#scr-dup', !onScreen || list.length>=MAX_SCREENS);
+  set('#scr-del', !onScreen || list.length<=1);
+  set('#scr-ren', !onScreen);
+}
+/* switch which screen is being edited (resets selection + undo history, like the
+   original screen-select onchange did) */
+function switchScreen(id){
+  editScreen=id; selectedId=null; selectedIds=new Set(); undoStack=[]; redoStack=[];
+  renderScreenSelect(); renderCanvas(); renderLayers(); renderInspector();
+  if($('#code-drawer').classList.contains('open')) renderCode();
+}
+function addScreen(){
+  const list=screensList();
+  if(list.length>=MAX_SCREENS){ toast(T('Maximaal 5 schermen','Maximum 5 screens')); return; }
+  const id=newScreenId();
+  list.push({ id, name:T('Scherm','Screen')+' '+(list.length+1), elements:[] });
+  persist(); renderProfiles(); switchScreen(id); toast(T('Scherm toegevoegd','Screen added'));
+}
+function duplicateScreen(){
+  const list=screensList();
+  if(list.length>=MAX_SCREENS){ toast(T('Maximaal 5 schermen','Maximum 5 screens')); return; }
+  const cur=activeScreen(); if(!cur) return;
+  const id=newScreenId();
+  const clone={ id, name:(cur.name||T('Scherm','Screen'))+' '+T('kopie','copy'),
+    elements:(cur.elements||[]).map(e=>{ const c=JSON.parse(JSON.stringify(e)); c.id=uid(); return c; }) };
+  list.splice(list.indexOf(cur)+1, 0, clone);
+  persist(); renderProfiles(); switchScreen(id); toast(T('Scherm gedupliceerd','Screen duplicated'));
+}
+function removeScreen(){
+  const list=screensList();
+  if(list.length<=1){ toast(T('Er moet minstens één scherm zijn','At least one screen is required')); return; }
+  const cur=activeScreen(); if(!cur) return;
+  showAppConfirm(T(`Scherm “${cur.name}” verwijderen?`,`Delete screen “${cur.name}”?`), ()=>{
+    const idx=list.indexOf(cur); list.splice(idx,1);
+    const next=list[Math.max(0,idx-1)];
+    persist(); renderProfiles(); switchScreen(next.id); toast(T('Scherm verwijderd','Screen removed'));
+  });
+}
+function renameScreen(){
+  const cur=activeScreen(); if(!cur) return;
+  const name=prompt(T('Schermnaam:','Screen name:'), cur.name||'');
+  if(name==null) return; const t=name.trim(); if(!t) return;
+  cur.name=t; persist(); renderScreenSelect(); renderProfiles();
+  if($('#code-drawer').classList.contains('open')) renderCode();
+  toast(T('Schermnaam gewijzigd','Screen renamed'));
+}
 function selected(){ return els().find(e=>e.id===selectedId) || null; }
 function fontById(id){ return profile().fonts.find(f=>f.id===id); }
 function colorById(id){ return profile().colors.find(c=>c.id===id); }
@@ -2865,7 +2966,7 @@ function collectGlyphs(){
   profile().fonts.forEach(f=>map[f.id]={chars:new Set(), icons:new Map(), dynamic:f.dynamic});
   const addText=(fontId,str)=>{ if(!map[fontId])return; for(const ch of String(str)) map[fontId].chars.add(ch); };
   const addIcon=(fontId,hex,name)=>{ if(!map[fontId]||!hex)return; map[fontId].icons.set(pad8(hex),name||''); };
-  const p0=profile(); [].concat(p0.elements||[], p0.waitElements||[]).forEach(el=>{
+  const p0=profile(); allElements(p0).forEach(el=>{
     const variants=[el];
     if(el.condition&&el.condition.enabled){ variants.push(applyBranch(el,el.condition.whenTrue||{}),applyBranch(el,el.condition.whenFalse||{})); }
     variants.forEach(E=>{
@@ -2940,6 +3041,7 @@ function outputDefaults(){
   return {
     refresh:true,                                   // esphome on_boot + script + time (grouped — they belong together)
     bootPriority:'600.0', bootDelay:'2s', waitTimeout:'30s', timeInterval:15,
+    rotate:false,                                   // auto-advance screens each refresh interval (needs ≥2 screens)
     globals:true,
     spi:false, spiClk:'GPIO13', spiMosi:'GPIO14',
     fonts:true, colors:true, sensors:true, textSensors:true,
@@ -2959,7 +3061,7 @@ function usedFontIds(p){
   p=p||profile(); const used=new Set();
   // the built-in "waiting for data" fallback prints with the first font
   if(p.waitEnabled!==false && !(p.waitElements&&p.waitElements.length) && p.fonts[0]) used.add(p.fonts[0].id);
-  [].concat(p.elements||[], p.waitElements||[]).forEach(e=>{
+  allElements(p).forEach(e=>{
     if(e.fontId) used.add(e.fontId);
     if(e.clock && e.clock.iconFontId) used.add(e.clock.iconFontId);
     if(e.graph && e.graph.axes && e.graph.axes.fontId) used.add(e.graph.axes.fontId);
@@ -2978,20 +3080,20 @@ function validateDesign(){
   const srcOk=id=> id && (p.sources||[]).some(s=>s.id===id);
   const fontOk=id=> id && (p.fonts||[]).some(f=>f.id===id);
   const issues=[];
-  const scan=(arr, screen)=>{
+  const scan=(arr, screen, screenId)=>{
     (arr||[]).forEach(el=>{
       const label=el.name||elTypeLabel(el);
       // value element bound to a sensor source
       const sc=el.source;
       if(sc && sc.kind==='sensor' && !srcOk(sc.sourceId)){
-        issues.push({el, screen, label,
+        issues.push({el, screen, screenId, label,
           problem: sc.sourceId
             ? T(`bron "${sc.sourceId}" bestaat niet meer`, `source "${sc.sourceId}" no longer exists`)
             : T('geen bron gekozen', 'no source selected')});
       }
       // condition on a missing source
       if(el.condition && el.condition.enabled && !srcOk(el.condition.sourceId)){
-        issues.push({el, screen, label,
+        issues.push({el, screen, screenId, label,
           problem: el.condition.sourceId
             ? T(`conditie-bron "${el.condition.sourceId}" bestaat niet meer`, `condition source "${el.condition.sourceId}" no longer exists`)
             : T('conditie aan zonder bron', 'condition enabled without a source')});
@@ -2999,19 +3101,19 @@ function validateDesign(){
       // graph traces / legend
       if(el.type==='graph' && el.graph){
         (el.graph.traces||[]).forEach((t,i)=>{ if(!srcOk(t.sourceId))
-          issues.push({el, screen, label, problem: t.sourceId
+          issues.push({el, screen, screenId, label, problem: t.sourceId
             ? T(`grafiek-trace ${i+1} bron "${t.sourceId}" bestaat niet`, `graph trace ${i+1} source "${t.sourceId}" doesn't exist`)
             : T(`grafiek-trace ${i+1} heeft geen bron`, `graph trace ${i+1} has no source`)}); });
       }
       // font reference (only for elements that actually use a text/icon font)
       if(el.fontId && !fontOk(el.fontId)){
-        issues.push({el, screen, label,
+        issues.push({el, screen, screenId, label,
           problem: T(`font "${el.fontId}" bestaat niet`, `font "${el.fontId}" doesn't exist`)});
       }
     });
   };
-  scan(p.elements, T('Hoofd','Main'));
-  if(p.waitEnabled!==false) scan(p.waitElements, T('Wachten','Waiting'));
+  ensureScreens(p).forEach(s=> scan(s.elements, s.name||T('Scherm','Screen'), s.id));
+  if(p.waitEnabled!==false) scan(p.waitElements, T('Wachten','Waiting'), 'wait');
   return issues;
 }
 /* a readable type label for an element (used in validation messages) */
@@ -3062,6 +3164,16 @@ function genYAML(){
   const o = outCfg(p);
   const friendly = p.name || 'E-ink Display';
 
+  // designed screens. multi = ≥2 screens, which switches on the whole screen-control
+  // machinery (current_screen global, branched lambda, HA select/buttons/rotation).
+  const scrs = ensureScreens(p);
+  const multi = scrs.length>=2;
+  const rotate = multi && o.rotate;
+  // HA-facing option labels for the select/buttons, de-duplicated (ESPHome needs a
+  // unique label per option; two screens may share a user-typed name).
+  const scrNames = (()=>{ const seen={}; return scrs.map(s=>{ let nm=(s.name||'').trim()||T('Scherm','Screen');
+    if(seen[nm]!=null){ seen[nm]++; nm=nm+' '+seen[nm]; } else seen[nm]=1; return nm; }); })();
+
   // refresh logic — esphome on_boot + script + time belong together (one toggle)
   if(o.refresh){
     out+=`# ${T('--- vul aan in je bestaande esphome: blok ---','--- add to your existing esphome: block ---')}\n`;
@@ -3070,13 +3182,23 @@ function genYAML(){
 
   // globals
   if(o.globals){
-    out+=`globals:\n  - id: data_updated\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: initial_data_received\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: recorded_display_refresh\n    type: int\n    restore_value: yes\n    initial_value: '0'\n\n`;
+    out+=`globals:\n  - id: data_updated\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: initial_data_received\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: recorded_display_refresh\n    type: int\n    restore_value: yes\n    initial_value: '0'\n`;
+    // which designed screen is currently shown (0-based). Driven by the HA select/buttons.
+    if(multi) out+=`  - id: current_screen\n    type: int\n    restore_value: yes\n    initial_value: '0'\n`;
+    out+='\n';
   }
 
   // script + time (part of the refresh logic)
   if(o.refresh){
     out+=`script:\n  - id: update_screen\n    then:\n      - lambda: 'id(data_updated) = false;'\n      - component.update: eink_display\n      - lambda: 'id(recorded_display_refresh) += 1;'\n      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'\n\n`;
-    out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n          - if:\n              condition:\n                lambda: 'return id(data_updated) == true;'\n              then:\n                - script.execute: update_screen\n\n`;
+    out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n`;
+    if(rotate){
+      // rotation on: advance the HA select (cycling) → its on_value sets current_screen
+      // and redraws. rotation off: behave exactly as before (refresh only on new data).
+      out+=`          - if:\n              condition:\n                lambda: 'return id(rotate_screens).state;'\n              then:\n                - select.next:\n                    id: screen_select\n                    cycle: true\n              else:\n                - if:\n                    condition:\n                      lambda: 'return id(data_updated) == true;'\n                    then:\n                      - script.execute: update_screen\n\n`;
+    } else {
+      out+=`          - if:\n              condition:\n                lambda: 'return id(data_updated) == true;'\n              then:\n                - script.execute: update_screen\n\n`;
+    }
   }
 
   // SPI bus (board-specific pins)
@@ -3128,7 +3250,7 @@ function genYAML(){
   }
 
   // graph: components (one per graph element)
-  const allEls=[].concat(p.elements||[], p.waitElements||[]);
+  const allEls=allElements(p);
   const graphs=allEls.filter(e=>e.type==='graph');
   if(graphs.length){
     out+=`graph:\n`;
@@ -3176,6 +3298,27 @@ function genYAML(){
     out+='\n';
   }
 
+  // screen control (only with ≥2 designed screens): a template select dropdown in HA,
+  // one push-button per screen, and an optional rotation switch. Selecting a screen sets
+  // current_screen and forces an immediate redraw (component.update) — independent of the
+  // data-driven update_screen script, so switching works even without fresh sensor data.
+  if(multi){
+    out+=`select:\n  - platform: template\n    name: "${esc(friendly)} Screen"\n    id: screen_select\n    optimistic: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - lambda: |-\n`;
+    scrNames.forEach((nm,i)=>{ out+=`            ${i===0?'if':'else if'} (x == "${esc(nm)}") id(current_screen) = ${i};\n`; });
+    out+=`        - component.update: eink_display\n\n`;
+
+    out+=`button:\n`;
+    scrNames.forEach((nm)=>{
+      // press → set the select, which fires on_value (sets current_screen + redraws)
+      out+=`  - platform: template\n    name: "${esc(friendly)} Show ${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: screen_select\n            option: "${esc(nm)}"\n`;
+    });
+    out+='\n';
+
+    if(o.rotate){
+      out+=`switch:\n  - platform: template\n    name: "${esc(friendly)} Rotate Screens"\n    id: rotate_screens\n    optimistic: true\n    restore_mode: RESTORE_DEFAULT_OFF\n\n`;
+    }
+  }
+
   // display + lambda
   out+=`display:\n  - platform: waveshare_epaper\n    id: eink_display\n    model: ${d.model}\n    rotation: ${d.rotation}°\n`;
   if(o.displayPins){
@@ -3192,19 +3335,32 @@ function genYAML(){
   const L='      ';
   // draw in LAYER order (array order = the layers panel, bottom→top) so the z-order
   // you see on the canvas and set in the layers list is exactly what ESPHome draws.
+  const drawEls=(arr, indent)=>{ (arr||[]).forEach(el=>{ const code=elementCode(el, indent); if(code) out+=code+'\n'; }); };
+  // draw the active designed screen. single screen → just its elements; multiple →
+  // an if / else-if chain on current_screen, falling back to screen 0 out of range.
+  const drawScreens=(indent)=>{
+    if(!multi){ drawEls(scrs[0].elements, indent); return; }
+    scrs.forEach((s,i)=>{
+      out+=`${indent}${i===0?'if':'} else if'} (id(current_screen) == ${i}) {\n`;
+      drawEls(s.elements, indent+'  ');
+    });
+    out+=`${indent}} else {\n`;
+    drawEls(scrs[0].elements, indent+'  ');
+    out+=`${indent}}\n`;
+  };
   if(p.waitEnabled===false){
-    // waiting screen disabled — draw the main screen unconditionally
-    (p.elements||[]).forEach(el=>{ const code=elementCode(el, L); if(code) out+=code+'\n'; });
+    // waiting screen disabled — draw the designed screen(s) unconditionally
+    drawScreens(L);
   } else {
     out+=`${L}if (id(initial_data_received) == false) {\n`;
     const waitEls=p.waitElements||[];
     if(waitEls.length){
-      waitEls.forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
+      drawEls(waitEls, L+'  ');
     } else {
       out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), color_text, TextAlign::CENTER, "${T('WACHTEN OP DATA...','WAITING FOR DATA...')}");\n`;
     }
     out+=`${L}} else {\n`;
-    (p.elements||[]).forEach(el=>{ const code=elementCode(el, L+'  '); if(code) out+=code+'\n'; });
+    drawScreens(L+'  ');
     out+=`${L}}\n`;
   }
 
@@ -3222,7 +3378,7 @@ function genYAML(){
              generated:genStamp(_now), generatedISO:_now.toISOString() },
       device: dev,
       waitEnabled: p.waitEnabled!==false,
-      elements: reId(p.elements),
+      screens: scrs.map(s=>({ id:s.id, name:s.name||'', elements:reId(s.elements) })),
       waitElements: reId(p.waitElements||[])
     }))));
     out+=`\n# eink-editor:v${window.APP_VERSION||'1'}:${snap}\n`;
@@ -3264,7 +3420,7 @@ function glyphBlock(f, g){
 function glyphQ1(ch){ return "'"+String(ch).replace(/'/g,"''")+"'"; }
 function usedSources(){
   const ids=new Set();
-  els().forEach(el=>{
+  allElements(profile()).forEach(el=>{
     if(el.source&&el.source.kind==='sensor'&&el.source.sourceId) ids.add(el.source.sourceId);
     if(el.condition&&el.condition.enabled&&el.condition.sourceId) ids.add(el.condition.sourceId);
     if(el.type==='graph'&&el.graph) (el.graph.traces||[]).forEach(t=>{ if(t.sourceId) ids.add(t.sourceId); });
@@ -3612,7 +3768,7 @@ async function openFonts(){
 /* rename a font id everywhere it is referenced (elements, graph axes, clock icon) */
 function renameFontId(oldId, newId){
   if(oldId===newId) return;
-  [].concat(profile().elements||[], profile().waitElements||[]).forEach(e=>{
+  allElements(profile()).forEach(e=>{
     if(e.fontId===oldId) e.fontId=newId;
     if(e.clock && e.clock.iconFontId===oldId) e.clock.iconFontId=newId;
     if(e.graph && e.graph.axes && e.graph.axes.fontId===oldId) e.graph.axes.fontId=newId;
@@ -3792,6 +3948,8 @@ function openProfileSettings(){
            <div><label class="fld">${T('Wacht-timeout','Wait timeout')}</label><input id="ps-o-timeout" value="${attr(o.waitTimeout)}" title="${T('Maximale wachttijd op data vóór het scherm tóch tekent, bv. “30s”.','Maximum time to wait for data before drawing anyway, e.g. “30s”.')}"></div>
            <div><label class="fld">${T('Interval (min)','Interval (min)')}</label><input id="ps-o-interval" type="number" min="1" value="${o.timeInterval}" style="width:70px" title="${T('Hoe vaak (in minuten) het display ververst via de time-trigger.','How often (in minutes) the display refreshes via the time trigger.')}"></div>
          </div>
+         <label class="toggle"><input type="checkbox" id="ps-o-rotate" ${o.rotate?'checked':''}> ${T('Schermen automatisch roteren','Auto-rotate screens')}</label>
+         <div class="hint" style="margin:2px 0 6px">${T('Voegt een “Rotate Screens”-schakelaar toe in HA. Staat die aan, dan springt het display bij elke refresh-interval naar het volgende scherm. Vereist ≥2 schermen.','Adds a “Rotate Screens” switch in HA. When on, the display advances to the next screen each refresh interval. Needs ≥2 screens.')}</div>
          <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0">
            <label class="toggle"><input type="checkbox" id="ps-o-globals" ${o.globals?'checked':''}> globals</label>
            <label class="toggle"><input type="checkbox" id="ps-o-fonts" ${o.fonts?'checked':''}> font</label>
@@ -3823,12 +3981,13 @@ function openProfileSettings(){
       d.model=$('#ps-model').value; d.rotation=+$('#ps-rot').value; d.w=+$('#ps-w').value; d.h=+$('#ps-h').value;
       d.bg=$('#ps-bg').value;
       p.waitEnabled=$('#ps-wait').checked;
-      if(!p.waitEnabled && editScreen==='wait'){ editScreen='main'; const ss=$('#screen-select'); if(ss) ss.value='main'; }
-      { const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!p.waitEnabled; }
+      if(!p.waitEnabled && editScreen==='wait') editScreen=screensList()[0].id;
+      renderScreenSelect();
       p.output=Object.assign(outCfg(p), {
         refresh:$('#ps-o-refresh').checked,
         bootPriority:$('#ps-o-prio').value, bootDelay:$('#ps-o-delay').value, waitTimeout:$('#ps-o-timeout').value,
         timeInterval:+$('#ps-o-interval').value||15,
+        rotate:$('#ps-o-rotate').checked,
         globals:$('#ps-o-globals').checked,
         fonts:$('#ps-o-fonts').checked, colors:$('#ps-o-colors').checked,
         sensors:$('#ps-o-sensors').checked, textSensors:$('#ps-o-textsensors').checked,
@@ -4112,7 +4271,7 @@ function _parseLambda(text, p){
     circle:T('Cirkel','Circle'),polygon:T('Veelhoek','Polygon'),ring:'Ring',gauge:T('Meter','Gauge'),
     qr:'QR',clock:T('Klok','Clock'),graph:T('Grafiek','Graph')};
   const nk=e=> e.type==='text' ? (e.role==='value'?'value':'text') : e.type;   // name key (text vs value)
-  const baseCount={}; (p.elements||[]).forEach(e=>{ const k=nk(e); baseCount[k]=(baseCount[k]||0)+1; });
+  const baseCount={}; (ensureScreens(p)[0].elements||[]).forEach(e=>{ const k=nk(e); baseCount[k]=(baseCount[k]||0)+1; });
   const seq={};
   out.forEach(e=>{ const k=nk(e); seq[k]=(seq[k]||0)+1; e.name=(labels[k]||'Element')+' '+((baseCount[k]||0)+seq[k]); });
   return {els:out, skipped};
@@ -4180,14 +4339,25 @@ function doImport(textArg){
     // full round-trip: restore the editable layout if this YAML came from the studio
     if(snap.device) p.device=snap.device;
     if(typeof snap.waitEnabled==='boolean') p.waitEnabled=snap.waitEnabled;
-    if(Array.isArray(snap.elements)) p.elements=snap.elements;
+    if(Array.isArray(snap.screens) && snap.screens.length){
+      p.screens=snap.screens.map((s,i)=>({
+        id: s.id || (i===0?'scr_main':'scr_'+(i+1)),
+        name: s.name || (i===0?T('Hoofdscherm','Main screen'):T('Scherm','Screen')+' '+(i+1)),
+        elements: Array.isArray(s.elements)?s.elements:[] }));
+      delete p.elements;
+    } else if(Array.isArray(snap.elements)){
+      // legacy single-screen recovery code → fold into screens[0]
+      p.screens=[{ id:'scr_main', name:T('Hoofdscherm','Main screen'), elements:snap.elements }];
+      delete p.elements;
+    }
     if(Array.isArray(snap.waitElements)) p.waitElements=snap.waitElements;
   } else if(drawn.length){
-    p.elements=(p.elements||[]).concat(drawn);
+    const s0=ensureScreens(p)[0]; s0.elements=(s0.elements||[]).concat(drawn);
   }
   if(snap || drawn.length){
-    editScreen='main'; { const ss=$('#screen-select'); if(ss) ss.value='main'; }
+    editScreen = ensureScreens(p)[0].id;
     selectedIds=new Set(); selectedId=null; applyZoom();   // device may have changed → resize the stage
+    renderScreenSelect();
   }
   persist(); afterChange(); closeModal();
   if(snap){ toast(T('Ontwerp hersteld uit herstelcode','Design restored from recovery code')); return; }
@@ -4427,8 +4597,8 @@ function showValidationPopup(issues, onGenerateAnyway){
   box.querySelectorAll('.vchk-row').forEach(b=>b.onclick=()=>{
     const it=issues[+b.dataset.issue]; if(!it) return;
     // switch to the right screen, then select the offending element
-    const want = it.screen===T('Wachten','Waiting') ? 'wait' : 'main';
-    if(editScreen!==want){ const ss=$('#screen-select'); if(ss){ ss.value=want; ss.onchange&&ss.onchange(); } }
+    const want = it.screenId || 'wait';
+    if(editScreen!==want) switchScreen(want);
     box.remove();
     select(it.el.id);
   });
@@ -4599,7 +4769,11 @@ function wire(){
       const up=()=>{ window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up); };
       window.addEventListener('mousemove',move); window.addEventListener('mouseup',up); }); }
   const cb64=$('#code-b64'); if(cb64) cb64.onchange=()=>{ window.INCLUDE_SNAPSHOT=cb64.checked; renderCode(); };
-  const scr=$('#screen-select'); if(scr) scr.onchange=()=>{ editScreen=scr.value; selectedId=null; selectedIds=new Set(); undoStack=[]; redoStack=[]; renderCanvas(); renderLayers(); renderInspector(); };
+  const scr=$('#screen-select'); if(scr) scr.onchange=()=>switchScreen(scr.value);
+  { const b=$('#scr-add'); if(b) b.onclick=addScreen; }
+  { const b=$('#scr-dup'); if(b) b.onclick=duplicateScreen; }
+  { const b=$('#scr-ren'); if(b) b.onclick=renameScreen; }
+  { const b=$('#scr-del'); if(b) b.onclick=removeScreen; }
   $('#code-copy').onclick=()=>{ navigator.clipboard.writeText(genYAML()).then(()=>toast(T('Naar klembord gekopieerd','Copied to clipboard'))); };
   $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); saveGeneratedYaml(false); toast(T('YAML gedownload','YAML downloaded')); };
   { const cs=$('#code-save'); if(cs) cs.onclick=()=>{ if(!SERVER_STORAGE){ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); toast(T('Geen add-on opslag — gedownload','No add-on storage — downloaded')); return; } saveGeneratedYaml(false); }; }
@@ -4766,7 +4940,7 @@ function stopLiveTimer(){ if(LIVE_TIMER){ clearInterval(LIVE_TIMER); LIVE_TIMER=
 function migrateTextRoles(){
   let changed=false;
   (state.profiles||[]).forEach(p=>{
-    [].concat(p.elements||[], p.waitElements||[]).forEach(el=>{
+    allElements(p).forEach(el=>{
       if(el.type==='text' && !el.role){
         el.role = (el.source && el.source.kind!=='static') ? 'value' : 'text';
         changed=true;
@@ -4788,7 +4962,7 @@ function migrateDanglingFonts(){
     const fallback = (fonts.find(f=>f.id==='font_small') && 'font_small')
                   || (fonts.find(f=>f.id==='font_klein') && 'font_klein')
                   || (fonts.find(isText)||fonts[0]).id;
-    [].concat(p.elements||[], p.waitElements||[]).forEach(el=>{
+    allElements(p).forEach(el=>{
       if(el.fontId && !has(el.fontId)){ el.fontId=fallback; changed=true; }
       // graph axis / legend fonts can dangle too
       if(el.graph){
@@ -4859,7 +5033,10 @@ function updateLiveBadge(){
 async function boot(){
   renderProfiles();
   applyTheme();
-  editScreen='main'; { const ss=$('#screen-select'); if(ss) ss.value='main'; }
+  // migrate every profile to the screens[] model (folds a legacy flat p.elements into
+  // screens[0]), then start editing the first screen of the current profile.
+  (state.profiles||[]).forEach(p=>ensureScreens(p));
+  editScreen = screensList()[0].id;
   // one-time: give every profile a visible default waiting screen + waitEnabled flag
   { const p=profile(); if(p){
       if(p.waitEnabled===undefined) p.waitEnabled=true;
@@ -4876,8 +5053,7 @@ async function boot(){
   migrateDanglingFonts();
   // migrate MDI fonts: strip leftover text/digit safety charset that ESPHome rejects.
   migrateMdiCharset();
-  { const we=profile()?profile().waitEnabled!==false:true;
-    const ss=$('#screen-select'); const wopt=ss&&ss.querySelector('option[value="wait"]'); if(wopt) wopt.disabled=!we; }
+  renderScreenSelect();
   const gs=$('#grid-size'); if(gs) gs.value=String(gridStep());
   { const tr=$('#tg-ruler'); if(tr) tr.checked=rulerOn(); }
   restoreSnapUI();

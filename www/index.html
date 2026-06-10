@@ -17,7 +17,7 @@
 <script src="vendor/js-yaml.min.js"></script>
 <script src="vendor/qrcode-generator.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=3.7.15">
+<link rel="stylesheet" href="styles.css?v=3.9.0">
 </head>
 <body>
 <div id="app">
@@ -101,10 +101,13 @@
   <!-- ============ CENTER: canvas ============ -->
   <section id="center">
     <div id="canvas-toolbar">
-      <select id="screen-select" data-i18n-title="Scherm" title="Scherm" style="width:auto;padding:3px 6px">
-        <option value="wait" data-i18n="Wachtscherm">Wachtscherm</option>
-        <option value="main" data-i18n="Hoofdscherm">Hoofdscherm</option>
-      </select>
+      <select id="screen-select" data-i18n-title="Scherm" title="Scherm" style="width:auto;padding:3px 6px"></select>
+      <div class="grp" id="screen-grp" style="margin-left:4px">
+        <button class="btn ghost sm" id="scr-add" data-i18n-title="Scherm toevoegen">+</button>
+        <button class="btn ghost sm" id="scr-dup" data-i18n-title="Scherm dupliceren">&#9099;</button>
+        <button class="btn ghost sm" id="scr-ren" data-i18n-title="Scherm hernoemen">&#9998;</button>
+        <button class="btn ghost sm" id="scr-del" data-i18n-title="Scherm verwijderen">&#128465;</button>
+      </div>
       <div class="topbar-spacer" style="flex:1"></div>
       <div class="topbar-sep"></div>
       <div class="grp" id="align-grp">
@@ -208,8 +211,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=3.7.15"></script>
-<script src="lang.js?v=3.7.15"></script>
-<script src="theme.js?v=3.7.15"></script>
+<script src="app.js?v=3.9.0"></script>
+<script src="lang.js?v=3.9.0"></script>
+<script src="theme.js?v=3.9.0"></script>
 </body>
 </html>
