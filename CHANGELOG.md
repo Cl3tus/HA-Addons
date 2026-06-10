@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.1
+- **Rename a screen via the app's own dialog** instead of the browser's native prompt — consistent styling, Enter to save, Escape/×/backdrop to cancel.
+
 ## 3.9.0
 - **Multiple screens, switchable from Home Assistant.** Next to the screen selector above the canvas you can now **add, duplicate, rename and remove** designed screens (up to 5), each with its own elements — the waiting screen stays separate. When you have two or more screens the generated YAML gains a `current_screen` global and the display lambda branches per screen, plus:
   - a **template `select`** entity (the screen names become the dropdown options) to pick the active screen from HA;

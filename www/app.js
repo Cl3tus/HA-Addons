@@ -273,11 +273,21 @@ function removeScreen(){
 }
 function renameScreen(){
   const cur=activeScreen(); if(!cur) return;
-  const name=prompt(T('Schermnaam:','Screen name:'), cur.name||'');
-  if(name==null) return; const t=name.trim(); if(!t) return;
-  cur.name=t; persist(); renderScreenSelect(); renderProfiles();
-  if($('#code-drawer').classList.contains('open')) renderCode();
-  toast(T('Schermnaam gewijzigd','Screen renamed'));
+  const save=()=>{
+    const v=($('#scr-name-in').value||'').trim();
+    if(!v){ toast(T('Naam mag niet leeg zijn','Name cannot be empty')); return; }
+    cur.name=v; persist(); renderScreenSelect(); renderProfiles();
+    if($('#code-drawer').classList.contains('open')) renderCode();
+    closeModal(); toast(T('Schermnaam gewijzigd','Screen renamed'));
+  };
+  openModal(T('Scherm hernoemen','Rename screen'),
+    `<label class="fld">${T('Schermnaam','Screen name')}</label>
+     <input id="scr-name-in" type="text" value="${attr(cur.name||'')}" maxlength="40" style="width:100%">
+     <div class="hint" style="margin-top:6px">${T('Deze naam verschijnt in de scherm-keuze én — bij meerdere schermen — als optie in de Home Assistant-dropdown en knoppen.','This name appears in the screen selector and — with multiple screens — as an option in the Home Assistant dropdown and buttons.')}</div>`,
+    [{label:T('Opslaan','Save'), cls:'primary', onClick:save},
+     {label:T('Annuleren','Cancel'), cls:'ghost', onClick:closeModal}]);
+  setTimeout(()=>{ const inp=$('#scr-name-in'); if(inp){ inp.focus(); inp.select();
+    inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); save(); } }; } }, 30);
 }
 function selected(){ return els().find(e=>e.id===selectedId) || null; }
 function fontById(id){ return profile().fonts.find(f=>f.id===id); }
