@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.7.13
+- **Tighter selection boxes.** Text, value, MDI icon, Wi-Fi icon and refresh-time selections now hug the actual pixels (Wi-Fi/refresh use the ink box like text/icons do) with a smaller margin, and the gauge selection no longer leaves empty space below it (its node is now just the visible top half). Grid- and ruler/guide-snapping share the exact same bounds as the selection outline, so snapping stays pixel-accurate.
+
 ## 3.7.12
 - **Fix: the light accent fill on shape selections is now actually visible.** A sync-order bug left the fill rectangle sized 0×0 (it was measured before being added to the layer), so Rectangle/Circle/Ring/etc. showed no fill. They now match the text/icon selection.
 

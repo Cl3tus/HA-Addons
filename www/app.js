@@ -1072,7 +1072,10 @@ function buildNode(el){
     const pct=Math.max(0,Math.min(100,E.percent==null?50:E.percent));
     const ro=E.r||50, ri=Math.min(E.inner||30, ro-1);
     const A0=Math.PI, A2=2*Math.PI;   // west → east, over the top
-    node = new Konva.Shape({ x:E.x, y:E.y, width:2*ro, height:2*ro, offsetX:ro, offsetY:ro, rotation:0, fill:color.css,
+    // height is just the visible TOP half (ro), not the full circle (2*ro), so the
+    // selection box / transformer hugs the gauge instead of leaving whitespace below.
+    // sceneFunc/hitFunc draw at centre (ro,ro) regardless, so the visual is unchanged.
+    node = new Konva.Shape({ x:E.x, y:E.y, width:2*ro, height:ro, offsetX:ro, offsetY:ro, rotation:0, fill:color.css,
       sceneFunc:(ctx)=>{
         const cx=ro, cy=ro, col=color.css;
         // track outline (full 180° annulus)
@@ -1181,7 +1184,7 @@ function buildNode(el){
   // position and its visible box is captured at dragstart (render position) so the
   // maths stays correct. Shift bypasses.
   node.on('dragstart.snap', ()=>{
-    const b=(el.type==='text'||el.type==='icon') ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
+    const b=selBounds(el, node);
     node._sbx=b.x-node.x(); node._sby=b.y-node.y(); });
   node.dragBoundFunc(function(pos){
     if(shiftDown) return pos;
@@ -1207,8 +1210,7 @@ function buildNode(el){
       // use the snap box cached at dragstart (edges relative to node position); fall
       // back to a live box if dragging started without one (e.g. programmatic drag).
       let sb=node._snapBox;
-      if(!sb){ const bbox=(el.type==='text'||el.type==='icon') ? inkBounds(node)
-                                                               : node.getClientRect({relativeTo:contentLayer});
+      if(!sb){ const bbox=selBounds(el, node);
         sb={ ox:bbox.x-node.x(), oy:bbox.y-node.y(), w:bbox.width, h:bbox.height }; }
       // place the box at the DESIRED position pos (its edges = pos + cached offset).
       const bLeft=pos.x+sb.ox, bRight=pos.x+sb.ox+sb.w;
@@ -1254,8 +1256,7 @@ function buildNode(el){
     // rasterize every frame): store its edges relative to the node's position so
     // the snap function can re-project it cheaply on each mousemove.
     try{
-      const sb = (el.type==='text'||el.type==='icon') ? inkBounds(node)
-                                                       : node.getClientRect({relativeTo:contentLayer});
+      const sb = selBounds(el, node);
       node._snapBox = { ox:sb.x-node.x(), oy:sb.y-node.y(), w:sb.width, h:sb.height };
     }catch(_){ node._snapBox=null; }
     // group move: capture the other selected nodes + all outline boxes so they
@@ -1514,9 +1515,9 @@ function attachSelection(el, node){
     g.add(rh);
     contentLayer.add(g); selectionVisual=g;
   } else {
-    const b=(el.type==='text'||el.type==='icon') ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
-    // hug the actual ink with a small margin; bold + clearly visible
-    selectionVisual=new Konva.Rect({x:b.x-3,y:b.y-3,width:b.width+6,height:b.height+6,
+    const b=selBounds(el, node);
+    // hug the actual ink with a tight margin; bold + clearly visible
+    selectionVisual=new Konva.Rect({x:b.x-1,y:b.y-1,width:b.width+2,height:b.height+2,
       stroke:accentCol(),strokeWidth:2,dash:[7,4],fill:accentFill(0.10),
       shadowColor:'#000',shadowBlur:3,shadowOpacity:.5,listening:false});
     contentLayer.add(selectionVisual);
@@ -1563,10 +1564,18 @@ function inkBounds(node){
     return { x:b.x+minX, y:b.y+minY, width:maxX-minX+1, height:maxY-minY+1 };
   }catch(e){ return b; }
 }
+/* the bounds BOTH the selection outline and the snap logic use, so they always
+   agree: ink-tight (visible pixels) for glyph-based elements, the geometric box
+   otherwise. Keep every caller on this so a tighter selection box also snaps tighter. */
+function selBounds(el, node){
+  return (el && (el.type==='text'||el.type==='icon'||el.type==='wifi'||el.type==='clock'))
+    ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
+}
 function outlineNode(node){
-  const b=(node._elId && (()=>{const e=els().find(x=>x.id===node._elId);return e&&(e.type==='text'||e.type==='icon');})()) ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
+  const _el=node._elId ? els().find(x=>x.id===node._elId) : null;
+  const b=selBounds(_el, node);
   // bright, slightly filled box so multi-selected items stand out clearly
-  const o=new Konva.Rect({x:b.x-4,y:b.y-4,width:b.width+8,height:b.height+8,
+  const o=new Konva.Rect({x:b.x-2,y:b.y-2,width:b.width+4,height:b.height+4,
     stroke:accentCol(),strokeWidth:2,dash:[8,4],fill:accentFill(0.10),
     shadowColor:'#000',shadowBlur:2,shadowOpacity:.4,listening:false});
   contentLayer.add(o);
