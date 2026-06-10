@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.8
+- **Sources mapping polish.** Swapped the *live* and *sample* columns; headers renamed to *live (HA)*, *type (lambda)* and *type (HA)*. The "type (HA)" column is now plain coloured text (green ✓ / red ✗ — no more overlapping chip borders), the per-row **↺** "snap to HA" icon is always clickable, and a **Sample column** checkbox at the bottom shows/hides the sample column (remembered between sessions).
+
 ## 3.9.7
 - **Sources (sensor mapping) tidied up.** Wider dialog; columns reordered to *id · entity_id · sample · live · type · HA-type*. The type dropdown now has a small **↺** icon right behind it to snap just that row to what HA detects (greyed when it already matches), and a separate **HA-type** column shows a green ✓ when the dropdown agrees with HA, or a red ✗ + the detected type when it doesn't. The bottom **Detect types** button still fixes them all at once.
 

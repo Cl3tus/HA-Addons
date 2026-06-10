@@ -3554,6 +3554,7 @@ function detectKindFromHA(eid, st){
 }
 function openSources(){
   const liveOn = HA_LIVE && HA_STATES;
+  const showSample = localStorage.getItem('eink:srcShowSample')!=='0';   // sample column visibility (toggled at the bottom)
   const rows=profile().sources.map((s,i)=>{
     const st = HA_STATES && HA_STATES[s.entityId];
     const liveCell = st
@@ -3561,20 +3562,20 @@ function openSources(){
       : (liveOn ? `<span class="tag" style="color:var(--red)">—</span>` : '');
     // type detected from live HA (domain + device_class + value)
     const det = st ? detectKindFromHA(s.entityId, st) : null;
-    // per-row "snap to HA" icon, right after the dropdown — greyed out when already matching
+    // per-row "snap to HA" icon, right after the dropdown — always clickable (dimmed when it already matches)
     const snapBtn = det
-      ? `<button class="btn ghost sm" data-detect="${i}" data-kind="${attr(det)}" title="${T('Overnemen wat HA detecteert: '+det,'Apply what HA detects: '+det)}" style="padding:2px 6px;margin-left:4px${det===s.kind?';opacity:.35':''}"${det===s.kind?' disabled':''}>↺</button>`
+      ? `<button class="btn ghost sm" data-detect="${i}" data-kind="${attr(det)}" title="${T('Overnemen wat HA detecteert: '+det,'Apply what HA detects: '+det)}" style="padding:2px 7px;margin-left:5px${det===s.kind?';opacity:.4':''}">↺</button>`
       : '';
-    // "HA-type" column: green check when it matches the dropdown, red cross + detected type when not
+    // "Type (HA)" column: plain coloured text (no chip border, so adjacent rows don't visually touch)
     const haTypeCell = !det ? `<span class="hint">—</span>`
       : det===s.kind
-        ? `<span class="tag" style="color:var(--ok)">✓ ${det}</span>`
-        : `<span class="tag" style="color:var(--red)">✗ ${det}</span>`;
+        ? `<span style="color:var(--ok);white-space:nowrap">✓ ${det}</span>`
+        : `<span style="color:var(--red);white-space:nowrap">✗ ${det}</span>`;
     return `<tr>
     <td><input data-i="${i}" data-f="id" class="mono" value="${attr(s.id)}"></td>
     <td><input data-i="${i}" data-f="entityId" class="mono" value="${attr(s.entityId)}"></td>
-    <td><input data-i="${i}" data-f="sample" value="${attr(s.sample)}"></td>
     <td>${liveCell}</td>
+    ${showSample?`<td><input data-i="${i}" data-f="sample" value="${attr(s.sample)}"></td>`:''}
     <td style="white-space:nowrap"><select data-i="${i}" data-f="kind">
       ${['number','string','time','bool'].map(k=>`<option ${s.kind===k?'selected':''}>${k}</option>`).join('')}
     </select>${snapBtn}</td>
@@ -3595,11 +3596,12 @@ function openSources(){
 
   openModal(T('Bronnen (sensor-mapping)','Sources (sensor mapping)'),
     `${help}
-     <table class="tbl"><thead><tr><th>id (lambda)</th><th>entity_id (HA)</th><th>${T('voorbeeld','sample')}</th><th>live</th><th>${T('type','type')}</th><th>HA-type</th><th></th></tr></thead><tbody id="src-body">${rows}</tbody></table>
-     <div class="row tight" style="margin-top:10px">
+     <table class="tbl"><thead><tr><th>id (lambda)</th><th>entity_id (HA)</th><th>live (HA)</th>${showSample?`<th>${T('voorbeeld','sample')}</th>`:''}<th>${T('type (lambda)','type (lambda)')}</th><th>${T('type (HA)','type (HA)')}</th><th></th></tr></thead><tbody id="src-body">${rows}</tbody></table>
+     <div class="row tight" style="margin-top:10px;align-items:center">
        <button class="btn sm" id="src-ha">⌂ ${T('Uit Home Assistant…','From Home Assistant…')}</button>
        <button class="btn ghost sm" id="src-add">+ ${T('Handmatig toevoegen','Add manually')}</button>
        ${liveOn?`<button class="btn ghost sm" id="src-detect" title="${T('Zet het type van elke bron op wat Home Assistant detecteert','Set each source type to what Home Assistant detects')}">↺ ${T('Types detecteren','Detect types')}</button>`:''}
+       <label class="toggle" style="margin-left:8px"><input type="checkbox" id="src-show-sample" ${showSample?'checked':''}> ${T('Voorbeeld-kolom','Sample column')}</label>
      </div>`,
     [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ persist(); closeModal(); renderInspector(); }}]);
   $('#modal').classList.add('wide');   // sources table is wide — give it more room
@@ -3610,6 +3612,7 @@ function openSources(){
   body.querySelectorAll('[data-detect]').forEach(b=>b.onclick=()=>{ profile().sources[+b.dataset.detect].kind=b.dataset.kind; persist(); openSources(); });
   $('#src-add').onclick=()=>{ profile().sources.push({id:uid('s'),entityId:'sensor.new',kind:'number',sample:0}); persist(); openSources(); };
   $('#src-ha').onclick=openEntityPicker;
+  { const c=$('#src-show-sample'); if(c) c.onchange=()=>{ localStorage.setItem('eink:srcShowSample', c.checked?'1':'0'); openSources(); }; }
   { const b=$('#src-detect'); if(b) b.onclick=()=>{
       let n=0;
       profile().sources.forEach(s=>{ const st=HA_STATES&&HA_STATES[s.entityId]; if(st){ const det=detectKindFromHA(s.entityId, st); if(det!==s.kind){ s.kind=det; n++; } } });
