@@ -648,6 +648,9 @@ function persistSnap(){
   p.snapGrid  = !!($('#tg-snap')        && $('#tg-snap').checked);
   p.snapGuide = !!($('#tg-snap-guides') && $('#tg-snap-guides').checked);
   persist();
+  // flush to the server NOW instead of waiting for the 2s debounce — otherwise a
+  // quick refresh reloads the (still-stale) server copy and loses the toggle
+  if(typeof SERVER_STORAGE!=='undefined' && SERVER_STORAGE){ clearTimeout(_profileSyncTimer); syncProfilesToServer(); }
 }
 /* restore the snap toggles onto the checkboxes from the active profile (snap grid
    defaults ON for profiles saved before this was stored) */
@@ -4617,9 +4620,11 @@ function wire(){
       zv.addEventListener('focus',()=>{ zv.value=Math.round(zoom*100)+''; zv.select(); });
     }
   }
-  $('#tg-grid').onchange=()=>{ drawGrid(); updateSnapRulerUI(); };
+  // toggling grid/ruler can auto-uncheck a snap box (updateSnapRulerUI) — persist that
+  // too, so the profile never keeps a stale combo like snap-ruler on while ruler is off
+  $('#tg-grid').onchange=()=>{ drawGrid(); updateSnapRulerUI(); persistSnap(); };
   $('#grid-size').onchange=e=>{ profile().device.grid=+e.target.value; persist(); drawGrid(); };
-  { const tr=$('#tg-ruler'); if(tr) tr.onchange=()=>{ profile().ruler=tr.checked; persist(); drawRuler(); updateSnapRulerUI(); }; }
+  { const tr=$('#tg-ruler'); if(tr) tr.onchange=()=>{ profile().ruler=tr.checked; drawRuler(); updateSnapRulerUI(); persistSnap(); }; }
   // snap grid and snap ruler are mutually exclusive; snap ruler hidden when ruler is off
   { const sg=$('#tg-snap'), sr=$('#tg-snap-guides');
     if(sg) sg.onchange=()=>{ if(sg.checked && sr){ sr.checked=false; } updateSnapRulerUI(); persistSnap(); };

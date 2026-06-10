@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.7.15
+- **Fix: snap-grid / snap-ruler now reliably stick after a refresh.** Two issues: the change was only written to the server after a 2s debounce (a quick refresh reloaded the stale copy and lost it — now it flushes immediately), and toggling the grid/ruler could leave the profile with a stale snap combo (now those toggles persist the snap state too, so you don't end up with both snaps off).
+
 ## 3.7.14
 - **Snap-grid / snap-ruler checkboxes are remembered per profile** — they now survive a refresh and follow each profile, just like the Ruler toggle. (Existing profiles default to snap-grid on, snap-ruler off.)
 
