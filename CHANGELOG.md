@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.7
+- **Sources (sensor mapping) tidied up.** Wider dialog; columns reordered to *id · entity_id · sample · live · type · HA-type*. The type dropdown now has a small **↺** icon right behind it to snap just that row to what HA detects (greyed when it already matches), and a separate **HA-type** column shows a green ✓ when the dropdown agrees with HA, or a red ✗ + the detected type when it doesn't. The bottom **Detect types** button still fixes them all at once.
+
 ## 3.9.6
 - **Auto-detect a source's type from Home Assistant.** In Sources (sensor mapping), with Live data on, each row shows the type HA detects (number / bool / time / string) from the entity's domain, `device_class` and live value. A mismatch becomes a one-click **HA: \<type\> ↺** chip, and a **Detect types** button sets them all at once. The manual dropdown still wins — it's only a suggestion from the live entity. (Would have caught the classic "marked an `ai_task` entity as number" mistake.)
 

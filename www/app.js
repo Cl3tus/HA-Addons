@@ -3516,6 +3516,7 @@ async function openIconPicker(cb, defaultQuery){
    ============================================================ */
 let _modalClose=null;   // optional callback when the modal is dismissed (✕ / backdrop / any close)
 function openModal(title, body, footerBtns, onClose){
+  $('#modal').classList.remove('wide');   // each modal starts at the default width; widen per-modal after opening
   $('#modal-title').textContent=title; $('#modal-body').innerHTML=body;
   const f=$('#modal-footer'); f.innerHTML='';
   (footerBtns||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'ghost'); el.textContent=b.label; el.onclick=b.onClick; if(b.style) el.style.cssText=b.style; if(b.id) el.id=b.id; f.appendChild(el); });
@@ -3558,20 +3559,26 @@ function openSources(){
     const liveCell = st
       ? `<span class="tag" style="color:var(--ok)">${attr(st.state)}${st.unit?(' '+attr(st.unit)):''}</span>`
       : (liveOn ? `<span class="tag" style="color:var(--red)">—</span>` : '');
-    // type detected from live HA — shown under the dropdown; a mismatch becomes a one-click "apply" chip
+    // type detected from live HA (domain + device_class + value)
     const det = st ? detectKindFromHA(s.entityId, st) : null;
-    const detChip = !det ? ''
+    // per-row "snap to HA" icon, right after the dropdown — greyed out when already matching
+    const snapBtn = det
+      ? `<button class="btn ghost sm" data-detect="${i}" data-kind="${attr(det)}" title="${T('Overnemen wat HA detecteert: '+det,'Apply what HA detects: '+det)}" style="padding:2px 6px;margin-left:4px${det===s.kind?';opacity:.35':''}"${det===s.kind?' disabled':''}>↺</button>`
+      : '';
+    // "HA-type" column: green check when it matches the dropdown, red cross + detected type when not
+    const haTypeCell = !det ? `<span class="hint">—</span>`
       : det===s.kind
-        ? `<div class="hint" style="margin-top:3px;color:var(--ok)">✓ HA: ${det}</div>`
-        : `<button class="btn ghost sm" data-detect="${i}" data-kind="${attr(det)}" style="margin-top:3px;padding:1px 7px;font-size:11px" title="${T('Home Assistant ziet dit als '+det+' — klik om over te nemen','Home Assistant sees this as '+det+' — click to apply')}">HA: ${det} ↺</button>`;
+        ? `<span class="tag" style="color:var(--ok)">✓ ${det}</span>`
+        : `<span class="tag" style="color:var(--red)">✗ ${det}</span>`;
     return `<tr>
     <td><input data-i="${i}" data-f="id" class="mono" value="${attr(s.id)}"></td>
     <td><input data-i="${i}" data-f="entityId" class="mono" value="${attr(s.entityId)}"></td>
-    <td><select data-i="${i}" data-f="kind">
-      ${['number','string','time','bool'].map(k=>`<option ${s.kind===k?'selected':''}>${k}</option>`).join('')}
-    </select>${detChip}</td>
     <td><input data-i="${i}" data-f="sample" value="${attr(s.sample)}"></td>
     <td>${liveCell}</td>
+    <td style="white-space:nowrap"><select data-i="${i}" data-f="kind">
+      ${['number','string','time','bool'].map(k=>`<option ${s.kind===k?'selected':''}>${k}</option>`).join('')}
+    </select>${snapBtn}</td>
+    <td>${haTypeCell}</td>
     <td><button class="btn ghost sm danger" data-del="${i}">✕</button></td></tr>`;}).join('');
 
   const help = `<div class="src-box" style="margin-bottom:12px">
@@ -3588,13 +3595,14 @@ function openSources(){
 
   openModal(T('Bronnen (sensor-mapping)','Sources (sensor mapping)'),
     `${help}
-     <table class="tbl"><thead><tr><th>id (lambda)</th><th>entity_id (HA)</th><th>${T('type','type')}</th><th>${T('voorbeeld','sample')}</th><th>live</th><th></th></tr></thead><tbody id="src-body">${rows}</tbody></table>
+     <table class="tbl"><thead><tr><th>id (lambda)</th><th>entity_id (HA)</th><th>${T('voorbeeld','sample')}</th><th>live</th><th>${T('type','type')}</th><th>HA-type</th><th></th></tr></thead><tbody id="src-body">${rows}</tbody></table>
      <div class="row tight" style="margin-top:10px">
        <button class="btn sm" id="src-ha">⌂ ${T('Uit Home Assistant…','From Home Assistant…')}</button>
        <button class="btn ghost sm" id="src-add">+ ${T('Handmatig toevoegen','Add manually')}</button>
        ${liveOn?`<button class="btn ghost sm" id="src-detect" title="${T('Zet het type van elke bron op wat Home Assistant detecteert','Set each source type to what Home Assistant detects')}">↺ ${T('Types detecteren','Detect types')}</button>`:''}
      </div>`,
     [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ persist(); closeModal(); renderInspector(); }}]);
+  $('#modal').classList.add('wide');   // sources table is wide — give it more room
   const body=$('#src-body');
   body.querySelectorAll('input,select').forEach(inp=>inp.addEventListener('change',()=>{ const i=+inp.dataset.i; profile().sources[i][inp.dataset.f]=inp.value; persist(); }));
   body.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ profile().sources.splice(+b.dataset.del,1); persist(); openSources(); });
