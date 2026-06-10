@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.7.11
+- **Shape selections now get the light accent fill too**, kept in sync while resizing/dragging, so Rectangle/Circle/Ring/etc. look the same as a text/icon selection. The fill tint is lighter and the dashed border is a touch thinner (2px).
+
 ## 3.7.10
 - **Consistent, theme-aware selection styling.** The light fill inside a text/icon selection is now a tint of the accent colour (so it matches a red/blue/etc. HA accent instead of a fixed orange), and the dashed border is a touch thinner. Shape selections (Rectangle, Circle, Triangle, Polygon, Ring, Gauge, QR, Graph) now use the same dashed accent border and accent-coloured resize/rotate handles instead of a hardcoded amber, so every element type selects the same way.
 

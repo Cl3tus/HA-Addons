@@ -1431,10 +1431,21 @@ function attachSelection(el, node){
     transformer=new Konva.Transformer({rotateEnabled, keepRatio:locked,
       enabledAnchors: locked ? corners : allAnchors,
       // match the text/icon selection look: dashed accent border + accent handles
-      borderStroke:ac, borderStrokeWidth:2.5, borderDash:[7,4],
+      borderStroke:ac, borderStrokeWidth:2, borderDash:[7,4],
       anchorStroke:ac, anchorFill:'#fff', anchorSize:8, rotateAnchorOffset:24,
       anchorStyleFunc:(a)=>{ if(a.hasName('rotater')){ a.cornerRadius(a.width()/2); a.fill(ac); a.stroke('#fff'); } }});
     contentLayer.add(transformer); transformer.nodes([node]);
+    // light accent fill behind the handles, matching the text/icon selection —
+    // kept in sync while the shape is resized or dragged. Captured locally so the
+    // transform listener never touches a destroyed node after a reselect.
+    const _selFill=new Konva.Rect({fill:accentFill(0.10), listening:false});
+    selectionVisual=_selFill;
+    const _syncSelFill=()=>{ if(!_selFill.getLayer()) return;
+      const r=node.getClientRect({relativeTo:contentLayer});
+      _selFill.setAttrs({x:r.x-2, y:r.y-2, width:r.width+4, height:r.height+4}); };
+    _syncSelFill(); contentLayer.add(_selFill); transformer.moveToTop();
+    node.off('transform.selfill dragmove.selfill');
+    node.on('transform.selfill dragmove.selfill', _syncSelFill);
     // hold Shift while rotating to snap to 45°
     if(rotateEnabled){ node.off('transform.snaprot'); node.on('transform.snaprot',()=>{
       if(shiftDown) node.rotation(Math.round(node.rotation()/45)*45); }); }
@@ -1506,7 +1517,7 @@ function attachSelection(el, node){
     const b=(el.type==='text'||el.type==='icon') ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
     // hug the actual ink with a small margin; bold + clearly visible
     selectionVisual=new Konva.Rect({x:b.x-3,y:b.y-3,width:b.width+6,height:b.height+6,
-      stroke:accentCol(),strokeWidth:2.5,dash:[7,4],fill:accentFill(0.16),
+      stroke:accentCol(),strokeWidth:2,dash:[7,4],fill:accentFill(0.10),
       shadowColor:'#000',shadowBlur:3,shadowOpacity:.5,listening:false});
     contentLayer.add(selectionVisual);
   }
@@ -1556,7 +1567,7 @@ function outlineNode(node){
   const b=(node._elId && (()=>{const e=els().find(x=>x.id===node._elId);return e&&(e.type==='text'||e.type==='icon');})()) ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
   // bright, slightly filled box so multi-selected items stand out clearly
   const o=new Konva.Rect({x:b.x-4,y:b.y-4,width:b.width+8,height:b.height+8,
-    stroke:accentCol(),strokeWidth:2.5,dash:[8,4],fill:accentFill(0.16),
+    stroke:accentCol(),strokeWidth:2,dash:[8,4],fill:accentFill(0.10),
     shadowColor:'#000',shadowBlur:2,shadowOpacity:.4,listening:false});
   contentLayer.add(o);
   return o;
