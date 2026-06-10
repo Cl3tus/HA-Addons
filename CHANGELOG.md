@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.7.12
+- **Fix: the light accent fill on shape selections is now actually visible.** A sync-order bug left the fill rectangle sized 0×0 (it was measured before being added to the layer), so Rectangle/Circle/Ring/etc. showed no fill. They now match the text/icon selection.
+
 ## 3.7.11
 - **Shape selections now get the light accent fill too**, kept in sync while resizing/dragging, so Rectangle/Circle/Ring/etc. look the same as a text/icon selection. The fill tint is lighter and the dashed border is a touch thinner (2px).
 

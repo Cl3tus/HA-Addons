@@ -1443,7 +1443,7 @@ function attachSelection(el, node){
     const _syncSelFill=()=>{ if(!_selFill.getLayer()) return;
       const r=node.getClientRect({relativeTo:contentLayer});
       _selFill.setAttrs({x:r.x-2, y:r.y-2, width:r.width+4, height:r.height+4}); };
-    _syncSelFill(); contentLayer.add(_selFill); transformer.moveToTop();
+    contentLayer.add(_selFill); _syncSelFill(); transformer.moveToTop();
     node.off('transform.selfill dragmove.selfill');
     node.on('transform.selfill dragmove.selfill', _syncSelFill);
     // hold Shift while rotating to snap to 45°
