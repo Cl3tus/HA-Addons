@@ -3175,7 +3175,7 @@ function genYAML(){
   const friendly = p.name || 'E-ink Display';
 
   // designed screens. multi = ≥2 screens, which switches on the whole screen-control
-  // machinery (current_screen global, branched lambda, HA select/buttons/rotation).
+  // machinery (branched display lambda, HA select/buttons/rotation).
   const scrs = ensureScreens(p);
   const multi = scrs.length>=2;
   const rotate = multi && o.rotate;
@@ -3193,8 +3193,6 @@ function genYAML(){
   // globals
   if(o.globals){
     out+=`globals:\n  - id: data_updated\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: initial_data_received\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: recorded_display_refresh\n    type: int\n    restore_value: yes\n    initial_value: '0'\n`;
-    // which designed screen is currently shown (0-based). Driven by the HA select/buttons.
-    if(multi) out+=`  - id: current_screen\n    type: int\n    restore_value: yes\n    initial_value: '0'\n`;
     out+='\n';
   }
 
@@ -3203,8 +3201,8 @@ function genYAML(){
     out+=`script:\n  - id: update_screen\n    then:\n      - lambda: 'id(data_updated) = false;'\n      - component.update: eink_display\n      - lambda: 'id(recorded_display_refresh) += 1;'\n      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'\n\n`;
     out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n`;
     if(rotate){
-      // rotation on: advance the HA select (cycling) → its on_value sets current_screen
-      // and redraws. rotation off: behave exactly as before (refresh only on new data).
+      // rotation on: advance the HA select (cycling) → its on_value redraws the display.
+      // rotation off: behave exactly as before (refresh only on new data).
       out+=`          - if:\n              condition:\n                lambda: 'return id(rotate_screens).state;'\n              then:\n                - select.next:\n                    id: screen_select\n                    cycle: true\n              else:\n                - if:\n                    condition:\n                      lambda: 'return id(data_updated) == true;'\n                    then:\n                      - script.execute: update_screen\n\n`;
     } else {
       out+=`          - if:\n              condition:\n                lambda: 'return id(data_updated) == true;'\n              then:\n                - script.execute: update_screen\n\n`;
@@ -3308,18 +3306,19 @@ function genYAML(){
     out+='\n';
   }
 
-  // screen control (only with ≥2 designed screens): a template select dropdown in HA,
-  // one push-button per screen, and an optional rotation switch. Selecting a screen sets
-  // current_screen and forces an immediate redraw (component.update) — independent of the
+  // screen control (only with ≥2 designed screens). These become entities on the ESPHome
+  // device in Home Assistant automatically: a dropdown to pick the active screen, one
+  // push-button per screen, and an optional rotation switch. The select itself HOLDS the
+  // active-screen state — the display lambda reads it via active_index(), so no extra
+  // global is needed (and nothing to remember when you merge this into an existing config).
+  // Picking a screen forces an immediate redraw (component.update), independent of the
   // data-driven update_screen script, so switching works even without fresh sensor data.
   if(multi){
-    out+=`select:\n  - platform: template\n    name: "${esc(friendly)} Screen"\n    id: screen_select\n    optimistic: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - lambda: |-\n`;
-    scrNames.forEach((nm,i)=>{ out+=`            ${i===0?'if':'else if'} (x == "${esc(nm)}") id(current_screen) = ${i};\n`; });
-    out+=`        - component.update: eink_display\n\n`;
+    out+=`select:\n  - platform: template\n    name: "${esc(friendly)} Screen"\n    id: screen_select\n    optimistic: true\n    restore_value: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - component.update: eink_display\n\n`;
 
     out+=`button:\n`;
     scrNames.forEach((nm)=>{
-      // press → set the select, which fires on_value (sets current_screen + redraws)
+      // press → set the select, which fires on_value (redraws the display)
       out+=`  - platform: template\n    name: "${esc(friendly)} Show ${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: screen_select\n            option: "${esc(nm)}"\n`;
     });
     out+='\n';
@@ -3346,12 +3345,14 @@ function genYAML(){
   // draw in LAYER order (array order = the layers panel, bottom→top) so the z-order
   // you see on the canvas and set in the layers list is exactly what ESPHome draws.
   const drawEls=(arr, indent)=>{ (arr||[]).forEach(el=>{ const code=elementCode(el, indent); if(code) out+=code+'\n'; }); };
-  // draw the active designed screen. single screen → just its elements; multiple →
-  // an if / else-if chain on current_screen, falling back to screen 0 out of range.
+  // draw the active designed screen. single screen → just its elements; multiple → read
+  // the active index straight from the HA select (no global needed) and branch on it,
+  // falling back to screen 0 when out of range / unset.
   const drawScreens=(indent)=>{
     if(!multi){ drawEls(scrs[0].elements, indent); return; }
+    out+=`${indent}int cs = id(screen_select).active_index().value_or(0);\n`;
     scrs.forEach((s,i)=>{
-      out+=`${indent}${i===0?'if':'} else if'} (id(current_screen) == ${i}) {\n`;
+      out+=`${indent}${i===0?'if':'} else if'} (cs == ${i}) {\n`;
       drawEls(s.elements, indent+'  ');
     });
     out+=`${indent}} else {\n`;

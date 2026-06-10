@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.2
+- **Fix: multi-screen YAML no longer needs a `current_screen` global** (which caused `Couldn't find ID 'current_screen'` when merged into a config that keeps its own `globals:` block). The display lambda now reads the active screen straight from the HA select via `active_index()`, so the select is the single source of truth — nothing to add to `globals:`. The select also restores its choice across reboots (`restore_value: true`).
+
 ## 3.9.1
 - **Rename a screen via the app's own dialog** instead of the browser's native prompt — consistent styling, Enter to save, Escape/×/backdrop to cancel.
 
