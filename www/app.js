@@ -3313,8 +3313,12 @@ function genYAML(){
   // global is needed (and nothing to remember when you merge this into an existing config).
   // Picking a screen forces an immediate redraw (component.update), independent of the
   // data-driven update_screen script, so switching works even without fresh sensor data.
+  // The redraw is GUARDED by initial_data_received: an optimistic/restored select
+  // publishes its value during boot setup, which would otherwise render the display
+  // before sensors/time/graphs exist → a LoadProhibited crash + bootloop. The first
+  // real render happens via on_boot (which sets initial_data_received) as before.
   if(multi){
-    out+=`select:\n  - platform: template\n    name: "${esc(friendly)} Screen"\n    id: screen_select\n    optimistic: true\n    restore_value: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - component.update: eink_display\n\n`;
+    out+=`select:\n  - platform: template\n    name: "${esc(friendly)} Screen"\n    id: screen_select\n    optimistic: true\n    restore_value: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - if:\n            condition:\n              lambda: 'return id(initial_data_received);'\n            then:\n              - component.update: eink_display\n\n`;
 
     out+=`button:\n`;
     scrNames.forEach((nm)=>{

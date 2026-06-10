@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.3
+- **Fix: bootloop (LoadProhibited crash) with multiple screens.** An optimistic/restored template select publishes its value during boot setup, which fired the screen `on_value` → `component.update` and rendered the display *before* sensors/time/graphs were initialised → null-pointer crash, repeating forever. The redraw on screen-change is now guarded by `initial_data_received`, so the first real render still happens via `on_boot` (after everything is set up), exactly like before. Screen switching afterwards is unaffected.
+
 ## 3.9.2
 - **Fix: multi-screen YAML no longer needs a `current_screen` global** (which caused `Couldn't find ID 'current_screen'` when merged into a config that keeps its own `globals:` block). The display lambda now reads the active screen straight from the HA select via `active_index()`, so the select is the single source of truth — nothing to add to `globals:`. The select also restores its choice across reboots (`restore_value: true`).
 
