@@ -664,6 +664,15 @@ function cssVar(name){
    theme change re-renders with the new value. */
 function accentCol(){ return cssVar('--accent') || '#ff9800'; }
 function guideCol(){ return cssVar('--guide') || '#1a7fe8'; }
+/* a translucent tint of the current accent — used for selection fills, so the light
+   inner highlight matches the (themeable) accent instead of a fixed orange. */
+function accentFill(alpha){
+  var c=accentCol(), r=255, g=152, b=0;
+  if(c.charAt(0)==='#'){ var h=c.slice(1); if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    if(h.length>=6){ r=parseInt(h.slice(0,2),16); g=parseInt(h.slice(2,4),16); b=parseInt(h.slice(4,6),16); } }
+  else { var m=c.match(/[\d.]+/g); if(m && m.length>=3){ r=+m[0]; g=+m[1]; b=+m[2]; } }
+  return 'rgba('+r+','+g+','+b+','+(alpha==null?0.16:alpha)+')';
+}
 
 function drawRuler(){
   const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
@@ -1418,10 +1427,13 @@ function attachSelection(el, node){
     const rotateEnabled = (el.type==='rect' || el.type==='triangle' || el.type==='polygon');
     const allAnchors=['top-left','top-center','top-right','middle-right','middle-left','bottom-left','bottom-center','bottom-right'];
     const corners=['top-left','top-right','bottom-left','bottom-right'];
+    const ac=accentCol();
     transformer=new Konva.Transformer({rotateEnabled, keepRatio:locked,
       enabledAnchors: locked ? corners : allAnchors,
-      borderStroke:'#e8a13a',anchorStroke:'#e8a13a',anchorFill:'#fff',anchorSize:8,rotateAnchorOffset:24,
-      anchorStyleFunc:(a)=>{ if(a.hasName('rotater')){ a.cornerRadius(a.width()/2); a.fill('#e8a13a'); a.stroke('#fff'); } }});
+      // match the text/icon selection look: dashed accent border + accent handles
+      borderStroke:ac, borderStrokeWidth:2.5, borderDash:[7,4],
+      anchorStroke:ac, anchorFill:'#fff', anchorSize:8, rotateAnchorOffset:24,
+      anchorStyleFunc:(a)=>{ if(a.hasName('rotater')){ a.cornerRadius(a.width()/2); a.fill(ac); a.stroke('#fff'); } }});
     contentLayer.add(transformer); transformer.nodes([node]);
     // hold Shift while rotating to snap to 45°
     if(rotateEnabled){ node.off('transform.snaprot'); node.on('transform.snaprot',()=>{
@@ -1494,7 +1506,7 @@ function attachSelection(el, node){
     const b=(el.type==='text'||el.type==='icon') ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
     // hug the actual ink with a small margin; bold + clearly visible
     selectionVisual=new Konva.Rect({x:b.x-3,y:b.y-3,width:b.width+6,height:b.height+6,
-      stroke:accentCol(),strokeWidth:3,dash:[7,4],fill:'rgba(255,152,0,0.16)',
+      stroke:accentCol(),strokeWidth:2.5,dash:[7,4],fill:accentFill(0.16),
       shadowColor:'#000',shadowBlur:3,shadowOpacity:.5,listening:false});
     contentLayer.add(selectionVisual);
   }
@@ -1544,7 +1556,7 @@ function outlineNode(node){
   const b=(node._elId && (()=>{const e=els().find(x=>x.id===node._elId);return e&&(e.type==='text'||e.type==='icon');})()) ? inkBounds(node) : node.getClientRect({relativeTo:contentLayer});
   // bright, slightly filled box so multi-selected items stand out clearly
   const o=new Konva.Rect({x:b.x-4,y:b.y-4,width:b.width+8,height:b.height+8,
-    stroke:accentCol(),strokeWidth:3,dash:[8,4],fill:'rgba(255,152,0,0.16)',
+    stroke:accentCol(),strokeWidth:2.5,dash:[8,4],fill:accentFill(0.16),
     shadowColor:'#000',shadowBlur:2,shadowOpacity:.4,listening:false});
   contentLayer.add(o);
   return o;

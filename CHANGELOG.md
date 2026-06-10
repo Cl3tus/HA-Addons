@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.7.10
+- **Consistent, theme-aware selection styling.** The light fill inside a text/icon selection is now a tint of the accent colour (so it matches a red/blue/etc. HA accent instead of a fixed orange), and the dashed border is a touch thinner. Shape selections (Rectangle, Circle, Triangle, Polygon, Ring, Gauge, QR, Graph) now use the same dashed accent border and accent-coloured resize/rotate handles instead of a hardcoded amber, so every element type selects the same way.
+
 ## 3.7.9
 - **No stray selection box when placing a guide.** Dragging a new guide off the ruler no longer also starts a marquee selection (the rulers live inside the canvas wrap, so their mousedown was triggering the rubber-band box) — the orange selection rectangle that flashed at the top is gone.
 
