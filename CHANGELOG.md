@@ -3,6 +3,13 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.17
+- **No more browser pop-ups in the editor.** The custom live-data interval, *delete profile* and *delete font-in-use* prompts are now in-app dialogs that match the UI. (The file manager still uses two native confirms — those are next.)
+- **base64 restore code is remembered per profile** now (on by default for new profiles) instead of a single global toggle.
+- **Fixed the flickering insertion line when dragging layers** — it's cleared only when the cursor actually leaves the list, so one stable line per gap.
+- **Waiting-screen option is hidden** (not just disabled) in the screen dropdown when the waiting screen is off; with a single screen and no waiting screen the dropdown hides entirely (nothing to switch between).
+- **New profiles default to a 20 px grid.**
+
 ## 3.9.16
 - **Profile-settings footer redesigned.** Duplicate profile and Delete profile on the left, Close and Save on the right (Save still greyed out until you change something).
 - **Grid colour adapts to the canvas background** — slightly stronger on the e-ink greys / paper / white for visibility, and a contrasting near-black (or light) grid on custom colours such as red or green.

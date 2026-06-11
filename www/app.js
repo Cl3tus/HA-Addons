@@ -130,7 +130,7 @@ function seedProfile(name='My display'){
     name,
     schema_version: 1,
     device: { name:'eink-display', comment:'E-ink Display',
-              model:'7.50in-bV3-bwr', rotation:90, w:480, h:800, bg:'#d4d6d7' },
+              model:'7.50in-bV3-bwr', rotation:90, w:480, h:800, bg:'#d4d6d7', grid:20 },
     // minimal default font set: one text font + one icon font.
     // font ids go verbatim into the generated YAML, so they must NOT be translated —
     // always use the stable id 'font_small' (was language-dependent 'font_klein'/'font_small').
@@ -234,10 +234,15 @@ function renderScreenSelect(){
   // keep editScreen valid (deleting/importing/turning multi off can leave it dangling)
   if(editScreen!=='wait' && !visList.some(s=>s.id===editScreen)) editScreen=visList[0].id;
   if(editScreen==='wait' && !waitOn) editScreen=visList[0].id;
-  let html=`<option value="wait"${waitOn?'':' disabled'}>${esc(T('Wachtscherm','Waiting screen'))}</option>`;
+  // hide the waiting-screen option entirely when it's off (not just disabled)
+  let html = waitOn ? `<option value="wait">${esc(T('Wachtscherm','Waiting screen'))}</option>` : '';
   visList.forEach(s=>{ html+=`<option value="${attr(s.id)}">${esc(s.name||T('Scherm','Screen'))}</option>`; });
   ss.innerHTML=html;
   ss.value=editScreen;
+  // single-screen mode with no waiting screen → just one option, nothing to switch: hide the
+  // dropdown. (In multi-screen mode keep it visible so you can manage/add screens.)
+  const optCount=(waitOn?1:0)+visList.length;
+  ss.style.display = (mOn || optCount>1) ? '' : 'none';
   const grp=$('#screen-grp'); if(grp) grp.style.display = mOn ? '' : 'none';
   const onScreen = editScreen!=='wait';
   const set=(id,dis)=>{ const b=$(id); if(b) b.disabled=!!dis; };
@@ -1870,6 +1875,10 @@ function renderLayers(){
   box.ondragover=e=>{ if(!_dragLayerId) return; const r=box.getBoundingClientRect(); const edge=26;
     if(e.clientY < r.top+edge) box.scrollTop -= 10;
     else if(e.clientY > r.bottom-edge) box.scrollTop += 10; };
+  const clearDrop=()=>$$('.layer.drop-before,.layer.drop-after').forEach(r=>r.classList.remove('drop-before','drop-after'));
+  // clear the insertion line only when the cursor truly leaves the list — NOT when it crosses
+  // a child element inside a row (that per-row dragleave is what made the line flicker)
+  box.ondragleave=e=>{ const r=box.getBoundingClientRect(); if(e.clientX<r.left||e.clientX>=r.right||e.clientY<r.top||e.clientY>=r.bottom) clearDrop(); };
   // top of list = top of z-order (draw last) -> reverse
   els().slice().reverse().forEach(el=>{
     const row=document.createElement('div');
@@ -1882,7 +1891,6 @@ function renderLayers(){
       <span class="lvis" title="${T('Zichtbaarheid','Visibility')}">${el.visible===false?'🚫':'👁'}</span>`;
     // drag-to-reorder via the handle
     const handle=row.querySelector('.lmove'); handle.draggable=true;
-    const clearDrop=()=>$$('.layer.drop-before,.layer.drop-after').forEach(r=>r.classList.remove('drop-before','drop-after'));
     handle.ondragstart=e=>{ _dragLayerId=el.id; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',el.id);}catch(_){} };
     handle.ondragend=()=>{ _dragLayerId=null; clearDrop(); };
     row.ondragover=e=>{ if(!_dragLayerId || _dragLayerId===el.id) return; e.preventDefault();
@@ -1900,7 +1908,6 @@ function renderLayers(){
         if(next && next.classList.contains('layer')) next.classList.add('drop-before');
         else row.classList.add('drop-after');
       } };
-    row.ondragleave=()=>clearDrop();
     row.ondrop=e=>{ e.preventDefault(); const before=row._dropBefore!==false; clearDrop(); if(_dragLayerId) moveLayerTo(_dragLayerId, el.id, before); _dragLayerId=null; };
     const nameEl=row.querySelector('.lname');
     let clickTimer=null;
@@ -3417,8 +3424,8 @@ function genYAML(){
     out+=`${L}}\n`;
   }
 
-  // round-trip comment (optional — toggled by the base64 checkbox)
-  if(window.INCLUDE_SNAPSHOT!==false){
+  // round-trip comment (optional — per-profile, toggled by the base64 checkbox; on by default)
+  if(p.includeSnapshot!==false){
     // readable, design-unique element ids (shared set across both screens) so the
     // decoded JSON reads as "background" instead of "exsa7ck"
     const usedIds=new Set();
@@ -3485,6 +3492,7 @@ function haSensor(s){
 }
 
 function renderCode(){
+  { const cb=$('#code-b64'); if(cb) cb.checked = profile().includeSnapshot!==false; }   // reflect the current profile's setting
   const code = genYAML().replace(/\s+$/,'\n');   // trim trailing blank space
   const h = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   // one <span class="cl"> per line so a CSS ::before counter can show line numbers
@@ -3824,9 +3832,10 @@ async function openFonts(){
   }));
   $$('#modal-body [data-delfont]').forEach(b=>b.onclick=()=>{
     const i=+b.dataset.delfont, f=profile().fonts[i];
-    const inUse=els().some(e=>e.fontId===f.id);
-    if(inUse && !confirm(T(`Font "${f.id}" wordt gebruikt door elementen. Toch verwijderen?`,`Font "${f.id}" is used by elements. Delete anyway?`))) return;
-    profile().fonts.splice(i,1); persist(); afterChange(); openFonts(); toast(T('Font verwijderd','Font deleted'));
+    const del=()=>{ profile().fonts.splice(i,1); persist(); afterChange(); openFonts(); toast(T('Font verwijderd','Font deleted')); };
+    const inUse=allElements(profile()).some(e=>e.fontId===f.id);
+    if(inUse) showAppConfirm(T(`Font "${esc(f.id)}" wordt gebruikt door elementen. Toch verwijderen?`,`Font "${esc(f.id)}" is used by elements. Delete anyway?`), del);
+    else del();
   });
   $$('#modal-body [data-editfont]').forEach(b=>b.onclick=()=>editFont(+b.dataset.editfont));
   // new-font form: toggle gfonts/local/web fields + the matching browse link
@@ -4173,12 +4182,12 @@ function openProfileSettings(){
     if(bgInp) bgInp.oninput=()=>{ if(sw) sw.style.background=bgInp.value; refreshSel(); };
     refreshSel(); }
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
-    if(confirm(T('Profiel verwijderen?','Delete profile?'))){
+    showAppConfirm(T(`Profiel “${esc(p.name||'')}” verwijderen?`,`Delete profile “${esc(p.name||'')}”?`), ()=>{
       state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist();
       renderProfiles(); initStage(); selectedId=null; selectedIds=new Set(); renderCanvas(); renderLayers(); renderInspector();
       openProfileSettings();   // stay in settings, now showing the first profile
       toast(T('Profiel verwijderd','Profile deleted'));
-    } };
+    }); };
   $('#ps-dup').onclick=()=>{
     const cp=JSON.parse(JSON.stringify(p)); cp.id=uid('p'); cp._waitSeeded=true;
     const base=(p.name||'profiel').replace(/\s*\(\d+\)\s*$/,'');
@@ -4747,6 +4756,26 @@ function showAppConfirm(msg, onOk, onCancel){
   box.querySelector('#app-confirm-ok').onclick=()=>close(onOk);
   box.querySelector('#app-confirm-cancel').onclick=()=>close(onCancel);
 }
+/* lightweight in-app prompt — replaces the browser's native prompt(). cb(value) on OK,
+   cb(null) on Cancel/Escape. */
+function showAppPrompt(msg, defaultVal, cb, opts){
+  opts=opts||{};
+  const prev=$('#app-confirm'); if(prev) prev.remove();
+  const box=document.createElement('div'); box.id='app-confirm';
+  box.innerHTML=`<div class="app-confirm-msg">${msg}</div>
+    <input id="app-confirm-input" type="${opts.type||'text'}"${opts.min!=null?` min="${attr(opts.min)}"`:''} value="${attr(defaultVal==null?'':String(defaultVal))}" style="width:100%;margin-bottom:14px">
+    <div class="app-confirm-btns">
+      <button class="btn ghost sm" id="app-confirm-cancel">${T('Annuleren','Cancel')}</button>
+      <button class="btn primary sm" id="app-confirm-ok">OK</button>
+    </div>`;
+  document.body.appendChild(box);
+  const inp=box.querySelector('#app-confirm-input');
+  const done=(val)=>{ box.remove(); cb(val); };
+  box.querySelector('#app-confirm-ok').onclick=()=>done(inp.value);
+  box.querySelector('#app-confirm-cancel').onclick=()=>done(null);
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); done(inp.value); } else if(e.key==='Escape'){ e.preventDefault(); done(null); } });
+  setTimeout(()=>{ inp.focus(); inp.select(); },30);
+}
 
 /* point 2: right-click context menu on the canvas */
 function hideCtxMenu(){ $('#ctxmenu').classList.remove('open'); }
@@ -4878,10 +4907,13 @@ function wire(){
     li.onchange=()=>{
       if(li.value==='custom'){
         const cur=localStorage.getItem('einkLiveIntervalMin')||'1';
-        const ans=prompt(T('Vernieuw-interval in minuten (0 = uit):','Refresh interval in minutes (0 = off):'), cur);
-        if(ans==null){ _setLiveIntervalValue(cur); return; }
-        let m=parseInt(ans,10); if(isNaN(m)||m<0) m=0;
-        _setLiveIntervalValue(String(m));
+        showAppPrompt(T('Vernieuw-interval in minuten (0 = uit):','Refresh interval in minutes (0 = off):'), cur, (ans)=>{
+          if(ans==null){ _setLiveIntervalValue(cur); return; }
+          let m=parseInt(ans,10); if(isNaN(m)||m<0) m=0;
+          _setLiveIntervalValue(String(m));
+          localStorage.setItem('einkLiveIntervalMin', String(liveIntervalMin())); startLiveTimer();
+        }, {type:'number', min:'0'});
+        return;
       }
       localStorage.setItem('einkLiveIntervalMin', String(liveIntervalMin())); startLiveTimer();
     };
@@ -4903,7 +4935,7 @@ function wire(){
       const move=ev=>{ const w=Math.max(360, Math.min(rightEdge-ev.clientX, window.innerWidth-60)); drawer.style.setProperty('--code-w', w+'px'); _fitB64(); };
       const up=()=>{ window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up); };
       window.addEventListener('mousemove',move); window.addEventListener('mouseup',up); }); }
-  const cb64=$('#code-b64'); if(cb64) cb64.onchange=()=>{ window.INCLUDE_SNAPSHOT=cb64.checked; renderCode(); };
+  const cb64=$('#code-b64'); if(cb64) cb64.onchange=()=>{ profile().includeSnapshot=cb64.checked; persist(); renderCode(); };
   const scr=$('#screen-select'); if(scr) scr.onchange=()=>switchScreen(scr.value);
   { const b=$('#scr-add'); if(b) b.onclick=addScreen; }
   { const b=$('#scr-dup'); if(b) b.onclick=duplicateScreen; }
