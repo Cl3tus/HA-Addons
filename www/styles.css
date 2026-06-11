@@ -253,7 +253,7 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   border: 1px solid transparent;
 }
 .layer:hover { background: var(--panel-2); }
-.layer.sel { background: var(--panel-2); border-color: var(--accent); }
+.layer.sel { background: var(--panel-2); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 /* insertion line shown while dragging a layer above/below a row — a crisp,
    full-width straight bar (a pseudo-element, so the row's border-radius doesn't
    round its ends like an inset box-shadow did) */

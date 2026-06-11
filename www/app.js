@@ -240,9 +240,12 @@ function renderScreenSelect(){
   ss.innerHTML=html;
   ss.value=editScreen;
   // single-screen mode with no waiting screen → just one option, nothing to switch: hide the
-  // dropdown. (In multi-screen mode keep it visible so you can manage/add screens.)
+  // dropdown and show a static "Single Page" label instead. (In multi-screen mode keep the
+  // dropdown visible so you can manage/add screens.)
   const optCount=(waitOn?1:0)+visList.length;
-  ss.style.display = (mOn || optCount>1) ? '' : 'none';
+  const single = !mOn && optCount<=1;
+  ss.style.display = single ? 'none' : '';
+  { const sp=$('#screen-single'); if(sp){ sp.style.display = single ? '' : 'none'; sp.textContent = T('Eén pagina','Single Page'); } }
   const grp=$('#screen-grp'); if(grp) grp.style.display = mOn ? '' : 'none';
   const onScreen = editScreen!=='wait';
   const set=(id,dis)=>{ const b=$(id); if(b) b.disabled=!!dis; };
@@ -3083,6 +3086,7 @@ function outputDefaults(){
     refresh:true,                                   // esphome on_boot + script + time (grouped — they belong together)
     bootPriority:'600.0', bootDelay:'2s', waitTimeout:'30s', timeInterval:15,
     screenControl:'both',                           // HA screen-picker style with ≥2 screens: 'select' | 'buttons' | 'both'
+    rotateBoolean:false,                            // also generate an HA input_boolean + rotation (needs ≥2 screens)
     globals:true,
     spi:false, spiClk:'GPIO13', spiMosi:'GPIO14',
     fonts:true, colors:true, sensors:true, textSensors:true,
@@ -3221,6 +3225,7 @@ function genYAML(){
   // machinery (branched display lambda, HA select/buttons/rotation).
   const scrs = ensureScreens(p);
   const multi = multiScreenOn(p) && scrs.length>=2;
+  const rotateBool = multi && !!o.rotateBoolean;   // HA input_boolean drives screen rotation
   // HA-facing option labels for the select/buttons, de-duplicated (ESPHome needs a
   // unique label per option; two screens may share a user-typed name).
   const scrNames = (()=>{ const seen={}; return scrs.map(s=>{ let nm=(s.name||'').trim()||T('Scherm','Screen');
@@ -3241,7 +3246,14 @@ function genYAML(){
   // script + time (part of the refresh logic)
   if(o.refresh){
     out+=`script:\n  - id: update_screen\n    then:\n      - lambda: 'id(data_updated) = false;'\n      - component.update: eink_display\n      - lambda: 'id(recorded_display_refresh) += 1;'\n      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'\n\n`;
-    out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n          - if:\n              condition:\n                lambda: 'return id(data_updated) == true;'\n              then:\n                - script.execute: update_screen\n\n`;
+    out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n`;
+    if(rotateBool){
+      // rotation toggle on (HA input_boolean) → advance the screen select each interval;
+      // off → behave normally (refresh only when new sensor data arrived)
+      out+=`          - if:\n              condition:\n                lambda: 'return id(screen_rotation).state;'\n              then:\n                - select.next:\n                    id: screen_select\n                    cycle: true\n              else:\n                - if:\n                    condition:\n                      lambda: 'return id(data_updated) == true;'\n                    then:\n                      - script.execute: update_screen\n\n`;
+    } else {
+      out+=`          - if:\n              condition:\n                lambda: 'return id(data_updated) == true;'\n              then:\n                - script.execute: update_screen\n\n`;
+    }
   }
 
   // SPI bus (board-specific pins)
@@ -3257,7 +3269,7 @@ function genYAML(){
     out+=`font:\n`;
     emit.forEach(f=>{
       if(f.kind==='gfonts'){
-        out+=`  - file:\n      type: gfonts\n      family: ${f.family}\n      weight: ${f.weight}\n    id: ${f.id}\n    size: ${f.size}\n`;
+        out+=`  - file:\n      type: gfonts\n      family: ${f.family}\n      weight: ${f.weight}\n${f.italic?'      italic: true\n':''}    id: ${f.id}\n    size: ${f.size}\n`;
       } else if(f.kind==='web'){
         out+=`  - file:\n      type: web\n      url: ${yamlStr(f.url||'')}\n    id: ${f.id}\n    size: ${f.size}\n`;
       } else {
@@ -3360,8 +3372,9 @@ function genYAML(){
     // (active_index), and the buttons drive it. The control style only decides what shows
     // in Home Assistant: 'select' = just the dropdown, 'buttons' = just the buttons (the
     // select is kept internal: true so HA hides it), 'both' = dropdown + buttons.
-    // Rotation is intentionally NOT generated — build that with your own HA automation
-    // (e.g. an automation that cycles this select on a schedule / via an input_boolean).
+    // Rotation is optional (the "Screen rotation via HA input_boolean" toggle): when on it
+    // emits an input_boolean helper (for HA's config) + a binary_sensor + a time-trigger
+    // branch that advances the select while the toggle is on.
     const ctrl = o.screenControl || 'both';
     const selName = ctrl==='buttons' ? '' : `    name: "${esc(friendly)} Screen"\n`;
     const selInternal = ctrl==='buttons' ? `    internal: true\n` : '';
@@ -3374,6 +3387,15 @@ function genYAML(){
         out+=`  - platform: template\n    name: "${esc(friendly)} Show ${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: screen_select\n            option: "${esc(nm)}"\n`;
       });
       out+='\n';
+    }
+
+    if(rotateBool){
+      const slug=(devSlug(p.name)||'eink')+'_screen_rotation';
+      // the input_boolean is a HOME ASSISTANT helper, not an ESPHome component — it goes in
+      // HA's configuration.yaml. The binary_sensor (ESPHome) mirrors it so the time trigger
+      // can advance the screen while it's on.
+      out+=`# --- HOME ASSISTANT helper — paste into your HA configuration.yaml (NOT into ESPHome) ---\ninput_boolean:\n  ${slug}:\n    name: "${esc(friendly)} Screen Rotation"\n    icon: mdi:rotate-3d-variant\n# --- end Home Assistant helper ---\n\n`;
+      out+=`binary_sensor:\n  - platform: homeassistant\n    id: screen_rotation\n    entity_id: input_boolean.${slug}\n\n`;
     }
   }
 
@@ -3734,6 +3756,11 @@ async function downloadFontsZip(){
   }catch(e){ toast(T('Download mislukt: ','Download failed: ')+e.message); }
 }
 
+/* named font-weight <option> list for the gfonts weight dropdown */
+function weightOptions(sel){
+  return [[100,'Thin'],[200,'Extra-Light'],[300,'Light'],[400,'Regular'],[500,'Medium'],[600,'Semi-Bold'],[700,'Bold'],[800,'Extra-Bold'],[900,'Black']]
+    .map(([v,l])=>`<option value="${v}"${+sel===v?' selected':''}>${l} ${v}</option>`).join('');
+}
 async function openFonts(){
   await refreshServerFonts();
   if(_fontsSnapshot===null) _fontsSnapshot=JSON.parse(JSON.stringify(profile().fonts));   // snapshot once per session
@@ -3750,7 +3777,7 @@ async function openFonts(){
   const catLabel=[T('Lokale / geüploade fonts','Local / uploaded fonts'),'Google Fonts',T('Web-fonts','Web Fonts'),T('Icoon-fonts (MDI)','Icon fonts (MDI)')];
   const oneRow=(f,i)=>`<tr>
     <td class="mono">${previewable(f)?`<a href="#" class="font-prev" data-prev="${i}" title="${T('Klik voor voorbeeld','Click to preview')}">${f.id}</a>`:f.id}</td>
-    <td class="mono" style="font-size:10px;word-break:break-all">${f.kind==='gfonts'?`gfonts: ${attr(f.family)} ${f.weight}`:(f.kind==='web'?`web: ${attr(f.url||'')}`:attr(f.file||''))}</td>
+    <td class="mono" style="font-size:10px;word-break:break-all">${f.kind==='gfonts'?`gfonts: ${attr(f.family)} ${f.weight}${f.italic?' italic':''}`:(f.kind==='web'?`web: ${attr(f.url||'')}`:attr(f.file||''))}</td>
     <td>${f.size}px</td>
     <td>${statusTag(f)}</td>
     <td style="white-space:nowrap">${used.has(f.id)
@@ -3787,7 +3814,8 @@ async function openFonts(){
        <div class="hint" id="nf-mdi-link" style="display:none;margin-top:4px">↗ <a href="https://pictogrammers.com/library/mdi/" target="_blank" rel="noopener">${T('Blader door de MDI icon-bibliotheek','Browse the MDI icon library')}</a> ${T('(opent in nieuw tabblad)','(opens in a new tab)')}</div>
        <div class="row tight" id="nf-gfonts">
          <div style="flex:2"><label class="fld">family</label><input id="nf-family" type="text" placeholder="${T('bv.','e.g.')} Roboto" title="${T('Exacte Google-Fonts-naam, bv. “Roboto”, “Noto Sans Display”.','Exact Google Fonts family name, e.g. “Roboto”, “Noto Sans Display”.')}"></div>
-         <div><label class="fld">weight</label><input id="nf-weight" class="spin" type="number" placeholder="weight" value="400" style="width:90px" title="${T('Letterdikte: 100=thin, 400=normaal, 700=bold, 900=black. Moet bestaan voor deze family.','Font weight: 100=thin, 400=regular, 700=bold, 900=black. Must exist for this family.')}"></div>
+         <div><label class="fld">weight</label><select id="nf-weight" style="width:auto" title="${T('Letterdikte — moet bestaan voor deze family.','Font weight — must exist for this family.')}">${weightOptions(400)}</select></div>
+         <div><label class="fld">italic</label><input type="checkbox" id="nf-italic" style="margin-top:6px" title="${T('Cursieve variant (Google Fonts).','Italic variant (Google Fonts).')}"></div>
        </div>
        <div class="hint" id="nf-gfonts-link" style="margin-top:4px">↗ <a href="https://fonts.google.com/" target="_blank" rel="noopener">${T('Bekijk en kies een Google Font','Browse and pick a Google Font')}</a> ${T('(opent in nieuw tabblad)','(opens in a new tab)')}</div>
        <div class="row tight" id="nf-local" style="display:none">
@@ -3860,7 +3888,7 @@ async function openFonts(){
     if(fontById(id)){ toast(T('Dit id bestaat al','This id already exists')); return; }
     const size=+$('#nf-size').value||30, kind=kindSel.value;
     const f={ id, size, kind:(kind==='mdi'?'local':kind), dynamic:false, baseCharset:' -.:%/°0123456789', dataUrl:null, seedGlyphs:[] };
-    if(kind==='gfonts'){ f.family=($('#nf-family').value||'Roboto').trim(); f.weight=+$('#nf-weight').value||400; f.file=null; }
+    if(kind==='gfonts'){ f.family=($('#nf-family').value||'Roboto').trim(); f.weight=+$('#nf-weight').value||400; f.italic=!!($('#nf-italic')&&$('#nf-italic').checked); f.file=null; }
     else if(kind==='web'){ const url=($('#nf-url').value||'').trim();
       if(!/^https?:\/\//i.test(url)){ toast(T('Geef een geldige http(s)-URL','Enter a valid http(s) URL')); return; }
       f.family=null; f.weight=null; f.url=url; f.file=null; }
@@ -3926,7 +3954,8 @@ function editFont(i){
      </div>
      <div class="row tight" id="ef-gfonts" style="${kind0==='gfonts'?'':'display:none'}">
        <div style="flex:2"><label class="fld">family</label><input id="ef-family" value="${attr(f.family||'Roboto')}" title="${T('Exacte Google-Fonts-naam.','Exact Google Fonts family name.')}"></div>
-       <div><label class="fld">weight</label><input id="ef-weight" class="spin" type="number" value="${f.weight||400}" style="width:90px" title="${T('100=thin, 400=normaal, 700=bold, 900=black.','100=thin, 400=regular, 700=bold, 900=black.')}"></div>
+       <div><label class="fld">weight</label><select id="ef-weight" style="width:auto">${weightOptions(f.weight||400)}</select></div>
+       <div><label class="fld">italic</label><input type="checkbox" id="ef-italic"${f.italic?' checked':''} style="margin-top:6px" title="${T('Cursieve variant (Google Fonts).','Italic variant (Google Fonts).')}"></div>
      </div>
      <div class="hint" id="ef-gfonts-link" style="${kind0==='gfonts'?'':'display:none'};margin-top:4px">↗ <a href="https://fonts.google.com/" target="_blank" rel="noopener">${T('Bekijk Google Fonts','Browse Google Fonts')}</a></div>
      <div class="row tight" id="ef-local" style="${kind0==='local'?'':'display:none'}">
@@ -3951,7 +3980,7 @@ function editFont(i){
        f.size=+$('#ef-size').value||f.size||30;
        f.kind=newKind;
        if(newKind==='gfonts'){
-         f.family=($('#ef-family').value||'Roboto').trim(); f.weight=+$('#ef-weight').value||400;
+         f.family=($('#ef-family').value||'Roboto').trim(); f.weight=+$('#ef-weight').value||400; f.italic=!!($('#ef-italic')&&$('#ef-italic').checked);
          f.file=null; f.url=null; f.dataUrl=null;
        } else if(newKind==='web'){
          f.family=null; f.weight=null; f.url=($('#ef-url').value||'').trim(); f.file=null; f.dataUrl=null;
@@ -4066,7 +4095,9 @@ function openProfileSettings(){
              <option value="select"${o.screenControl==='select'?' selected':''}>${T('Alleen dropdown','Dropdown only')}</option>
              <option value="buttons"${o.screenControl==='buttons'?' selected':''}>${T('Alleen knoppen','Buttons only')}</option>
            </select>
-           <div class="hint" style="margin:2px 0 6px">${T('Hoe je in HA tussen schermen wisselt: een dropdown (select), losse knoppen (button) per scherm, of beide. Schermrotatie regel je zelf via een HA-automatisering.','How you switch screens in HA: a dropdown (select), one button per screen, or both. Build screen rotation yourself with a HA automation.')}</div>
+           <div class="hint" style="margin:2px 0 6px">${T('Hoe je in HA tussen schermen wisselt: een dropdown (select), losse knoppen (button) per scherm, of beide.','How you switch screens in HA: a dropdown (select), one button per screen, or both.')}</div>
+           <label class="toggle"><input type="checkbox" id="ps-o-rotbool" ${o.rotateBoolean?'checked':''}> ${T('Schermrotatie via HA input_boolean','Screen rotation via HA input_boolean')}</label>
+           <div class="hint" style="margin:2px 0 0">${T('Genereert een input_boolean (voor je HA-config) + een binary_sensor + tijdtrigger: staat de toggle in HA aan, dan schuift het display elk interval naar het volgende scherm. Vereist ≥2 schermen.','Generates an input_boolean (for your HA config) + a binary_sensor + time trigger: when the toggle is on in HA, the display advances to the next screen each interval. Needs ≥2 screens.')}</div>
          </div>
          <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0">
            <label class="toggle"><input type="checkbox" id="ps-o-globals" ${o.globals?'checked':''}> globals</label>
@@ -4109,6 +4140,7 @@ function openProfileSettings(){
         bootPriority:$('#ps-o-prio').value, bootDelay:$('#ps-o-delay').value, waitTimeout:$('#ps-o-timeout').value,
         timeInterval:+$('#ps-o-interval').value||15,
         screenControl:$('#ps-o-screenctrl').value,
+        rotateBoolean:$('#ps-o-rotbool').checked,
         globals:$('#ps-o-globals').checked,
         fonts:$('#ps-o-fonts').checked, colors:$('#ps-o-colors').checked,
         sensors:$('#ps-o-sensors').checked, textSensors:$('#ps-o-textsensors').checked,
@@ -4509,7 +4541,7 @@ function doImport(textArg){
     const file = typeof o.file==='string'?o.file:null;
     const g = (o.file&&o.file.type==='gfonts')?o.file:null;
     const isMdi=/materialdesignicons/i.test(file||'');
-    return { id:o.id, kind:g?'gfonts':'local', file, family:g?g.family:null, weight:g?g.weight:null,
+    return { id:o.id, kind:g?'gfonts':'local', file, family:g?g.family:null, weight:g?g.weight:null, italic:g?!!g.italic:false,
       size:o.size||20, dynamic:!o.glyphs && /digital/i.test(file||''),
       baseCharset: isMdi ? '' : ' -.:%/°0123456789',
       dataUrl:null, seedGlyphs: Array.isArray(o.glyphs)?o.glyphs:[] };

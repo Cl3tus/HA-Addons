@@ -58,6 +58,23 @@ async function apiUpload(path, files) {
 
 function _t(nl, en) { return (window.t ? window.t(nl, en) : nl); }
 
+/* in-app confirm — replaces the browser's native confirm(); reuses the #app-confirm
+   styling from styles.css. cb() runs on OK, nothing on Cancel/Escape. */
+function feConfirm(msg, onOk) {
+  const prev = document.getElementById('app-confirm'); if (prev) prev.remove();
+  const box = document.createElement('div'); box.id = 'app-confirm';
+  box.innerHTML = '<div class="app-confirm-msg">' + msg + '</div>' +
+    '<div class="app-confirm-btns">' +
+    '<button class="btn ghost sm" id="app-confirm-cancel">' + _t('Annuleren', 'Cancel') + '</button>' +
+    '<button class="btn primary sm" id="app-confirm-ok">OK</button></div>';
+  document.body.appendChild(box);
+  const close = (cb) => { box.remove(); document.removeEventListener('keydown', onKey, true); if (cb) cb(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); close(null); } else if (e.key === 'Enter') { e.preventDefault(); close(onOk); } };
+  box.querySelector('#app-confirm-ok').onclick = () => close(onOk);
+  box.querySelector('#app-confirm-cancel').onclick = () => close(null);
+  document.addEventListener('keydown', onKey, true);
+}
+
 // ---------------------------------------------------------------- text editor
 
 const TEXT_EXT = new Set([
@@ -202,11 +219,9 @@ async function saveEditor() {
 }
 
 function closeEditor() {
-  if (editorDirty() && !confirm(_t('Niet-opgeslagen wijzigingen weggooien?',
-                                    'Discard unsaved changes?'))) return;
-  $('#fe-editor-back').classList.remove('open');
-  _editPath = null;
-  _editClean = '';
+  const doClose = () => { $('#fe-editor-back').classList.remove('open'); _editPath = null; _editClean = ''; };
+  if (editorDirty()) feConfirm(_t('Niet-opgeslagen wijzigingen weggooien?', 'Discard unsaved changes?'), doClose);
+  else doClose();
 }
 
 // ---------------------------------------------------------------- Navigation
@@ -489,11 +504,11 @@ function entryPath(name) {
 
 function baseName(p) { return p.split('/').pop(); }
 
-async function doDelete() {
+function doDelete() {
   const paths = [...selected];
   const label = paths.length === 1 ? `"${baseName(paths[0])}"` : `${paths.length} items`;
-  if (!confirm(_t(`Verwijder ${label}? Dit kan niet ongedaan worden gemaakt.`,
-                   `Delete ${label}? This cannot be undone.`))) return;
+  feConfirm(_t(`Verwijder ${label}? Dit kan niet ongedaan worden gemaakt.`,
+               `Delete ${label}? This cannot be undone.`), async () => {
   try {
     for (const path of paths) await apiDelete(path);
     toast(paths.length === 1
@@ -503,6 +518,7 @@ async function doDelete() {
   } catch (e) {
     toast(_t('Verwijderen mislukt: ', 'Delete failed: ') + e.message, true);
   }
+  });
 }
 
 function doDownload(name, fullPath) {

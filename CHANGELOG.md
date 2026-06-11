@@ -3,6 +3,13 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.18
+- **Selected layer gets an accent ring** so it clearly stands out in the layers list.
+- **The file manager uses in-app dialogs** too now — "discard unsaved changes" and "delete files" match the UI, so there are no native browser pop-ups left anywhere.
+- **Single-screen designs show a static "Single Page" label** above the canvas (instead of an empty dropdown) when there's no waiting screen and multi-screen is off.
+- **Optional HA screen rotation.** Profile settings → Generated YAML Blocks → *Screen rotation via HA input_boolean*: emits an `input_boolean` helper (for your HA config) + a `binary_sensor` + a time-trigger branch that advances the screen each interval while the toggle is on. (Needs ≥2 screens.)
+- **Font weight is a named dropdown now** (Thin 100 … Black 900) in the new-font and edit-font forms, plus an **Italic** checkbox for Google Fonts (emits `italic: true`).
+
 ## 3.9.17
 - **No more browser pop-ups in the editor.** The custom live-data interval, *delete profile* and *delete font-in-use* prompts are now in-app dialogs that match the UI. (The file manager still uses two native confirms — those are next.)
 - **base64 restore code is remembered per profile** now (on by default for new profiles) instead of a single global toggle.
