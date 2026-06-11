@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.9
+- **Sources mapping fixes.** The sample column is now **off by default** and its show/hide choice is saved **per profile**. The ↺ "snap to HA" icon only appears when the dropdown actually disagrees with HA — so it no longer overlaps the *type (HA)* column when everything matches. And changing a row's type now updates the *type (HA)* ✓/✗ **immediately**, without closing and reopening the dialog.
+
 ## 3.9.8
 - **Sources mapping polish.** Swapped the *live* and *sample* columns; headers renamed to *live (HA)*, *type (lambda)* and *type (HA)*. The "type (HA)" column is now plain coloured text (green ✓ / red ✗ — no more overlapping chip borders), the per-row **↺** "snap to HA" icon is always clickable, and a **Sample column** checkbox at the bottom shows/hides the sample column (remembered between sessions).
 

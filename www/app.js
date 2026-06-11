@@ -3554,7 +3554,7 @@ function detectKindFromHA(eid, st){
 }
 function openSources(){
   const liveOn = HA_LIVE && HA_STATES;
-  const showSample = localStorage.getItem('eink:srcShowSample')!=='0';   // sample column visibility (toggled at the bottom)
+  const showSample = profile().srcShowSample === true;   // sample column off by default, remembered per profile
   const rows=profile().sources.map((s,i)=>{
     const st = HA_STATES && HA_STATES[s.entityId];
     const liveCell = st
@@ -3562,9 +3562,10 @@ function openSources(){
       : (liveOn ? `<span class="tag" style="color:var(--red)">—</span>` : '');
     // type detected from live HA (domain + device_class + value)
     const det = st ? detectKindFromHA(s.entityId, st) : null;
-    // per-row "snap to HA" icon, right after the dropdown — always clickable (dimmed when it already matches)
-    const snapBtn = det
-      ? `<button class="btn ghost sm" data-detect="${i}" data-kind="${attr(det)}" title="${T('Overnemen wat HA detecteert: '+det,'Apply what HA detects: '+det)}" style="padding:2px 7px;margin-left:5px${det===s.kind?';opacity:.4':''}">↺</button>`
+    // per-row "snap to HA" icon — only shown when the dropdown disagrees with HA (so it
+    // never crowds the next column when everything already matches)
+    const snapBtn = (det && det!==s.kind)
+      ? `<button class="btn ghost sm" data-detect="${i}" data-kind="${attr(det)}" title="${T('Overnemen wat HA detecteert: '+det,'Apply what HA detects: '+det)}" style="padding:2px 7px;margin-left:6px">↺</button>`
       : '';
     // "Type (HA)" column: plain coloured text (no chip border, so adjacent rows don't visually touch)
     const haTypeCell = !det ? `<span class="hint">—</span>`
@@ -3576,7 +3577,7 @@ function openSources(){
     <td><input data-i="${i}" data-f="entityId" class="mono" value="${attr(s.entityId)}"></td>
     <td>${liveCell}</td>
     ${showSample?`<td><input data-i="${i}" data-f="sample" value="${attr(s.sample)}"></td>`:''}
-    <td style="white-space:nowrap"><select data-i="${i}" data-f="kind">
+    <td style="white-space:nowrap;padding-right:14px"><select data-i="${i}" data-f="kind">
       ${['number','string','time','bool'].map(k=>`<option ${s.kind===k?'selected':''}>${k}</option>`).join('')}
     </select>${snapBtn}</td>
     <td>${haTypeCell}</td>
@@ -3606,13 +3607,17 @@ function openSources(){
     [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ persist(); closeModal(); renderInspector(); }}]);
   $('#modal').classList.add('wide');   // sources table is wide — give it more room
   const body=$('#src-body');
-  body.querySelectorAll('input,select').forEach(inp=>inp.addEventListener('change',()=>{ const i=+inp.dataset.i; profile().sources[i][inp.dataset.f]=inp.value; persist(); }));
+  body.querySelectorAll('input,select').forEach(inp=>inp.addEventListener('change',()=>{
+    const i=+inp.dataset.i; profile().sources[i][inp.dataset.f]=inp.value; persist();
+    // re-render so the "type (HA)" comparison (and the ↺ icon) update immediately, without reopening
+    if(inp.dataset.f==='kind' || inp.dataset.f==='entityId') openSources();
+  }));
   body.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ profile().sources.splice(+b.dataset.del,1); persist(); openSources(); });
   // per-row "HA: <type> ↺" chip → adopt the detected type for that one source
   body.querySelectorAll('[data-detect]').forEach(b=>b.onclick=()=>{ profile().sources[+b.dataset.detect].kind=b.dataset.kind; persist(); openSources(); });
   $('#src-add').onclick=()=>{ profile().sources.push({id:uid('s'),entityId:'sensor.new',kind:'number',sample:0}); persist(); openSources(); };
   $('#src-ha').onclick=openEntityPicker;
-  { const c=$('#src-show-sample'); if(c) c.onchange=()=>{ localStorage.setItem('eink:srcShowSample', c.checked?'1':'0'); openSources(); }; }
+  { const c=$('#src-show-sample'); if(c) c.onchange=()=>{ profile().srcShowSample=c.checked; persist(); openSources(); }; }
   { const b=$('#src-detect'); if(b) b.onclick=()=>{
       let n=0;
       profile().sources.forEach(s=>{ const st=HA_STATES&&HA_STATES[s.entityId]; if(st){ const det=detectKindFromHA(s.entityId, st); if(det!==s.kind){ s.kind=det; n++; } } });
