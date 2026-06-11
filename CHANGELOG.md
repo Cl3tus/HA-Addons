@@ -3,6 +3,12 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.19
+- **Screen controls + rotation are greyed out** in Profile settings when *Use multiple screens* is off.
+- **Font weight & italic now render on the canvas and in the preview** (Google Fonts) everywhere — and the edit-font preview updates live as you change the weight or italic.
+- **Deleting a font always asks for confirmation** (in-app dialog), not only when it's in use.
+- **Dragging a layer shows a dashed "stays here" box** when dropping wouldn't move it, instead of an insertion line.
+
 ## 3.9.18
 - **Selected layer gets an accent ring** so it clearly stands out in the layers list.
 - **The file manager uses in-app dialogs** too now — "discard unsaved changes" and "delete files" match the UI, so there are no native browser pop-ups left anywhere.

@@ -381,8 +381,8 @@ async function previewFontInline(f, host, sizeOverride, weightOverride){
       +`</div>`;
     return;
   }
-  host.innerHTML=`<div class="fld" style="margin-bottom:4px">Preview · ${esc(f.id)} — ${curSize}px${f.kind==='gfonts'?' · '+curWeight:''} · ${esc(fam)}</div>`+
-    `<div style="font-family:'${fam.replace(/'/g,'')}', sans-serif;font-size:${sz}px;font-weight:${curWeight};line-height:1.25;word-break:break-word">${sample}</div>`;
+  host.innerHTML=`<div class="fld" style="margin-bottom:4px">Preview · ${esc(f.id)} — ${curSize}px${f.kind==='gfonts'?' · '+curWeight+(f.italic?' italic':''):''} · ${esc(fam)}</div>`+
+    `<div style="font-family:'${fam.replace(/'/g,'')}', sans-serif;font-size:${sz}px;font-weight:${curWeight};font-style:${f.italic?'italic':'normal'};line-height:1.25;word-break:break-word">${sample}</div>`;
 }
 var _previewLoaded=new Set();
 function fontLoaded(font){
@@ -476,10 +476,20 @@ function ensureFontVM(font){
     FONT_VM[font.id]=_vmFromBuffer(buf)||'fallback'; _vmPending.delete(font.id); _scheduleVmRerender();
   }).catch(()=>{ FONT_VM[font.id]='fallback'; _vmPending.delete(font.id); });
 }
+/* canvas/ctx `font` prefix carrying weight + italic — gfonts only (a local TTF bakes its
+   own weight/style into the file). e.g. "italic 700 ". Used everywhere text is drawn or
+   measured so the canvas matches the chosen weight/italic. */
+function fontFacePrefix(f){
+  if(!f || f.kind!=='gfonts') return '';
+  let p='';
+  if(f.italic) p+='italic ';
+  if(f.weight && +f.weight!==400) p+=(+f.weight)+' ';
+  return p;
+}
 /* ESPHome text box metrics for a given string: {ascender, height, width} in px */
 function esTextMetrics(font, text){
   const fam=previewFamily(font).replace(/'/g,'');
-  const ctx=_measCtx(); ctx.font=font.size+"px '"+fam+"'";
+  const ctx=_measCtx(); ctx.font=fontFacePrefix(font)+font.size+"px '"+fam+"'";
   const width=ctx.measureText(text||'').width;
   let ascender, height;
   const vm=FONT_VM[font.id];
@@ -503,7 +513,7 @@ function makeTextShape(text, font, fill, m){
   const size=font.size;
   const node=new Konva.Shape({ width:Math.max(0,m.width), height:Math.max(0,m.height), fill:fill, listening:true,
     sceneFunc:function(ctx, shape){
-      ctx.setAttr('font', size+"px '"+fam+"'");
+      ctx.setAttr('font', fontFacePrefix(font)+size+"px '"+fam+"'");
       ctx.setAttr('textAlign','left');
       ctx.setAttr('textBaseline','alphabetic');
       ctx.setAttr('fillStyle', shape.fill());
@@ -1837,6 +1847,17 @@ function layerClick(id, e){
 let _dragLayerId=null;
 /* drop src above/below target in the displayed (top→bottom) layer list, then write
    the new order back to the elements array (which is bottom→top). */
+/* would dropping srcId at this position leave the layer order unchanged? (used to show a
+   "stays here" box instead of an insertion line while dragging) */
+function dropIsNoop(srcId, targetId, before){
+  if(srcId===targetId) return true;
+  let order = els().slice().reverse().map(e=>e.id);
+  const orig = order.join('\n');
+  order = order.filter(id=>id!==srcId);
+  const ti = order.indexOf(targetId); if(ti<0) return false;
+  order.splice(before?ti:ti+1, 0, srcId);
+  return order.join('\n')===orig;
+}
 function moveLayerTo(srcId, targetId, before){
   if(srcId===targetId) return;
   let order = els().slice().reverse().map(e=>e.id);   // display order (top→bottom)
@@ -1846,6 +1867,7 @@ function moveLayerTo(srcId, targetId, before){
   const map=new Map(els().map(e=>[e.id,e]));
   const newArr = order.reverse().map(id=>map.get(id)).filter(Boolean);   // back to array order
   if(newArr.length!==els().length) return;
+  if(newArr.map(e=>e.id).join('\n')===els().map(e=>e.id).join('\n')) return;   // no change → don't churn undo
   pushUndo();
   const arr=els(); arr.length=0; newArr.forEach(e=>arr.push(e));
   afterChange();
@@ -1878,7 +1900,7 @@ function renderLayers(){
   box.ondragover=e=>{ if(!_dragLayerId) return; const r=box.getBoundingClientRect(); const edge=26;
     if(e.clientY < r.top+edge) box.scrollTop -= 10;
     else if(e.clientY > r.bottom-edge) box.scrollTop += 10; };
-  const clearDrop=()=>$$('.layer.drop-before,.layer.drop-after').forEach(r=>r.classList.remove('drop-before','drop-after'));
+  const clearDrop=()=>$$('.layer.drop-before,.layer.drop-after,.layer.drop-self').forEach(r=>r.classList.remove('drop-before','drop-after','drop-self'));
   // clear the insertion line only when the cursor truly leaves the list — NOT when it crosses
   // a child element inside a row (that per-row dragleave is what made the line flicker)
   box.ondragleave=e=>{ const r=box.getBoundingClientRect(); if(e.clientX<r.left||e.clientX>=r.right||e.clientY<r.top||e.clientY>=r.bottom) clearDrop(); };
@@ -1896,15 +1918,18 @@ function renderLayers(){
     const handle=row.querySelector('.lmove'); handle.draggable=true;
     handle.ondragstart=e=>{ _dragLayerId=el.id; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',el.id);}catch(_){} };
     handle.ondragend=()=>{ _dragLayerId=null; clearDrop(); };
-    row.ondragover=e=>{ if(!_dragLayerId || _dragLayerId===el.id) return; e.preventDefault();
-      const r=row.getBoundingClientRect(); const lowerHalf=(e.clientY-r.top) >= r.height/2;
+    row.ondragover=e=>{ if(!_dragLayerId) return; e.preventDefault();
       clearDrop();
-      // ONE consistent insertion line per gap: always drawn on the TOP edge of the
-      // row below the cursor (drop-before on the next row), so hovering the lower
-      // half of a row and the upper half of the row below it show the SAME line —
-      // no more "two states" for one gap. drop-after is only the last-row fallback.
-      // The drop is still computed against THIS row (before = upper half).
+      const dragRow=()=>[...box.querySelectorAll('.layer')].find(x=>x._elId===_dragLayerId);
+      // hovering the dragged row itself → it stays put: show the "stays here" box
+      if(_dragLayerId===el.id){ const dr=dragRow(); if(dr) dr.classList.add('drop-self'); return; }
+      const r=row.getBoundingClientRect(); const lowerHalf=(e.clientY-r.top) >= r.height/2;
       row._dropBefore = !lowerHalf;
+      // a drop that wouldn't change the order (a gap right next to the dragged item) → box,
+      // not an insertion line, so you can see it would stay put
+      if(dropIsNoop(_dragLayerId, el.id, !lowerHalf)){ const dr=dragRow(); if(dr) dr.classList.add('drop-self'); return; }
+      // ONE consistent insertion line per gap: always on the TOP edge of the row below the
+      // cursor (drop-before on the next row); drop-after is only the last-row fallback.
       if(!lowerHalf){ row.classList.add('drop-before'); }
       else {
         const next=row.nextElementSibling;
@@ -2898,7 +2923,7 @@ function wifiCode(el, I, color, anchor){
 function _clockInk(font, str){
   const em=esTextMetrics(font, str);                         // {ascender, height, width}
   const fam=previewFamily(font).replace(/'/g,'');
-  const ctx=_measCtx(); ctx.font=font.size+"px '"+fam+"'";
+  const ctx=_measCtx(); ctx.font=fontFacePrefix(font)+font.size+"px '"+fam+"'";
   const m=ctx.measureText(str||'');
   const aAsc =(m.actualBoundingBoxAscent !=null)?m.actualBoundingBoxAscent :em.ascender;
   const aDesc=(m.actualBoundingBoxDescent!=null)?m.actualBoundingBoxDescent:0;
@@ -3862,8 +3887,9 @@ async function openFonts(){
     const i=+b.dataset.delfont, f=profile().fonts[i];
     const del=()=>{ profile().fonts.splice(i,1); persist(); afterChange(); openFonts(); toast(T('Font verwijderd','Font deleted')); };
     const inUse=allElements(profile()).some(e=>e.fontId===f.id);
-    if(inUse) showAppConfirm(T(`Font "${esc(f.id)}" wordt gebruikt door elementen. Toch verwijderen?`,`Font "${esc(f.id)}" is used by elements. Delete anyway?`), del);
-    else del();
+    showAppConfirm(inUse
+      ? T(`Font "${esc(f.id)}" wordt gebruikt door elementen. Toch verwijderen?`,`Font "${esc(f.id)}" is used by elements. Delete anyway?`)
+      : T(`Font "${esc(f.id)}" verwijderen?`,`Delete font "${esc(f.id)}"?`), del);
   });
   $$('#modal-body [data-editfont]').forEach(b=>b.onclick=()=>editFont(+b.dataset.editfont));
   // new-font form: toggle gfonts/local/web fields + the matching browse link
@@ -4002,12 +4028,16 @@ function editFont(i){
   let efUpload=null;
   const up=$('#ef-upload'); if(up) up.onchange=e=>{ const file=e.target.files[0]; if(!file) return; const rd=new FileReader(); rd.onload=()=>{ efUpload=rd.result; if($('#ef-file') && !$('#ef-file').value) $('#ef-file').value='fonts/'+file.name; }; rd.readAsDataURL(file); };
   // live preview — re-renders when the size or weight changes (steppers fire 'change')
-  const efPrev=$('#ef-preview'), efSize=$('#ef-size'), efWeight=$('#ef-weight');
-  const renderEfPrev=()=>previewFontInline(f, efPrev, +efSize.value, efWeight?+efWeight.value:undefined);
+  const efPrev=$('#ef-preview'), efSize=$('#ef-size'), efWeight=$('#ef-weight'), efItalic=$('#ef-italic');
+  // preview a temp font carrying the CURRENT form values (weight + italic), so it updates live
+  const renderEfPrev=()=>{ const tf=Object.assign({}, f, {
+      size:+efSize.value||f.size, weight:efWeight?+efWeight.value:f.weight, italic:efItalic?efItalic.checked:f.italic });
+    previewFontInline(tf, efPrev, tf.size, tf.weight); };
   if(efPrev && efSize){
     renderEfPrev();
     efSize.addEventListener('input',renderEfPrev); efSize.addEventListener('change',renderEfPrev);
     if(efWeight){ efWeight.addEventListener('input',renderEfPrev); efWeight.addEventListener('change',renderEfPrev); }
+    if(efItalic) efItalic.addEventListener('change',renderEfPrev);
   }
 }
 
@@ -4171,6 +4201,11 @@ function openProfileSettings(){
     if(mb && !mb._dirtyHook){ mb._dirtyHook=true;
       const enable=()=>{ const b=$('#ps-save'); if(b) b.disabled=false; };
       mb.addEventListener('input', enable); mb.addEventListener('change', enable); } }
+  // screen-control options only apply with multiple screens → grey them out when that's off
+  { const m=$('#ps-multi');
+    const syncScreenCtl=()=>{ const on=!!(m&&m.checked); ['#ps-o-screenctrl','#ps-o-rotbool'].forEach(id=>{ const el=$(id); if(el) el.disabled=!on; }); };
+    if(m) m.addEventListener('change', syncScreenCtl);
+    syncScreenCtl(); }
   const infoEl=$('#ps-model-info');
   const applyRes=()=>{ const res=modelRes($('#ps-model').value); if(!res) return;
     const rot=+$('#ps-rot').value, portrait=(rot===90||rot===270);

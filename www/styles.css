@@ -264,6 +264,8 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 }
 .layer.drop-before::after { top: -1px; }
 .layer.drop-after::after  { bottom: -1px; }
+/* dragged layer would stay in place if dropped here → a dashed accent box (not an insertion line) */
+.layer.drop-self { outline: 2px dashed var(--accent); outline-offset: -2px; }
 .layer .lmove { color: var(--txt-faint); cursor: grab; flex: none; font-size: 16px; line-height: 1; opacity: .6; }
 .layer .lmove:active { cursor: grabbing; }
 .layer:hover .lmove { opacity: 1; }
