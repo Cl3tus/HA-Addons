@@ -3,6 +3,13 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.20
+- **Negative mode** (Profile settings, per profile): fills the screen with the ink colour and draws everything in the paper colour — a black screen with white content. The canvas preview goes dark with a light grid, and the YAML gets an `it.fill(...)` plus the two base colours swapped.
+- **Screen rotation is an ESPHome template switch now**, exposed to HA directly — no `input_boolean` / `configuration.yaml` edit needed (reworded to *Screen rotation (HA switch)*).
+- **"None" screen-control option** — generates no HA controls (the screen select stays internal so the display still works; you drive it from your own logic). Controls + rotation also grey out when multi-screen is off.
+- **The grid is visible on dark/black backgrounds now** (stronger light lines).
+- **Device rotation is shown** (↻ 90°) next to the screen selector in the toolbar.
+
 ## 3.9.19
 - **Screen controls + rotation are greyed out** in Profile settings when *Use multiple screens* is off.
 - **Font weight & italic now render on the canvas and in the preview** (Google Fonts) everywhere — and the edit-font preview updates live as you change the weight or italic.

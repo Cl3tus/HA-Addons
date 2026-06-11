@@ -246,6 +246,7 @@ function renderScreenSelect(){
   const single = !mOn && optCount<=1;
   ss.style.display = single ? 'none' : '';
   { const sp=$('#screen-single'); if(sp){ sp.style.display = single ? '' : 'none'; sp.textContent = T('Eén pagina','Single Page'); } }
+  { const rt=$('#screen-rot'); if(rt) rt.textContent = '↻ '+(p.device.rotation||0)+'°'; }
   const grp=$('#screen-grp'); if(grp) grp.style.display = mOn ? '' : 'none';
   const onScreen = editScreen!=='wait';
   const set=(id,dis)=>{ const b=$(id); if(b) b.disabled=!!dis; };
@@ -309,6 +310,14 @@ function renameScreen(){
 function selected(){ return els().find(e=>e.id===selectedId) || null; }
 function fontById(id){ return profile().fonts.find(f=>f.id===id); }
 function colorById(id){ return profile().colors.find(c=>c.id===id); }
+/* negative mode (black screen, white text): swap the two base ink/paper colours wherever a
+   colour is resolved (canvas preview + generated YAML). Other palette colours are left as-is. */
+function negColorId(id){
+  const p=profile(); if(!p || !p.negative) return id;
+  if(id==='color_text') return 'color_bg';
+  if(id==='color_bg') return 'color_text';
+  return id;
+}
 function srcById(id){ return profile().sources.find(s=>s.id===id); }
 
 function loadState(){
@@ -747,7 +756,7 @@ function applyZoom(){
   fr.style.transform='none';
   fr.style.width = (W*zoom)+'px';
   fr.style.height = (H*zoom)+'px';
-  fr.style.background = p.device.bg || '#d4d6d7';
+  fr.style.background = p.negative ? '#15161a' : (p.device.bg || '#d4d6d7');
   const zv=$('#zoom-val');
   if(zv && document.activeElement!==zv) zv.value = Math.round(zoom*100)+'%';
   requestAnimationFrame(drawRuler);
@@ -1162,16 +1171,18 @@ function gridStroke(hex){
   const r=parseInt(h.slice(0,2),16)||0, g=parseInt(h.slice(2,4),16)||0, b=parseInt(h.slice(4,6),16)||0;
   const maxc=Math.max(r,g,b), minc=Math.min(r,g,b);
   const sat = maxc ? (maxc-minc)/maxc : 0;          // 0..1 colourfulness
-  const c = maxc>140 ? '0,0,0' : '255,255,255';     // bright bg → dark lines; dark bg → light lines
-  const minorA = (0.10 + sat*0.15).toFixed(3);      // 0.10 .. 0.25
-  const majorA = (0.22 + sat*0.17).toFixed(3);      // 0.22 .. 0.39
+  const darkGrid = maxc>140;                        // bright bg → dark lines; dark bg → light lines
+  const c = darkGrid ? '0,0,0' : '255,255,255';
+  // white lines on a dark/black background need more presence to be visible at all
+  const minorA = ((darkGrid?0.10:0.16) + sat*0.14).toFixed(3);
+  const majorA = ((darkGrid?0.22:0.32) + sat*0.16).toFixed(3);
   return { minor:`rgba(${c},${minorA})`, major:`rgba(${c},${majorA})` };
 }
 function drawGrid(){
   gridLayer.destroyChildren();
   if(!$('#tg-grid').checked){ gridLayer.draw(); return; }
   const p=profile(), step=gridStep();
-  const gc=gridStroke(p.device.bg); const minor=gc.minor, major=gc.major;
+  const gc=gridStroke(p.negative ? '#15161a' : p.device.bg); const minor=gc.minor, major=gc.major;
   let i=0;
   for(let x=0;x<=p.device.w+0.5;x+=step,i++){
     const maj=i%4===0;
@@ -1194,7 +1205,7 @@ function buildNode(el){
   const eff = effective(el);
   if(!eff.draw) return null;
   const E = eff.el;
-  const color = colorById(E.colorId) || {css:'#1d1d1b'};
+  const color = colorById(negColorId(E.colorId)) || {css:'#1d1d1b'};
   let node;
 
   if(E.type==='text' || E.type==='icon'){
@@ -1303,7 +1314,7 @@ function buildNode(el){
     if(E.graph&&E.graph.border) g.add(new Konva.Rect({x:E.x,y:E.y,width:E.w,height:E.h,stroke:color.css,strokeWidth:1}));
     // fake traces so you can see placement/size/style
     (E.graph&&E.graph.traces||[]).forEach((tr,ti)=>{
-      const tc=colorById(tr.colorId)||color; const pts=[]; const n=40;
+      const tc=colorById(negColorId(tr.colorId))||color; const pts=[]; const n=40;
       for(let i=0;i<=n;i++){ const x=E.x+(E.w*i/n);
         let yy=E.y+E.h*(0.5-0.32*Math.sin(i/n*Math.PI*2+ti));
         pts.push(x,yy); }
@@ -1336,7 +1347,7 @@ function buildNode(el){
         const tn=new Konva.Text({text:lab,fontFamily:lfam,fontSize:lfs}); maxw=Math.max(maxw,tn.width()); return lab; });
       const boxW=pad*2+sampleW+(sampleW?6:0)+maxw, boxH=pad*2+Math.max(1,traces.length)*rowH-6;
       if(lg.border!==false) g.add(new Konva.Rect({x:lx,y:ly,width:boxW,height:boxH,stroke:color.css,strokeWidth:1}));
-      traces.forEach((t,ri)=>{ const ry=ly+pad+ri*rowH, tc=colorById(t.colorId)||color;
+      traces.forEach((t,ri)=>{ const ry=ly+pad+ri*rowH, tc=colorById(negColorId(t.colorId))||color;
         if(sampleW) g.add(new Konva.Line({points:[lx+pad,ry+lfs/2,lx+pad+sampleW,ry+lfs/2],stroke:tc.css,
           strokeWidth:Math.max(1,(t.thickness??2)*0.7),dash:t.lineType==='DOTTED'?[2,3]:(t.lineType==='DASHED'?[6,4]:undefined)}));
         g.add(new Konva.Text({text:labels[ri],fontFamily:lfam,fontSize:lfs,fill:color.css,x:lx+pad+(sampleW?sampleW+6:0),y:ry})); });
@@ -2714,7 +2725,7 @@ function bindInspector(host, el){
 /* ============================================================
    CODE GENERATION
    ============================================================ */
-function cppColor(id){ return colorById(id)? id : 'color_text'; }
+function cppColor(id){ const base=colorById(id)?id:'color_text'; return negColorId(base); }
 function pad8(hex){ return ('00000000'+hex).slice(-8).toUpperCase(); }
 
 /* value expr + format token for a text element */
@@ -3273,9 +3284,9 @@ function genYAML(){
     out+=`script:\n  - id: update_screen\n    then:\n      - lambda: 'id(data_updated) = false;'\n      - component.update: eink_display\n      - lambda: 'id(recorded_display_refresh) += 1;'\n      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'\n\n`;
     out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n`;
     if(rotateBool){
-      // rotation toggle on (HA input_boolean) → advance the screen select each interval;
+      // rotation switch on (the HA-exposed switch) → advance the screen select each interval;
       // off → behave normally (refresh only when new sensor data arrived)
-      out+=`          - if:\n              condition:\n                lambda: 'return id(screen_rotation).state;'\n              then:\n                - select.next:\n                    id: screen_select\n                    cycle: true\n              else:\n                - if:\n                    condition:\n                      lambda: 'return id(data_updated) == true;'\n                    then:\n                      - script.execute: update_screen\n\n`;
+      out+=`          - if:\n              condition:\n                lambda: 'return id(rotate_screens).state;'\n              then:\n                - select.next:\n                    id: screen_select\n                    cycle: true\n              else:\n                - if:\n                    condition:\n                      lambda: 'return id(data_updated) == true;'\n                    then:\n                      - script.execute: update_screen\n\n`;
     } else {
       out+=`          - if:\n              condition:\n                lambda: 'return id(data_updated) == true;'\n              then:\n                - script.execute: update_screen\n\n`;
     }
@@ -3395,17 +3406,17 @@ function genYAML(){
   if(multi){
     // the select ALWAYS exists — the display lambda reads the active screen from it
     // (active_index), and the buttons drive it. The control style only decides what shows
-    // in Home Assistant: 'select' = just the dropdown, 'buttons' = just the buttons (the
-    // select is kept internal: true so HA hides it), 'both' = dropdown + buttons.
-    // Rotation is optional (the "Screen rotation via HA input_boolean" toggle): when on it
-    // emits an input_boolean helper (for HA's config) + a binary_sensor + a time-trigger
-    // branch that advances the select while the toggle is on.
+    // in Home Assistant: 'select' = just the dropdown, 'buttons' = just the buttons (select
+    // kept internal so HA hides it), 'both' = dropdown + buttons, 'none' = no HA controls
+    // (select stays internal so the display lambda still has its state — drive it from your
+    // own ESPHome/HA logic). Rotation is an optional HA-exposed template switch.
     const ctrl = o.screenControl || 'both';
-    const selName = ctrl==='buttons' ? '' : `    name: "${esc(friendly)} Screen"\n`;
-    const selInternal = ctrl==='buttons' ? `    internal: true\n` : '';
+    const hideSel = (ctrl==='buttons' || ctrl==='none');
+    const selName = hideSel ? '' : `    name: "${esc(friendly)} Screen"\n`;
+    const selInternal = hideSel ? `    internal: true\n` : '';
     out+=`select:\n  - platform: template\n${selName}    id: screen_select\n${selInternal}    optimistic: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - if:\n            condition:\n              lambda: 'return id(initial_data_received);'\n            then:\n              - component.update: eink_display\n\n`;
 
-    if(ctrl!=='select'){
+    if(ctrl==='both' || ctrl==='buttons'){
       out+=`button:\n`;
       scrNames.forEach((nm)=>{
         // press → set the select, which fires on_value (redraws the display)
@@ -3415,12 +3426,9 @@ function genYAML(){
     }
 
     if(rotateBool){
-      const slug=(devSlug(p.name)||'eink')+'_screen_rotation';
-      // the input_boolean is a HOME ASSISTANT helper, not an ESPHome component — it goes in
-      // HA's configuration.yaml. The binary_sensor (ESPHome) mirrors it so the time trigger
-      // can advance the screen while it's on.
-      out+=`# --- HOME ASSISTANT helper — paste into your HA configuration.yaml (NOT into ESPHome) ---\ninput_boolean:\n  ${slug}:\n    name: "${esc(friendly)} Screen Rotation"\n    icon: mdi:rotate-3d-variant\n# --- end Home Assistant helper ---\n\n`;
-      out+=`binary_sensor:\n  - platform: homeassistant\n    id: screen_rotation\n    entity_id: input_boolean.${slug}\n\n`;
+      // a template switch shows up in HA as a toggle automatically — no input_boolean / HA
+      // config edit needed. The on_time branch (above) advances the screen while it's on.
+      out+=`switch:\n  - platform: template\n    name: "${esc(friendly)} Screen Rotation"\n    id: rotate_screens\n    icon: mdi:rotate-3d-variant\n    optimistic: true\n    restore_mode: RESTORE_DEFAULT_OFF\n\n`;
     }
   }
 
@@ -3438,6 +3446,9 @@ function genYAML(){
   }
   out+=`    update_interval: never\n    lambda: |-\n`;
   const L='      ';
+  // negative mode: paint the whole panel with the ink colour first; every element then
+  // draws with the swapped (paper) colour via cppColor → black screen, white content.
+  if(p.negative) out+=`${L}it.fill(id(color_text));\n`;
   // draw in LAYER order (array order = the layers panel, bottom→top) so the z-order
   // you see on the canvas and set in the layers list is exactly what ESPHome draws.
   const drawEls=(arr, indent)=>{ (arr||[]).forEach(el=>{ const code=elementCode(el, indent); if(code) out+=code+'\n'; }); };
@@ -3464,7 +3475,7 @@ function genYAML(){
     if(waitEls.length){
       drawEls(waitEls, L+'  ');
     } else {
-      out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), color_text, TextAlign::CENTER, "${T('WACHTEN OP DATA...','WAITING FOR DATA...')}");\n`;
+      out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), ${cppColor('color_text')}, TextAlign::CENTER, "${T('WACHTEN OP DATA...','WAITING FOR DATA...')}");\n`;
     }
     out+=`${L}} else {\n`;
     drawScreens(L+'  ');
@@ -4104,6 +4115,8 @@ function openProfileSettings(){
          </span>
          ${[['#d4d6d7','Modern E-ink Grey'],['#8e918f','Classic E-ink Grey'],['#f4f1e9','Paper'],['#f2e4d1','Off-White'],['#ffffff','True White']].map(([hex,nm])=>`<button class="btn ghost sm" data-bg="${hex}" title="${hex}"><span style="display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid var(--line);background:${hex}"></span>${nm}</button>`).join('')}
        </div></div></div>
+     <label class="toggle" style="margin-top:8px"><input type="checkbox" id="ps-negative" ${p.negative?'checked':''}> ${T('Negatief (zwart scherm, witte tekst)','Negative (black screen, white text)')}</label>
+     <div class="hint" style="margin:4px 0 0">${T('Vult het hele scherm met de inkt-kleur en tekent alles met de papier-kleur — handig voor een omgekeerd ontwerp. Overige paletkleuren blijven gelijk.','Fills the whole screen with the ink colour and draws everything in the paper colour — handy for an inverted design. Other palette colours stay the same.')}</div>
      <hr style="border-color:var(--line);margin:14px 0">
      <label class="toggle"><input type="checkbox" id="ps-wait" ${p.waitEnabled!==false?'checked':''}> ${T('Wachtscherm gebruiken','Use waiting screen')}</label>
      <div class="hint" style="margin:4px 0 0">${T('Genereert de “waiting for data”-tak (if initial_data_received == false). Het wachtscherm ontwerp je via de scherm-keuze boven het canvas.','Generates the “waiting for data” branch (if initial_data_received == false). Design the waiting screen via the screen selector above the canvas.')}</div>
@@ -4124,10 +4137,11 @@ function openProfileSettings(){
              <option value="both"${(o.screenControl||'both')==='both'?' selected':''}>${T('Dropdown + knoppen','Dropdown + buttons')}</option>
              <option value="select"${o.screenControl==='select'?' selected':''}>${T('Alleen dropdown','Dropdown only')}</option>
              <option value="buttons"${o.screenControl==='buttons'?' selected':''}>${T('Alleen knoppen','Buttons only')}</option>
+             <option value="none"${o.screenControl==='none'?' selected':''}>${T('Geen','None')}</option>
            </select>
-           <div class="hint" style="margin:2px 0 6px">${T('Hoe je in HA tussen schermen wisselt: een dropdown (select), losse knoppen (button) per scherm, of beide.','How you switch screens in HA: a dropdown (select), one button per screen, or both.')}</div>
-           <label class="toggle"><input type="checkbox" id="ps-o-rotbool" ${o.rotateBoolean?'checked':''}> ${T('Schermrotatie via HA input_boolean','Screen rotation via HA input_boolean')}</label>
-           <div class="hint" style="margin:2px 0 0">${T('Genereert een input_boolean (voor je HA-config) + een binary_sensor + tijdtrigger: staat de toggle in HA aan, dan schuift het display elk interval naar het volgende scherm. Vereist ≥2 schermen.','Generates an input_boolean (for your HA config) + a binary_sensor + time trigger: when the toggle is on in HA, the display advances to the next screen each interval. Needs ≥2 screens.')}</div>
+           <div class="hint" style="margin:2px 0 6px">${T('Hoe je in HA tussen schermen wisselt: dropdown, losse knoppen per scherm, beide, of geen (geen HA-bediening — je stuurt zelf).','How you switch screens in HA: a dropdown, one button per screen, both, or none (no HA controls — you drive it yourself).')}</div>
+           <label class="toggle"><input type="checkbox" id="ps-o-rotbool" ${o.rotateBoolean?'checked':''}> ${T('Schermrotatie (HA-schakelaar)','Screen rotation (HA switch)')}</label>
+           <div class="hint" style="margin:2px 0 0">${T('Voegt een schakelaar toe die ESPHome zelf aan HA toont (geen HA-config nodig): staat hij aan, dan schuift het display elk interval naar het volgende scherm. Vereist ≥2 schermen.','Adds a switch that ESPHome exposes to HA itself (no HA-config edit needed): when it is on, the display advances to the next screen each interval. Needs ≥2 screens.')}</div>
          </div>
          <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0">
            <label class="toggle"><input type="checkbox" id="ps-o-globals" ${o.globals?'checked':''}> globals</label>
@@ -4161,6 +4175,7 @@ function openProfileSettings(){
       p.name=$('#ps-name').value;
       d.model=$('#ps-model').value; d.rotation=+$('#ps-rot').value; d.w=+$('#ps-w').value; d.h=+$('#ps-h').value;
       d.bg=$('#ps-bg').value;
+      p.negative=$('#ps-negative').checked;
       p.waitEnabled=$('#ps-wait').checked;
       p.multiScreen=$('#ps-multi').checked;
       if(!p.waitEnabled && editScreen==='wait') editScreen=screensList()[0].id;
