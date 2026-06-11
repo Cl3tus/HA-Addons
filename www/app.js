@@ -175,7 +175,7 @@ window.addEventListener('blur',    ()=>{ shiftDown=false; });
 
 function profile(){ return state.profiles.find(p=>p.id===state.current); }
 let editScreen='main';   // 'wait' | a screen id — which screen's elements you're editing
-const MAX_SCREENS=5;
+const MAX_SCREENS=10;
 /* Every profile carries screens[]: an ordered list of designed screens (screens[0] =
    the original "main" screen). The waiting screen stays separate — it's the boot
    fallback (if initial_data_received == false), not a user-selectable carousel screen.
@@ -215,6 +215,10 @@ function allElements(p){
 }
 
 /* ---------------- screen management (carousel of designed screens) ---------------- */
+/* whether multi-screen mode is on for a profile. Explicit p.multiScreen wins; when it
+   was never set we infer it from the screen count, so existing multi-screen designs keep
+   working after this option was introduced. Off → single screen, no HA screen controls. */
+function multiScreenOn(p){ p=p||profile(); if(!p) return false; if(typeof p.multiScreen==='boolean') return p.multiScreen; return ensureScreens(p).length>1; }
 function newScreenId(){ const ids=new Set(screensList().map(s=>s.id)); let n=2; while(ids.has('scr_'+n)) n++; return 'scr_'+n; }
 /* rebuild the toolbar screen-select <option>s + enable/disable the add/dup/ren/del
    buttons. Call after any screen mutation and on boot. */
@@ -223,13 +227,18 @@ function renderScreenSelect(){
   const p=profile(); if(!p) return;
   const list=screensList();
   const waitOn = p.waitEnabled!==false;
-  // keep editScreen valid (deleting/importing can leave it dangling)
-  if(editScreen!=='wait' && !list.some(s=>s.id===editScreen)) editScreen=list[0].id;
-  if(editScreen==='wait' && !waitOn) editScreen=list[0].id;
+  const mOn = multiScreenOn(p);
+  // single-screen mode: only the first screen is selectable (extra screens, if any, stay
+  // in the data but aren't shown), and the add/dup/rename/delete controls are hidden.
+  const visList = mOn ? list : list.slice(0,1);
+  // keep editScreen valid (deleting/importing/turning multi off can leave it dangling)
+  if(editScreen!=='wait' && !visList.some(s=>s.id===editScreen)) editScreen=visList[0].id;
+  if(editScreen==='wait' && !waitOn) editScreen=visList[0].id;
   let html=`<option value="wait"${waitOn?'':' disabled'}>${esc(T('Wachtscherm','Waiting screen'))}</option>`;
-  list.forEach(s=>{ html+=`<option value="${attr(s.id)}">${esc(s.name||T('Scherm','Screen'))}</option>`; });
+  visList.forEach(s=>{ html+=`<option value="${attr(s.id)}">${esc(s.name||T('Scherm','Screen'))}</option>`; });
   ss.innerHTML=html;
   ss.value=editScreen;
+  const grp=$('#screen-grp'); if(grp) grp.style.display = mOn ? '' : 'none';
   const onScreen = editScreen!=='wait';
   const set=(id,dis)=>{ const b=$(id); if(b) b.disabled=!!dis; };
   set('#scr-add', list.length>=MAX_SCREENS);
@@ -246,14 +255,14 @@ function switchScreen(id){
 }
 function addScreen(){
   const list=screensList();
-  if(list.length>=MAX_SCREENS){ toast(T('Maximaal 5 schermen','Maximum 5 screens')); return; }
+  if(list.length>=MAX_SCREENS){ toast(T('Maximaal 10 schermen','Maximum 10 screens')); return; }
   const id=newScreenId();
   list.push({ id, name:T('Scherm','Screen')+' '+(list.length+1), elements:[] });
   persist(); renderProfiles(); switchScreen(id); toast(T('Scherm toegevoegd','Screen added'));
 }
 function duplicateScreen(){
   const list=screensList();
-  if(list.length>=MAX_SCREENS){ toast(T('Maximaal 5 schermen','Maximum 5 screens')); return; }
+  if(list.length>=MAX_SCREENS){ toast(T('Maximaal 10 schermen','Maximum 10 screens')); return; }
   const cur=activeScreen(); if(!cur) return;
   const id=newScreenId();
   const clone={ id, name:(cur.name||T('Scherm','Screen'))+' '+T('kopie','copy'),
@@ -2025,6 +2034,7 @@ function copySel(){
   const arr=els();
   _clipboard = ids.map(id=>arr.find(x=>x.id===id)).filter(Boolean).map(e=>JSON.parse(JSON.stringify(e)));
   _clipScreen = editScreen;
+  if(_clipboard.length) toast(T(`Gekopieerd: ${_clipboard.length}`,`Copied: ${_clipboard.length}`));
   return _clipboard.length>0;
 }
 function cutSel(){ if(copySel()) deleteSel(); }
@@ -3051,7 +3061,7 @@ function outputDefaults(){
   return {
     refresh:true,                                   // esphome on_boot + script + time (grouped — they belong together)
     bootPriority:'600.0', bootDelay:'2s', waitTimeout:'30s', timeInterval:15,
-    rotate:false,                                   // auto-advance screens each refresh interval (needs ≥2 screens)
+    screenControl:'both',                           // HA screen-picker style with ≥2 screens: 'select' | 'buttons' | 'both'
     globals:true,
     spi:false, spiClk:'GPIO13', spiMosi:'GPIO14',
     fonts:true, colors:true, sensors:true, textSensors:true,
@@ -3189,8 +3199,7 @@ function genYAML(){
   // designed screens. multi = ≥2 screens, which switches on the whole screen-control
   // machinery (branched display lambda, HA select/buttons/rotation).
   const scrs = ensureScreens(p);
-  const multi = scrs.length>=2;
-  const rotate = multi && o.rotate;
+  const multi = multiScreenOn(p) && scrs.length>=2;
   // HA-facing option labels for the select/buttons, de-duplicated (ESPHome needs a
   // unique label per option; two screens may share a user-typed name).
   const scrNames = (()=>{ const seen={}; return scrs.map(s=>{ let nm=(s.name||'').trim()||T('Scherm','Screen');
@@ -3211,14 +3220,7 @@ function genYAML(){
   // script + time (part of the refresh logic)
   if(o.refresh){
     out+=`script:\n  - id: update_screen\n    then:\n      - lambda: 'id(data_updated) = false;'\n      - component.update: eink_display\n      - lambda: 'id(recorded_display_refresh) += 1;'\n      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'\n\n`;
-    out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n`;
-    if(rotate){
-      // rotation on: advance the HA select (cycling) → its on_value redraws the display.
-      // rotation off: behave exactly as before (refresh only on new data).
-      out+=`          - if:\n              condition:\n                lambda: 'return id(rotate_screens).state;'\n              then:\n                - select.next:\n                    id: screen_select\n                    cycle: true\n              else:\n                - if:\n                    condition:\n                      lambda: 'return id(data_updated) == true;'\n                    then:\n                      - script.execute: update_screen\n\n`;
-    } else {
-      out+=`          - if:\n              condition:\n                lambda: 'return id(data_updated) == true;'\n              then:\n                - script.execute: update_screen\n\n`;
-    }
+    out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n          - if:\n              condition:\n                lambda: 'return id(data_updated) == true;'\n              then:\n                - script.execute: update_screen\n\n`;
   }
 
   // SPI bus (board-specific pins)
@@ -3333,17 +3335,24 @@ function genYAML(){
   //     still publishes its initial_option once at setup, firing on_value — without the
   //     guard that would render too early. The first real render happens via on_boot.
   if(multi){
-    out+=`select:\n  - platform: template\n    name: "${esc(friendly)} Screen"\n    id: screen_select\n    optimistic: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - if:\n            condition:\n              lambda: 'return id(initial_data_received);'\n            then:\n              - component.update: eink_display\n\n`;
+    // the select ALWAYS exists — the display lambda reads the active screen from it
+    // (active_index), and the buttons drive it. The control style only decides what shows
+    // in Home Assistant: 'select' = just the dropdown, 'buttons' = just the buttons (the
+    // select is kept internal: true so HA hides it), 'both' = dropdown + buttons.
+    // Rotation is intentionally NOT generated — build that with your own HA automation
+    // (e.g. an automation that cycles this select on a schedule / via an input_boolean).
+    const ctrl = o.screenControl || 'both';
+    const selName = ctrl==='buttons' ? '' : `    name: "${esc(friendly)} Screen"\n`;
+    const selInternal = ctrl==='buttons' ? `    internal: true\n` : '';
+    out+=`select:\n  - platform: template\n${selName}    id: screen_select\n${selInternal}    optimistic: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - if:\n            condition:\n              lambda: 'return id(initial_data_received);'\n            then:\n              - component.update: eink_display\n\n`;
 
-    out+=`button:\n`;
-    scrNames.forEach((nm)=>{
-      // press → set the select, which fires on_value (redraws the display)
-      out+=`  - platform: template\n    name: "${esc(friendly)} Show ${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: screen_select\n            option: "${esc(nm)}"\n`;
-    });
-    out+='\n';
-
-    if(o.rotate){
-      out+=`switch:\n  - platform: template\n    name: "${esc(friendly)} Rotate Screens"\n    id: rotate_screens\n    optimistic: true\n    restore_mode: RESTORE_DEFAULT_OFF\n\n`;
+    if(ctrl!=='select'){
+      out+=`button:\n`;
+      scrNames.forEach((nm)=>{
+        // press → set the select, which fires on_value (redraws the display)
+        out+=`  - platform: template\n    name: "${esc(friendly)} Show ${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: screen_select\n            option: "${esc(nm)}"\n`;
+      });
+      out+='\n';
     }
   }
 
@@ -4014,6 +4023,8 @@ function openProfileSettings(){
      <hr style="border-color:var(--line);margin:14px 0">
      <label class="toggle"><input type="checkbox" id="ps-wait" ${p.waitEnabled!==false?'checked':''}> ${T('Wachtscherm gebruiken','Use waiting screen')}</label>
      <div class="hint" style="margin:4px 0 0">${T('Genereert de “waiting for data”-tak (if initial_data_received == false). Het wachtscherm ontwerp je via de scherm-keuze boven het canvas.','Generates the “waiting for data” branch (if initial_data_received == false). Design the waiting screen via the screen selector above the canvas.')}</div>
+     <label class="toggle" style="margin-top:8px"><input type="checkbox" id="ps-multi" ${multiScreenOn(p)?'checked':''}> ${T('Meerdere schermen gebruiken','Use multiple screens')}</label>
+     <div class="hint" style="margin:4px 0 0">${T('Zet de scherm-knoppen (toevoegen/dupliceren/hernoemen/verwijderen) boven het canvas aan en genereert de HA-bediening om tussen schermen te wisselen. Uit = één scherm.','Enables the screen buttons (add/duplicate/rename/delete) above the canvas and generates the HA controls to switch screens. Off = a single screen.')}</div>
      <hr style="border-color:var(--line);margin:14px 0">
      <button type="button" id="ps-yaml-toggle" style="background:none;border:none;cursor:pointer;font-weight:600;color:var(--accent);padding:0;font-size:13px">▸ ${T('Gegenereerde YAML-blokken','Generated YAML Blocks')}</button>
      <div id="ps-yaml-body" style="display:none;margin-top:8px">
@@ -4024,8 +4035,14 @@ function openProfileSettings(){
            <div><label class="fld">${T('Wacht-timeout','Wait timeout')}</label><input id="ps-o-timeout" value="${attr(o.waitTimeout)}" title="${T('Maximale wachttijd op data vóór het scherm tóch tekent, bv. “30s”.','Maximum time to wait for data before drawing anyway, e.g. “30s”.')}"></div>
            <div><label class="fld">${T('Interval (min)','Interval (min)')}</label><input id="ps-o-interval" type="number" min="1" value="${o.timeInterval}" style="width:70px" title="${T('Hoe vaak (in minuten) het display ververst via de time-trigger.','How often (in minutes) the display refreshes via the time trigger.')}"></div>
          </div>
-         <label class="toggle"><input type="checkbox" id="ps-o-rotate" ${o.rotate?'checked':''}> ${T('Schermen automatisch roteren','Auto-rotate screens')}</label>
-         <div class="hint" style="margin:2px 0 6px">${T('Voegt een “Rotate Screens”-schakelaar toe in HA. Staat die aan, dan springt het display bij elke refresh-interval naar het volgende scherm. Vereist ≥2 schermen.','Adds a “Rotate Screens” switch in HA. When on, the display advances to the next screen each refresh interval. Needs ≥2 screens.')}</div>
+         <div style="margin:6px 0"><label class="fld">${T('Schermbediening in HA (bij ≥2 schermen)','Screen controls in HA (with ≥2 screens)')}</label>
+           <select id="ps-o-screenctrl" style="width:auto">
+             <option value="both"${(o.screenControl||'both')==='both'?' selected':''}>${T('Dropdown + knoppen','Dropdown + buttons')}</option>
+             <option value="select"${o.screenControl==='select'?' selected':''}>${T('Alleen dropdown','Dropdown only')}</option>
+             <option value="buttons"${o.screenControl==='buttons'?' selected':''}>${T('Alleen knoppen','Buttons only')}</option>
+           </select>
+           <div class="hint" style="margin:2px 0 6px">${T('Hoe je in HA tussen schermen wisselt: een dropdown (select), losse knoppen (button) per scherm, of beide. Schermrotatie regel je zelf via een HA-automatisering.','How you switch screens in HA: a dropdown (select), one button per screen, or both. Build screen rotation yourself with a HA automation.')}</div>
+         </div>
          <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0">
            <label class="toggle"><input type="checkbox" id="ps-o-globals" ${o.globals?'checked':''}> globals</label>
            <label class="toggle"><input type="checkbox" id="ps-o-fonts" ${o.fonts?'checked':''}> font</label>
@@ -4057,13 +4074,14 @@ function openProfileSettings(){
       d.model=$('#ps-model').value; d.rotation=+$('#ps-rot').value; d.w=+$('#ps-w').value; d.h=+$('#ps-h').value;
       d.bg=$('#ps-bg').value;
       p.waitEnabled=$('#ps-wait').checked;
+      p.multiScreen=$('#ps-multi').checked;
       if(!p.waitEnabled && editScreen==='wait') editScreen=screensList()[0].id;
       renderScreenSelect();
       p.output=Object.assign(outCfg(p), {
         refresh:$('#ps-o-refresh').checked,
         bootPriority:$('#ps-o-prio').value, bootDelay:$('#ps-o-delay').value, waitTimeout:$('#ps-o-timeout').value,
         timeInterval:+$('#ps-o-interval').value||15,
-        rotate:$('#ps-o-rotate').checked,
+        screenControl:$('#ps-o-screenctrl').value,
         globals:$('#ps-o-globals').checked,
         fonts:$('#ps-o-fonts').checked, colors:$('#ps-o-colors').checked,
         sensors:$('#ps-o-sensors').checked, textSensors:$('#ps-o-textsensors').checked,
@@ -4704,6 +4722,11 @@ function elItems(el){
   items.push(['✎ '+T('Hernoemen','Rename'),'',()=>{ const row=[...document.querySelectorAll('#layers .layer')].find(r=>r._elId===el.id);
     if(row){ const span=row.querySelector('.lname'); if(span) startRename(span, el); } else { select(el.id); } }]);
   items.push(['⧉ '+T('Dupliceren','Duplicate'),'Ctrl+D',()=>{ selectedId=el.id; dupSel(); }]);
+  items.push(['sep']);
+  items.push(['📋 '+T('Kopiëren','Copy'),'Ctrl+C',()=>{ if(!isSelected(el.id)) select(el.id); copySel(); }]);
+  items.push(['✂ '+T('Knippen','Cut'),'Ctrl+X',()=>{ if(!isSelected(el.id)) select(el.id); cutSel(); }]);
+  if(_clipboard.length) items.push(['📌 '+T('Plakken','Paste'),'Ctrl+V',pasteClip]);
+  items.push(['sep']);
   items.push([el.visible===false?('👁 '+T('Tonen','Show')):('🚫 '+T('Verbergen','Hide')),'',()=>{ pushUndo(); el.visible=el.visible===false?true:false; afterChange(); }]);
   items.push(['↑ '+T('Naar voren','Bring forward'),'',()=>reorder(el,1)]);
   items.push(['↓ '+T('Naar achteren','Send backward'),'',()=>reorder(el,-1)]);
@@ -4743,6 +4766,7 @@ function setupContextMenu(){
     if(hitId){ selectedId=hitId; const node=contentLayer.getChildren(n=>n._elId===hitId)[0]; attachSelection(selected(),node); contentLayer.draw(); renderLayers(); renderInspector(); }
     const el=selected();
     if(el) showMenu(e.clientX,e.clientY, elItems(el));
+    else if(_clipboard.length) showMenu(e.clientX,e.clientY, [['📌 '+T('Plakken','Paste'),'Ctrl+V',pasteClip]]);
     else showMenu(e.clientX,e.clientY, [[T('Niets geselecteerd','Nothing selected'),'',null]]);
   });
 }
