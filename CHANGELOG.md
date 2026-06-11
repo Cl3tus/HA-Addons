@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.12
+- **Moved the ↺ "snap to HA" icon to its own column**, just left of the row's ✕ delete button. It's no longer tucked behind the type dropdown, so it can never overlap the *type (HA)* text — regardless of panel width.
+
 ## 3.9.11
 - **Fix: type columns overlapping in a narrow window.** The Sources table was being squeezed below its content width (e.g. in a narrow Home Assistant panel), which made the ↺ icon spill over the *type (HA)* column. The table now has a minimum width inside a horizontally-scrollable wrapper (and the id/entity_id inputs are more compact), so columns are never squeezed.
 

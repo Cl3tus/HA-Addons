@@ -3577,10 +3577,11 @@ function openSources(){
     <td><input data-i="${i}" data-f="entityId" class="mono" value="${attr(s.entityId)}" style="width:200px"></td>
     <td>${liveCell}</td>
     ${showSample?`<td><input data-i="${i}" data-f="sample" value="${attr(s.sample)}"></td>`:''}
-    <td style="white-space:nowrap;padding-right:14px"><select data-i="${i}" data-f="kind">
+    <td><select data-i="${i}" data-f="kind">
       ${['number','string','time','bool'].map(k=>`<option ${s.kind===k?'selected':''}>${k}</option>`).join('')}
-    </select>${snapBtn}</td>
+    </select></td>
     <td>${haTypeCell}</td>
+    <td style="text-align:center">${snapBtn}</td>
     <td><button class="btn ghost sm danger" data-del="${i}">✕</button></td></tr>`;}).join('');
 
   const help = `<div class="src-box" style="margin-bottom:12px">
@@ -3597,7 +3598,7 @@ function openSources(){
 
   openModal(T('Bronnen (sensor-mapping)','Sources (sensor mapping)'),
     `${help}
-     <div style="overflow-x:auto;overflow-y:hidden"><table class="tbl" style="min-width:600px"><thead><tr><th>id (lambda)</th><th>entity_id (HA)</th><th>live (HA)</th>${showSample?`<th>${T('voorbeeld','sample')}</th>`:''}<th>${T('type (lambda)','type (lambda)')}</th><th>${T('type (HA)','type (HA)')}</th><th></th></tr></thead><tbody id="src-body">${rows}</tbody></table></div>
+     <div style="overflow-x:auto;overflow-y:hidden"><table class="tbl" style="min-width:600px"><thead><tr><th>id (lambda)</th><th>entity_id (HA)</th><th>live (HA)</th>${showSample?`<th>${T('voorbeeld','sample')}</th>`:''}<th>${T('type (lambda)','type (lambda)')}</th><th>${T('type (HA)','type (HA)')}</th><th></th><th></th></tr></thead><tbody id="src-body">${rows}</tbody></table></div>
      <div class="row tight" style="margin-top:10px;align-items:center">
        <button class="btn sm" id="src-ha">⌂ ${T('Uit Home Assistant…','From Home Assistant…')}</button>
        <button class="btn ghost sm" id="src-add">+ ${T('Handmatig toevoegen','Add manually')}</button>
