@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.10
+- **Fix: ↺ "snap to HA" icon overlapping the type (HA) column.** It was a flex `.btn` that a table cell doesn't always measure, so it spilled into the next column. It's now a plain inline-block chip that lays out correctly.
+
 ## 3.9.9
 - **Sources mapping fixes.** The sample column is now **off by default** and its show/hide choice is saved **per profile**. The ↺ "snap to HA" icon only appears when the dropdown actually disagrees with HA — so it no longer overlaps the *type (HA)* column when everything matches. And changing a row's type now updates the *type (HA)* ✓/✗ **immediately**, without closing and reopening the dialog.
 

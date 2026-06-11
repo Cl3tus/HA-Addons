@@ -3565,7 +3565,7 @@ function openSources(){
     // per-row "snap to HA" icon — only shown when the dropdown disagrees with HA (so it
     // never crowds the next column when everything already matches)
     const snapBtn = (det && det!==s.kind)
-      ? `<button class="btn ghost sm" data-detect="${i}" data-kind="${attr(det)}" title="${T('Overnemen wat HA detecteert: '+det,'Apply what HA detects: '+det)}" style="padding:2px 7px;margin-left:6px">↺</button>`
+      ? `<span class="snap-btn" data-detect="${i}" data-kind="${attr(det)}" title="${T('Overnemen wat HA detecteert: '+det,'Apply what HA detects: '+det)}">↺</span>`
       : '';
     // "Type (HA)" column: plain coloured text (no chip border, so adjacent rows don't visually touch)
     const haTypeCell = !det ? `<span class="hint">—</span>`
