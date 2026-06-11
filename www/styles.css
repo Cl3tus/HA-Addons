@@ -155,6 +155,7 @@ body.chrome-hidden #topbar { display: none; }
 .btn.ghost { background: var(--panel-2); border-color: var(--line); color: var(--txt-dim); }
 .btn.ghost:hover { background: var(--line); color: var(--txt); border-color: var(--line-2); }
 .btn.sm { padding: 4px 8px; font-size: 12px; }
+.btn:disabled, .btn[disabled] { opacity: .45; cursor: default; pointer-events: none; }
 .btn.danger:hover { border-color: var(--red); color: var(--red); }
 .btn .k { font-family: var(--mono); font-size: 10px; opacity: .6; }
 

@@ -3,6 +3,10 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.15
+- **Canvas background row reworked.** Removed *Neutral Grey*; the order is now **swatch · Custom… · Modern E-ink Grey · Classic E-ink Grey · Off-White · Paper · True White**, and the currently selected colour gets an **accent outline**.
+- **Save moved next to Duplicate / Delete profile** (the footer is now just *Close*), and disabled buttons now actually look greyed out — so Save stays clearly greyed until you change something in Profile settings.
+
 ## 3.9.14
 - **Paste is always in the canvas right-click menu** now — greyed out when the clipboard is empty.
 - **More canvas backgrounds.** Profile settings has six named presets (Modern E-ink Grey, Classic E-ink Grey, Neutral Grey, Off-White, Paper, True White) plus a **Custom…** swatch that opens the colour wheel, with a live preview swatch. (Custom colours still work as before.)

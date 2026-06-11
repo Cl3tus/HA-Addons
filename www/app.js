@@ -4014,12 +4014,12 @@ function openProfileSettings(){
        <div><label class="fld">${T('Hoogte (px)','Height (px)')}</label><input id="ps-h" type="number" value="${d.h}"></div></div>
      <div class="row"><div><label class="fld">${T('Canvas-achtergrond (preview)','Canvas background (preview)')}</label>
        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-         ${[['#d4d6d7','Modern E-ink Grey'],['#8e918f','Classic E-ink Grey'],['#808080','Neutral Grey'],['#f2e4d1','Off-White'],['#f4f1e9','Paper'],['#ffffff','True White']].map(([hex,nm])=>`<button class="btn ghost sm" data-bg="${hex}" title="${hex}"><span style="display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid var(--line);background:${hex}"></span>${nm}</button>`).join('')}
+         <span id="ps-bg-swatch" title="${T('Huidige achtergrond','Current background')}" style="display:inline-block;width:24px;height:24px;border-radius:4px;border:1px solid var(--line-2);background:${d.bg||'#d4d6d7'}"></span>
          <span style="position:relative;display:inline-flex">
-           <button class="btn ghost sm" tabindex="-1">🎨 ${T('Eigen…','Custom…')}</button>
+           <button class="btn ghost sm" id="ps-bg-custom-btn" tabindex="-1">🎨 ${T('Eigen…','Custom…')}</button>
            <input id="ps-bg" type="color" value="${d.bg||'#d4d6d7'}" title="${T('Eigen kleur kiezen','Pick a custom colour')}" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer">
          </span>
-         <span id="ps-bg-swatch" title="${T('Huidige achtergrond','Current background')}" style="display:inline-block;width:24px;height:24px;border-radius:4px;border:1px solid var(--line-2);background:${d.bg||'#d4d6d7'}"></span>
+         ${[['#d4d6d7','Modern E-ink Grey'],['#8e918f','Classic E-ink Grey'],['#f2e4d1','Off-White'],['#f4f1e9','Paper'],['#ffffff','True White']].map(([hex,nm])=>`<button class="btn ghost sm" data-bg="${hex}" title="${hex}"><span style="display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid var(--line);background:${hex}"></span>${nm}</button>`).join('')}
        </div></div></div>
      <div class="hint">${T('Breedte/hoogte = de logische ruimte ná rotatie. De achtergrond is alleen voor de preview. De kleuren in het palet passen zich aan op het displaytype.','Width/height = the logical space after rotation. The background is preview-only. The palette colours adapt to the display type.')}</div>
      <hr style="border-color:var(--line);margin:14px 0">
@@ -4069,9 +4069,13 @@ function openProfileSettings(){
          </div>
        </div>
      <hr style="border-color:var(--line);margin:14px 0">
-     <button class="btn ghost sm" id="ps-dup">${T('Profiel dupliceren','Duplicate profile')}</button>
-     <button class="btn ghost sm danger" id="ps-delete" style="margin-left:8px">${T('Profiel verwijderen','Delete profile')}</button>`,
-    [{label:T('Opslaan','Save'),cls:'primary',id:'ps-save',onClick:()=>{
+     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+       <button class="btn primary sm" id="ps-save" disabled>${T('Opslaan','Save')}</button>
+       <button class="btn ghost sm" id="ps-dup">${T('Profiel dupliceren','Duplicate profile')}</button>
+       <button class="btn ghost sm danger" id="ps-delete">${T('Profiel verwijderen','Delete profile')}</button>
+     </div>`,
+    [{label:T('Sluiten','Close'),cls:'ghost',onClick:closeModal}]);
+  const saveProfile=()=>{
       p.name=$('#ps-name').value;
       d.model=$('#ps-model').value; d.rotation=+$('#ps-rot').value; d.w=+$('#ps-w').value; d.h=+$('#ps-h').value;
       d.bg=$('#ps-bg').value;
@@ -4107,9 +4111,9 @@ function openProfileSettings(){
         const sw=$('#ps-switch'); if(sw) sw.innerHTML=sortedProfiles().map(x=>`<option value="${attr(x.id)}" ${x.id===p.id?'selected':''}>${attr(x.name)}</option>`).join(''); }
       toast(T('Profiel opgeslagen','Profile saved'));
       { const sv=$('#ps-save'); if(sv) sv.disabled=true; }   // saved → nothing pending again
-    }}]);
-  // Save stays greyed out until something in the dialog actually changes
-  { const sv=$('#ps-save'); if(sv) sv.disabled=true;
+  };
+  // Save (in the duplicate/delete row) is greyed out until something in the dialog changes
+  { const sv=$('#ps-save'); if(sv){ sv.disabled=true; sv.onclick=saveProfile; }
     const mb=$('#modal-body');
     if(mb && !mb._dirtyHook){ mb._dirtyHook=true;
       const enable=()=>{ const b=$('#ps-save'); if(b) b.disabled=false; };
@@ -4145,10 +4149,17 @@ function openProfileSettings(){
     $$('#ps-pins-box [data-pinon]').forEach(cb=>{ cb.disabled=!m; setField($('#'+cb.dataset.pinon), m&&cb.checked); }); syncExtras(); };
   $$('#ps-pins-box [data-pinon]').forEach(cb=>cb.onchange=()=>{ setField($('#'+cb.dataset.pinon), (!pinsMaster||pinsMaster.checked)&&cb.checked); syncExtras(); });
   if(pinsMaster){ pinsMaster.onchange=syncPins; syncPins(); }
-  { const bgInp=$('#ps-bg'), sw=$('#ps-bg-swatch');
-    const setBg=(hex)=>{ if(bgInp) bgInp.value=hex; if(sw) sw.style.background=hex; const sv=$('#ps-save'); if(sv) sv.disabled=false; };
+  { const bgInp=$('#ps-bg'), sw=$('#ps-bg-swatch'), cust=$('#ps-bg-custom-btn');
+    // highlight the selected colour with an accent outline; Custom lights up for a colour
+    // that doesn't match any preset (outline doesn't shift layout like a border would)
+    const refreshSel=()=>{ const cur=((bgInp&&bgInp.value)||'').toLowerCase(); let matched=false;
+      $$('#modal-body [data-bg]').forEach(b=>{ const on=b.dataset.bg.toLowerCase()===cur;
+        b.style.outline=on?'2px solid var(--accent)':''; b.style.outlineOffset=on?'1px':''; if(on) matched=true; });
+      if(cust){ cust.style.outline=matched?'':'2px solid var(--accent)'; cust.style.outlineOffset=matched?'':'1px'; } };
+    const setBg=(hex)=>{ if(bgInp) bgInp.value=hex; if(sw) sw.style.background=hex; const sv=$('#ps-save'); if(sv) sv.disabled=false; refreshSel(); };
     $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>setBg(b.dataset.bg));
-    if(bgInp) bgInp.oninput=()=>{ if(sw) sw.style.background=bgInp.value; }; }
+    if(bgInp) bgInp.oninput=()=>{ if(sw) sw.style.background=bgInp.value; refreshSel(); };
+    refreshSel(); }
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
     if(confirm(T('Profiel verwijderen?','Delete profile?'))){
       state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist();
