@@ -3,6 +3,9 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.21
+- **Font weight preview now covers all 9 weights.** Only two cuts of Roboto were bundled, so the preview snapped 100–400 together and 600–900 together. Roboto and Noto Sans Display are now bundled as **variable fonts** (weight 100–900, plus Roboto italic), so the preview and canvas show every weight distinctly. (The generated YAML was already correct.)
+
 ## 3.9.20
 - **Negative mode** (Profile settings, per profile): fills the screen with the ink colour and draws everything in the paper colour — a black screen with white content. The canvas preview goes dark with a light grid, and the YAML gets an `it.fill(...)` plus the two base colours swapped.
 - **Screen rotation is an ESPHome template switch now**, exposed to HA directly — no `input_boolean` / `configuration.yaml` edit needed (reworded to *Screen rotation (HA switch)*).
