@@ -1135,11 +1135,25 @@ function setupRulers(){
 }
 
 function gridStep(){ return (profile().device.grid)|| 16; }
+/* grid line colour tuned to the canvas background: a dark grid on bright/light backgrounds
+   and a light grid on dark ones, a touch stronger on more saturated (custom) colours so it
+   stays visible — e.g. a near-black grid on red/green, a softer one on the e-ink greys. */
+function gridStroke(hex){
+  let h=String(hex||'#d4d6d7').replace('#','').trim();
+  if(h.length===3) h=h.split('').map(c=>c+c).join('');
+  const r=parseInt(h.slice(0,2),16)||0, g=parseInt(h.slice(2,4),16)||0, b=parseInt(h.slice(4,6),16)||0;
+  const maxc=Math.max(r,g,b), minc=Math.min(r,g,b);
+  const sat = maxc ? (maxc-minc)/maxc : 0;          // 0..1 colourfulness
+  const c = maxc>140 ? '0,0,0' : '255,255,255';     // bright bg → dark lines; dark bg → light lines
+  const minorA = (0.10 + sat*0.15).toFixed(3);      // 0.10 .. 0.25
+  const majorA = (0.22 + sat*0.17).toFixed(3);      // 0.22 .. 0.39
+  return { minor:`rgba(${c},${minorA})`, major:`rgba(${c},${majorA})` };
+}
 function drawGrid(){
   gridLayer.destroyChildren();
   if(!$('#tg-grid').checked){ gridLayer.draw(); return; }
   const p=profile(), step=gridStep();
-  const minor='rgba(0,0,0,0.09)', major='rgba(0,0,0,0.20)';
+  const gc=gridStroke(p.device.bg); const minor=gc.minor, major=gc.major;
   let i=0;
   for(let x=0;x<=p.device.w+0.5;x+=step,i++){
     const maj=i%4===0;
@@ -4008,10 +4022,11 @@ function openProfileSettings(){
     `${state.profiles.length>1?`<div class="row"><div><label class="fld">${T('Profiel (wisselen)','Profile (switch)')}</label><select id="ps-switch" style="width:100%">${sortedProfiles().map(x=>`<option value="${attr(x.id)}" ${x.id===p.id?'selected':''}>${attr(x.name)}</option>`).join('')}</select></div></div>`:''}
      <div class="row"><div><label class="fld">${T('Profielnaam','Profile name')}</label><input id="ps-name" value="${attr(p.name)}"></div></div>
      <div class="row"><div><label class="fld">Model</label><select id="ps-model" style="width:100%">${modelOpts}</select></div></div>
-     <div class="hint" id="ps-model-info"></div>
+     <div class="hint" id="ps-model-info" style="margin-bottom:8px"></div>
      <div class="row"><div><label class="fld">${T('Rotatie','Rotation')}</label><select id="ps-rot">${[0,90,180,270].map(r=>`<option ${d.rotation===r?'selected':''}>${r}</option>`).join('')}</select></div>
        <div><label class="fld">${T('Breedte (px)','Width (px)')}</label><input id="ps-w" type="number" value="${d.w}"></div>
        <div><label class="fld">${T('Hoogte (px)','Height (px)')}</label><input id="ps-h" type="number" value="${d.h}"></div></div>
+     <div class="hint" style="margin-bottom:8px">${T('Breedte/hoogte = de logische ruimte ná rotatie. De achtergrond is alleen voor de preview. De kleuren in het palet passen zich aan op het displaytype.','Width/height = the logical space after rotation. The background is preview-only. The palette colours adapt to the display type.')}</div>
      <div class="row"><div><label class="fld">${T('Canvas-achtergrond (preview)','Canvas background (preview)')}</label>
        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
          <span id="ps-bg-swatch" title="${T('Huidige achtergrond','Current background')}" style="display:inline-block;width:24px;height:24px;border-radius:4px;border:1px solid var(--line-2);background:${d.bg||'#d4d6d7'}"></span>
@@ -4019,9 +4034,8 @@ function openProfileSettings(){
            <button class="btn ghost sm" id="ps-bg-custom-btn" tabindex="-1">🎨 ${T('Eigen…','Custom…')}</button>
            <input id="ps-bg" type="color" value="${d.bg||'#d4d6d7'}" title="${T('Eigen kleur kiezen','Pick a custom colour')}" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer">
          </span>
-         ${[['#d4d6d7','Modern E-ink Grey'],['#8e918f','Classic E-ink Grey'],['#f2e4d1','Off-White'],['#f4f1e9','Paper'],['#ffffff','True White']].map(([hex,nm])=>`<button class="btn ghost sm" data-bg="${hex}" title="${hex}"><span style="display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid var(--line);background:${hex}"></span>${nm}</button>`).join('')}
+         ${[['#d4d6d7','Modern E-ink Grey'],['#8e918f','Classic E-ink Grey'],['#f4f1e9','Paper'],['#f2e4d1','Off-White'],['#ffffff','True White']].map(([hex,nm])=>`<button class="btn ghost sm" data-bg="${hex}" title="${hex}"><span style="display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid var(--line);background:${hex}"></span>${nm}</button>`).join('')}
        </div></div></div>
-     <div class="hint">${T('Breedte/hoogte = de logische ruimte ná rotatie. De achtergrond is alleen voor de preview. De kleuren in het palet passen zich aan op het displaytype.','Width/height = the logical space after rotation. The background is preview-only. The palette colours adapt to the display type.')}</div>
      <hr style="border-color:var(--line);margin:14px 0">
      <label class="toggle"><input type="checkbox" id="ps-wait" ${p.waitEnabled!==false?'checked':''}> ${T('Wachtscherm gebruiken','Use waiting screen')}</label>
      <div class="hint" style="margin:4px 0 0">${T('Genereert de “waiting for data”-tak (if initial_data_received == false). Het wachtscherm ontwerp je via de scherm-keuze boven het canvas.','Generates the “waiting for data” branch (if initial_data_received == false). Design the waiting screen via the screen selector above the canvas.')}</div>
@@ -4068,13 +4082,11 @@ function openProfileSettings(){
            ${pinRow('resetDurOn','ps-o-resetdur','reset_duration',o.resetDurOn,o.resetDuration)}
          </div>
        </div>
-     <hr style="border-color:var(--line);margin:14px 0">
-     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-       <button class="btn primary sm" id="ps-save" disabled>${T('Opslaan','Save')}</button>
-       <button class="btn ghost sm" id="ps-dup">${T('Profiel dupliceren','Duplicate profile')}</button>
-       <button class="btn ghost sm danger" id="ps-delete">${T('Profiel verwijderen','Delete profile')}</button>
-     </div>`,
-    [{label:T('Sluiten','Close'),cls:'ghost',onClick:closeModal}]);
+     <hr style="border-color:var(--line);margin:14px 0 2px">`,
+    [{label:T('Profiel dupliceren','Duplicate profile'),cls:'ghost',id:'ps-dup'},
+     {label:T('Profiel verwijderen','Delete profile'),cls:'ghost danger',id:'ps-delete'},
+     {label:T('Sluiten','Close'),cls:'ghost',style:'margin-left:auto',onClick:closeModal},
+     {label:T('Opslaan','Save'),cls:'primary',id:'ps-save'}]);
   const saveProfile=()=>{
       p.name=$('#ps-name').value;
       d.model=$('#ps-model').value; d.rotation=+$('#ps-rot').value; d.w=+$('#ps-w').value; d.h=+$('#ps-h').value;

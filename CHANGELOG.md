@@ -3,6 +3,11 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.16
+- **Profile-settings footer redesigned.** Duplicate profile and Delete profile on the left, Close and Save on the right (Save still greyed out until you change something).
+- **Grid colour adapts to the canvas background** — slightly stronger on the e-ink greys / paper / white for visibility, and a contrasting near-black (or light) grid on custom colours such as red or green.
+- **Swapped Paper and Off-White** in the background presets; moved the "Width/height…" hint above the background row with a bit more breathing room, and a small gap under the model info.
+
 ## 3.9.15
 - **Canvas background row reworked.** Removed *Neutral Grey*; the order is now **swatch · Custom… · Modern E-ink Grey · Classic E-ink Grey · Off-White · Paper · True White**, and the currently selected colour gets an **accent outline**.
 - **Save moved next to Duplicate / Delete profile** (the footer is now just *Close*), and disabled buttons now actually look greyed out — so Save stays clearly greyed until you change something in Profile settings.
