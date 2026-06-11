@@ -4013,11 +4013,13 @@ function openProfileSettings(){
        <div><label class="fld">${T('Breedte (px)','Width (px)')}</label><input id="ps-w" type="number" value="${d.w}"></div>
        <div><label class="fld">${T('Hoogte (px)','Height (px)')}</label><input id="ps-h" type="number" value="${d.h}"></div></div>
      <div class="row"><div><label class="fld">${T('Canvas-achtergrond (preview)','Canvas background (preview)')}</label>
-       <div style="display:flex;gap:8px;align-items:center">
-         <input id="ps-bg" type="color" value="${d.bg||'#d4d6d7'}" style="width:48px;padding:2px;height:30px">
-         <button class="btn ghost sm" data-bg="#d4d6d7">${T('E-ink grijs','E-ink grey')}</button>
-         <button class="btn ghost sm" data-bg="#f4f1e9">${T('Papier','Paper')}</button>
-         <button class="btn ghost sm" data-bg="#ffffff">${T('Wit','White')}</button>
+       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+         ${[['#d4d6d7','Modern E-ink Grey'],['#8e918f','Classic E-ink Grey'],['#808080','Neutral Grey'],['#f2e4d1','Off-White'],['#f4f1e9','Paper'],['#ffffff','True White']].map(([hex,nm])=>`<button class="btn ghost sm" data-bg="${hex}" title="${hex}"><span style="display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid var(--line);background:${hex}"></span>${nm}</button>`).join('')}
+         <span style="position:relative;display:inline-flex">
+           <button class="btn ghost sm" tabindex="-1">🎨 ${T('Eigen…','Custom…')}</button>
+           <input id="ps-bg" type="color" value="${d.bg||'#d4d6d7'}" title="${T('Eigen kleur kiezen','Pick a custom colour')}" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer">
+         </span>
+         <span id="ps-bg-swatch" title="${T('Huidige achtergrond','Current background')}" style="display:inline-block;width:24px;height:24px;border-radius:4px;border:1px solid var(--line-2);background:${d.bg||'#d4d6d7'}"></span>
        </div></div></div>
      <div class="hint">${T('Breedte/hoogte = de logische ruimte ná rotatie. De achtergrond is alleen voor de preview. De kleuren in het palet passen zich aan op het displaytype.','Width/height = the logical space after rotation. The background is preview-only. The palette colours adapt to the display type.')}</div>
      <hr style="border-color:var(--line);margin:14px 0">
@@ -4069,7 +4071,7 @@ function openProfileSettings(){
      <hr style="border-color:var(--line);margin:14px 0">
      <button class="btn ghost sm" id="ps-dup">${T('Profiel dupliceren','Duplicate profile')}</button>
      <button class="btn ghost sm danger" id="ps-delete" style="margin-left:8px">${T('Profiel verwijderen','Delete profile')}</button>`,
-    [{label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
+    [{label:T('Opslaan','Save'),cls:'primary',id:'ps-save',onClick:()=>{
       p.name=$('#ps-name').value;
       d.model=$('#ps-model').value; d.rotation=+$('#ps-rot').value; d.w=+$('#ps-w').value; d.h=+$('#ps-h').value;
       d.bg=$('#ps-bg').value;
@@ -4104,7 +4106,14 @@ function openProfileSettings(){
       { const nm=$('#ps-name'); if(nm) nm.value=p.name;
         const sw=$('#ps-switch'); if(sw) sw.innerHTML=sortedProfiles().map(x=>`<option value="${attr(x.id)}" ${x.id===p.id?'selected':''}>${attr(x.name)}</option>`).join(''); }
       toast(T('Profiel opgeslagen','Profile saved'));
+      { const sv=$('#ps-save'); if(sv) sv.disabled=true; }   // saved → nothing pending again
     }}]);
+  // Save stays greyed out until something in the dialog actually changes
+  { const sv=$('#ps-save'); if(sv) sv.disabled=true;
+    const mb=$('#modal-body');
+    if(mb && !mb._dirtyHook){ mb._dirtyHook=true;
+      const enable=()=>{ const b=$('#ps-save'); if(b) b.disabled=false; };
+      mb.addEventListener('input', enable); mb.addEventListener('change', enable); } }
   const infoEl=$('#ps-model-info');
   const applyRes=()=>{ const res=modelRes($('#ps-model').value); if(!res) return;
     const rot=+$('#ps-rot').value, portrait=(rot===90||rot===270);
@@ -4136,7 +4145,10 @@ function openProfileSettings(){
     $$('#ps-pins-box [data-pinon]').forEach(cb=>{ cb.disabled=!m; setField($('#'+cb.dataset.pinon), m&&cb.checked); }); syncExtras(); };
   $$('#ps-pins-box [data-pinon]').forEach(cb=>cb.onchange=()=>{ setField($('#'+cb.dataset.pinon), (!pinsMaster||pinsMaster.checked)&&cb.checked); syncExtras(); });
   if(pinsMaster){ pinsMaster.onchange=syncPins; syncPins(); }
-  $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>{ $('#ps-bg').value=b.dataset.bg; });
+  { const bgInp=$('#ps-bg'), sw=$('#ps-bg-swatch');
+    const setBg=(hex)=>{ if(bgInp) bgInp.value=hex; if(sw) sw.style.background=hex; const sv=$('#ps-save'); if(sv) sv.disabled=false; };
+    $$('#modal-body [data-bg]').forEach(b=>b.onclick=()=>setBg(b.dataset.bg));
+    if(bgInp) bgInp.oninput=()=>{ if(sw) sw.style.background=bgInp.value; }; }
   $('#ps-delete').onclick=()=>{ if(state.profiles.length<2){toast(T('Minstens één profiel nodig','At least one profile required'));return;}
     if(confirm(T('Profiel verwijderen?','Delete profile?'))){
       state.profiles=state.profiles.filter(x=>x.id!==p.id); state.current=state.profiles[0].id; persist();
@@ -4725,7 +4737,7 @@ function elItems(el){
   items.push(['sep']);
   items.push(['📋 '+T('Kopiëren','Copy'),'Ctrl+C',()=>{ if(!isSelected(el.id)) select(el.id); copySel(); }]);
   items.push(['✂ '+T('Knippen','Cut'),'Ctrl+X',()=>{ if(!isSelected(el.id)) select(el.id); cutSel(); }]);
-  if(_clipboard.length) items.push(['📌 '+T('Plakken','Paste'),'Ctrl+V',pasteClip]);
+  items.push(['📌 '+T('Plakken','Paste'),'Ctrl+V', _clipboard.length?pasteClip:null, _clipboard.length?'':'disabled']);
   items.push(['sep']);
   items.push([el.visible===false?('👁 '+T('Tonen','Show')):('🚫 '+T('Verbergen','Hide')),'',()=>{ pushUndo(); el.visible=el.visible===false?true:false; afterChange(); }]);
   items.push(['↑ '+T('Naar voren','Bring forward'),'',()=>reorder(el,1)]);
@@ -4739,9 +4751,10 @@ function showMenu(x,y,items){
   const menu=$('#ctxmenu');
   menu.innerHTML = items.map(it=>{
     if(it[0]==='sep') return '<div class="sep"></div>';
-    const cls=it[3]?` class="${it[3]}"`:'';
+    const dis=it[3]==='disabled';
+    const cls=(it[3]&&!dis)?` class="${it[3]}"`:'';
     const k=it[1]?`<span class="k">${it[1]}</span>`:'';
-    return `<button${cls} data-act>${it[0]}${k}</button>`;
+    return `<button${cls}${dis?' disabled':''} data-act>${it[0]}${k}</button>`;
   }).join('');
   const acts=items.filter(x=>x[0]!=='sep');
   Array.from(menu.querySelectorAll('[data-act]')).forEach((b,i)=>{
@@ -4766,8 +4779,7 @@ function setupContextMenu(){
     if(hitId){ selectedId=hitId; const node=contentLayer.getChildren(n=>n._elId===hitId)[0]; attachSelection(selected(),node); contentLayer.draw(); renderLayers(); renderInspector(); }
     const el=selected();
     if(el) showMenu(e.clientX,e.clientY, elItems(el));
-    else if(_clipboard.length) showMenu(e.clientX,e.clientY, [['📌 '+T('Plakken','Paste'),'Ctrl+V',pasteClip]]);
-    else showMenu(e.clientX,e.clientY, [[T('Niets geselecteerd','Nothing selected'),'',null]]);
+    else showMenu(e.clientX,e.clientY, [['📌 '+T('Plakken','Paste'),'Ctrl+V', _clipboard.length?pasteClip:null, _clipboard.length?'':'disabled']]);
   });
 }
 function reorder(el, dir){

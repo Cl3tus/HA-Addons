@@ -3,6 +3,11 @@
 Only the highlights are kept here. The full history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.14
+- **Paste is always in the canvas right-click menu** now — greyed out when the clipboard is empty.
+- **More canvas backgrounds.** Profile settings has six named presets (Modern E-ink Grey, Classic E-ink Grey, Neutral Grey, Off-White, Paper, True White) plus a **Custom…** swatch that opens the colour wheel, with a live preview swatch. (Custom colours still work as before.)
+- **Save button stays greyed out** in Profile settings until you actually change something.
+
 ## 3.9.13
 - **Up to 10 screens** (was 5).
 - **"Use multiple screens" toggle** in Profile settings (next to "Use waiting screen"), remembered per profile. Off → a single screen, and the add / duplicate / rename / delete buttons above the canvas are hidden (the main screen can't be renamed). On → the full multi-screen controls.

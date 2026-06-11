@@ -564,6 +564,8 @@ textarea.import-area { width: 100%; height: 260px; font-family: var(--mono); fon
   padding: 7px 10px; border-radius: 5px; cursor: pointer; font-size: 12.5px;
 }
 .ctxmenu button:hover { background: var(--panel-2); }
+.ctxmenu button:disabled { opacity: .4; cursor: default; }
+.ctxmenu button:disabled:hover { background: transparent; }
 .ctxmenu button.danger:hover { background: #3a2526; color: var(--red); }
 .ctxmenu .sep { height: 1px; background: var(--line); margin: 4px 2px; }
 .ctxmenu .k { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--txt-faint); }
