@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/eink_studio/banner.png" alt="E-ink Studio" width="100%">
 </p>
 
-# Home Assistant Add-on: E-ink Studio
+# E-ink Studio
 
 [![GitHub release](https://img.shields.io/badge/version-3.9.22-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App)
 [![Project Stage](https://img.shields.io/badge/project%20stage-experimental-yellow.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App)
