@@ -4,7 +4,7 @@
 
 # E-ink Studio — Documentation
 
-**A WYSIWYG editor for ESPHome e-paper displays.** Design your layout visually,
+**A visual editor for ESPHome e-paper displays.** Design your layout visually,
 bind it to live Home Assistant values, and generate the ESPHome `lambda:` + the
 matching YAML blocks. No more hand-counting pixels.
 
@@ -35,9 +35,10 @@ matching YAML blocks. No more hand-counting pixels.
 - **Left panel** — the **element palette** (drag onto the canvas) and the **Layers**
   list (reorder by dragging the handle, toggle visibility 👁, rename by double-click,
   delete 🗑).
-- **Canvas toolbar** — screen selector (Main / Waiting), **alignment**, **layer order**
-  (bring to front / send to back / step forward / step backward), undo/redo,
-  copy/cut/paste, duplicate, delete.
+- **Canvas toolbar** — screen selector (Waiting / Main / extra screens) with
+  add / duplicate / rename / delete buttons, the device rotation read-out (↻ 90°),
+  **alignment**, **layer order** (bring to front / send to back / step forward /
+  step backward), undo/redo, copy/cut/paste, duplicate, delete.
 - **Canvas status bar** (sticky, bottom of the canvas) — **zoom** (− / editable % field
   / + / *Fit*), **grid** + grid size, **Ruler**, **Snap grid** and **Snap ruler**.
 - **Right panel (inspector)** — all properties of the selected element.
@@ -149,6 +150,23 @@ Click **○ Live** to fetch the current states (read-only, via the Supervisor AP
   <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Sources-Picker.png" alt="Value sources picker" width="100%">
 </p>
 
+### Sources & type detection
+
+Open **Sources** to map each source to an `id`, an `entity_id`, a **sample** value and
+a **type (lambda)** (number / bool / time / string — how the lambda reads it).
+
+- With **Live** on, each row also shows the **type (HA)** that Home Assistant detects
+  from the entity's domain, `device_class` and live value (green ✓ when it matches your
+  dropdown, red ✗ + the detected type when it doesn't).
+- A per-row **↺** snap icon (just left of the row's ✕) appears only on a mismatch and
+  sets that row to what HA detects; **Detect types** fixes them all at once. Your manual
+  dropdown still wins — HA's type is only a suggestion.
+- The **sample** column is **off by default** and its show/hide choice is saved per
+  profile. Samples drive the preview when Live is off.
+
+This catches the classic "an `ai_task`/string entity marked as a number" mistake before
+it reaches a graph trace or the ESPHome build.
+
 ---
 
 ## 🔤 Fonts & colours
@@ -157,6 +175,10 @@ Open **Fonts**:
 
 - Add **Google Fonts** or **local TTF/OTF** (upload directly). Click a loaded font
   id for an inline preview.
+- **Weight** is a named dropdown (Thin 100 … Black 900) and there's an **Italic**
+  checkbox for Google Fonts (emits `italic: true`). The edit-font preview updates
+  **live** as you change the size, weight or italic — Roboto and Noto Sans Display are
+  bundled as **variable fonts**, so every weight 100–900 previews distinctly.
 - The same TTF filename is uploaded only once (de-duplicated).
 - **Material Design Icons** (v7.4.47) is bundled and also placed in your `fonts/`
   folder so you can replace it with your own build.
@@ -169,11 +191,32 @@ Open **Fonts**:
 
 ---
 
-## 🖼️ Two screens
+## 🖼️ Screens
 
-Each design has a **Main** screen and a **Waiting-for-data** screen (shown until the
-first data arrives). Switch between them with the selector above the canvas. Turn
-the waiting screen on/off in **Profile settings**.
+Every design has a **Main** screen and an optional **Waiting-for-data** screen (shown
+until the first data arrives after boot). Switch between them with the selector above
+the canvas; turn the waiting screen on/off in **Profile settings → Use waiting screen**.
+
+### Multiple screens (Home Assistant–switchable)
+
+Turn on **Use multiple screens** in Profile settings to design **up to 10** separate
+screens, each with its own elements. The selector above the canvas then shows
+**add / duplicate / rename / delete** buttons. With two or more screens the generated
+YAML branches per screen and adds your chosen Home Assistant controls — pick them under
+**Profile settings → Generated YAML Blocks → Screen control in HA**:
+
+- **Dropdown (select)** — a template `select` whose options are your screen names.
+- **Buttons** — one template `button` per screen (handy on a dashboard).
+- **Both** — the dropdown *and* the buttons.
+- **None** — no HA controls; the screen select stays `internal: true` so the display
+  still works while you drive it from your own automations.
+
+Switching a screen forces an immediate redraw, independent of new sensor data.
+**Screen rotation (HA switch)** (same panel) adds a template `switch` exposed to Home
+Assistant that advances to the next screen on every refresh interval — no
+`input_boolean` or `configuration.yaml` edit needed. Single-screen designs generate
+exactly the same YAML as before, and your existing layout migrates into the first
+screen automatically (the recovery code round-trips all screens).
 
 ---
 
@@ -185,15 +228,26 @@ Open the **⚙** next to the profile picker.
   **width/height** are pre-filled to the native resolution, rotation-aware),
   **rotation**, **width/height**, **canvas background** (preview only).
 - **Use waiting screen** on/off.
+- **Use multiple screens** on/off (remembered per profile) — off gives a single
+  screen and hides the add/duplicate/rename/delete buttons; on enables the full
+  multi-screen controls (see *Screens* above).
+- **Negative mode** on/off (per profile) — fills the screen with the ink colour and
+  draws everything in the paper colour, i.e. a black screen with white content. The
+  canvas preview turns dark with a light grid and the YAML gets an `it.fill(...)`
+  with the two base colours swapped.
 - **Generated YAML Blocks** — choose exactly which blocks the generator emits:
   - **Refresh logic** (`esphome` on_boot + `script` + `time`) with boot priority,
     delay, wait timeout and the refresh interval (minutes).
+  - **Screen control in HA** (dropdown / buttons / both / none) and **Screen rotation
+    (HA switch)** — greyed out unless *Use multiple screens* is on (see *Screens*).
   - **globals**, **font**, **color**, **sensor**, **text_sensor** — each on/off.
   - **SPI bus** (`clk_pin` / `mosi_pin`).
   - **Display pins** — `data_rate`, `cs_pin` (+ ignore_strapping), `dc_pin`,
     `busy_pin` (+ inverted), `reset_pin`, `reset_duration` — each individually
     on/off.
-- **Duplicate profile** (the copy gets `(1)`, `(2)`, …) and **Delete profile**.
+- **Save** stays greyed out until you change something. The footer has **Duplicate
+  profile** / **Delete profile** on the left and **Close** / **Save** on the right
+  (the copy gets `(1)`, `(2)`, …).
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Profile-Yaml-Blocks.png" alt="Profile settings — generated YAML blocks" width="100%">
@@ -218,8 +272,11 @@ Example output for a temperature readout:
 
 ```yaml
 font:
-  - file: "fonts/Roboto-Regular.ttf"
-    id: font_klein
+  - file:
+      type: gfonts
+      family: Roboto
+      weight: 400
+    id: font_small
     size: 25
 
 display:
@@ -229,7 +286,7 @@ display:
     rotation: 90°
     update_interval: never
     lambda: |-
-      it.printf(120, 60, id(font_klein), color_text, TextAlign::TOP_CENTER,
+      it.printf(120, 60, id(font_small), color_text, TextAlign::TOP_CENTER,
                 "%.1f °C", id(aquarium_temp).state);
 ```
 

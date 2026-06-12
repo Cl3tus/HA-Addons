@@ -4,7 +4,7 @@
 
 # Home Assistant Add-on: E-ink Studio
 
-[![GitHub release](https://img.shields.io/badge/version-3.9.21-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App)
+[![GitHub release](https://img.shields.io/badge/version-3.9.22-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App)
 [![Project Stage](https://img.shields.io/badge/project%20stage-experimental-yellow.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App)
 [![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/blob/main/LICENSE)
@@ -14,7 +14,7 @@
 
 ## About
 
-E-ink Studio is a **WYSIWYG editor for ESPHome e-paper displays**, running right
+E-ink Studio is a **visual editor for ESPHome e-paper displays**, running right
 inside Home Assistant. Instead of hand-writing and pixel-counting
 `it.print()` / `it.printf()` lambdas, you **drag elements onto a paper-accurate
 canvas**, bind them to **live Home Assistant sensor values**, and **generate
@@ -37,12 +37,17 @@ yourself. Everything runs offline, with all libraries and fonts bundled.
   with editable zoom up to 500 %.
 - **Live HA data** preview, value transforms (numbers, on/off labels, time, dates,
   weekday/month names NL & EN, and a custom date/time format), prefix/suffix.
-- **Conditions (if/else)** per element, a separate **waiting-for-data** screen,
-  multi-select, alignment, undo/redo and **cut/copy/paste**.
+- **Multiple screens** (up to 10) switchable from Home Assistant (a generated `select`,
+  per-screen `button`s and an optional rotation `switch`), plus a separate
+  **waiting-for-data** screen — with **Conditions (if/else)** per element, multi-select,
+  alignment, undo/redo and **cut/copy/paste**.
+- **Negative mode** per profile (a black screen with white content), and **source type
+  detection** (number / bool / time / string) that flags a lambda↔HA mismatch.
 - **Graphs** with a configurable **legend** (custom per-trace labels, fonts, units).
-- **Fonts** (Google + local TTF, with live preview) — plus a **Download Fonts (.zip)**
-  button to grab them all for your ESPHome `config/fonts/` — colours by display type,
-  and a **per-block YAML generator** with a base64 **recovery code** for round-tripping.
+- **Fonts** (Google + local TTF, with live preview, a named **weight** dropdown and an
+  **Italic** toggle) — plus a **Download Fonts (.zip)** button to grab them all for your
+  ESPHome `config/fonts/` — colours by display type, and a **per-block YAML generator**
+  with a base64 **recovery code** for round-tripping.
 - **YAML import** that reads font/color/sensor blocks and reverse-engineers the
   display lambda back into editable elements.
 - A built-in **file manager** (tree, text editor, font preview), also over SAMBA.

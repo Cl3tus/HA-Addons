@@ -1,470 +1,102 @@
 # Changelog
 
-Only the highlights are kept here. The full history lives in the
+Only the highlights are kept here — minor version bumps are folded into the theme they
+belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
-## 3.9.21
-- **Font weight preview now covers all 9 weights.** Only two cuts of Roboto were bundled, so the preview snapped 100–400 together and 600–900 together. Roboto and Noto Sans Display are now bundled as **variable fonts** (weight 100–900, plus Roboto italic), so the preview and canvas show every weight distinctly. (The generated YAML was already correct.)
-
-## 3.9.20
-- **Negative mode** (Profile settings, per profile): fills the screen with the ink colour and draws everything in the paper colour — a black screen with white content. The canvas preview goes dark with a light grid, and the YAML gets an `it.fill(...)` plus the two base colours swapped.
-- **Screen rotation is an ESPHome template switch now**, exposed to HA directly — no `input_boolean` / `configuration.yaml` edit needed (reworded to *Screen rotation (HA switch)*).
-- **"None" screen-control option** — generates no HA controls (the screen select stays internal so the display still works; you drive it from your own logic). Controls + rotation also grey out when multi-screen is off.
-- **The grid is visible on dark/black backgrounds now** (stronger light lines).
-- **Device rotation is shown** (↻ 90°) next to the screen selector in the toolbar.
-
-## 3.9.19
-- **Screen controls + rotation are greyed out** in Profile settings when *Use multiple screens* is off.
-- **Font weight & italic now render on the canvas and in the preview** (Google Fonts) everywhere — and the edit-font preview updates live as you change the weight or italic.
-- **Deleting a font always asks for confirmation** (in-app dialog), not only when it's in use.
-- **Dragging a layer shows a dashed "stays here" box** when dropping wouldn't move it, instead of an insertion line.
-
-## 3.9.18
-- **Selected layer gets an accent ring** so it clearly stands out in the layers list.
-- **The file manager uses in-app dialogs** too now — "discard unsaved changes" and "delete files" match the UI, so there are no native browser pop-ups left anywhere.
-- **Single-screen designs show a static "Single Page" label** above the canvas (instead of an empty dropdown) when there's no waiting screen and multi-screen is off.
-- **Optional HA screen rotation.** Profile settings → Generated YAML Blocks → *Screen rotation via HA input_boolean*: emits an `input_boolean` helper (for your HA config) + a `binary_sensor` + a time-trigger branch that advances the screen each interval while the toggle is on. (Needs ≥2 screens.)
-- **Font weight is a named dropdown now** (Thin 100 … Black 900) in the new-font and edit-font forms, plus an **Italic** checkbox for Google Fonts (emits `italic: true`).
-
-## 3.9.17
-- **No more browser pop-ups in the editor.** The custom live-data interval, *delete profile* and *delete font-in-use* prompts are now in-app dialogs that match the UI. (The file manager still uses two native confirms — those are next.)
-- **base64 restore code is remembered per profile** now (on by default for new profiles) instead of a single global toggle.
-- **Fixed the flickering insertion line when dragging layers** — it's cleared only when the cursor actually leaves the list, so one stable line per gap.
-- **Waiting-screen option is hidden** (not just disabled) in the screen dropdown when the waiting screen is off; with a single screen and no waiting screen the dropdown hides entirely (nothing to switch between).
-- **New profiles default to a 20 px grid.**
-
-## 3.9.16
-- **Profile-settings footer redesigned.** Duplicate profile and Delete profile on the left, Close and Save on the right (Save still greyed out until you change something).
-- **Grid colour adapts to the canvas background** — slightly stronger on the e-ink greys / paper / white for visibility, and a contrasting near-black (or light) grid on custom colours such as red or green.
-- **Swapped Paper and Off-White** in the background presets; moved the "Width/height…" hint above the background row with a bit more breathing room, and a small gap under the model info.
-
-## 3.9.15
-- **Canvas background row reworked.** Removed *Neutral Grey*; the order is now **swatch · Custom… · Modern E-ink Grey · Classic E-ink Grey · Off-White · Paper · True White**, and the currently selected colour gets an **accent outline**.
-- **Save moved next to Duplicate / Delete profile** (the footer is now just *Close*), and disabled buttons now actually look greyed out — so Save stays clearly greyed until you change something in Profile settings.
-
-## 3.9.14
-- **Paste is always in the canvas right-click menu** now — greyed out when the clipboard is empty.
-- **More canvas backgrounds.** Profile settings has six named presets (Modern E-ink Grey, Classic E-ink Grey, Neutral Grey, Off-White, Paper, True White) plus a **Custom…** swatch that opens the colour wheel, with a live preview swatch. (Custom colours still work as before.)
-- **Save button stays greyed out** in Profile settings until you actually change something.
-
-## 3.9.13
-- **Up to 10 screens** (was 5).
-- **"Use multiple screens" toggle** in Profile settings (next to "Use waiting screen"), remembered per profile. Off → a single screen, and the add / duplicate / rename / delete buttons above the canvas are hidden (the main screen can't be renamed). On → the full multi-screen controls.
-- **Pick the HA screen controls** under Profile settings → Generated YAML Blocks: a **dropdown (select)**, **one button per screen**, or **both**. (For buttons-only the select is kept `internal: true` so HA hides it but the display still reads it.)
-- **Removed the auto-rotate switch.** Screen rotation is no longer generated by the add-on — drive it from Home Assistant instead (e.g. an automation that cycles the screen select, optionally gated by an `input_boolean`).
-- **Copy / Cut / Paste in the canvas right-click menu** (Copy now also shows a confirmation toast); Paste also appears when you right-click empty canvas.
-
-## 3.9.12
-- **Moved the ↺ "snap to HA" icon to its own column**, just left of the row's ✕ delete button. It's no longer tucked behind the type dropdown, so it can never overlap the *type (HA)* text — regardless of panel width.
-
-## 3.9.11
-- **Fix: type columns overlapping in a narrow window.** The Sources table was being squeezed below its content width (e.g. in a narrow Home Assistant panel), which made the ↺ icon spill over the *type (HA)* column. The table now has a minimum width inside a horizontally-scrollable wrapper (and the id/entity_id inputs are more compact), so columns are never squeezed.
-
-## 3.9.10
-- **Fix: ↺ "snap to HA" icon overlapping the type (HA) column.** It was a flex `.btn` that a table cell doesn't always measure, so it spilled into the next column. It's now a plain inline-block chip that lays out correctly.
-
-## 3.9.9
-- **Sources mapping fixes.** The sample column is now **off by default** and its show/hide choice is saved **per profile**. The ↺ "snap to HA" icon only appears when the dropdown actually disagrees with HA — so it no longer overlaps the *type (HA)* column when everything matches. And changing a row's type now updates the *type (HA)* ✓/✗ **immediately**, without closing and reopening the dialog.
-
-## 3.9.8
-- **Sources mapping polish.** Swapped the *live* and *sample* columns; headers renamed to *live (HA)*, *type (lambda)* and *type (HA)*. The "type (HA)" column is now plain coloured text (green ✓ / red ✗ — no more overlapping chip borders), the per-row **↺** "snap to HA" icon is always clickable, and a **Sample column** checkbox at the bottom shows/hides the sample column (remembered between sessions).
-
-## 3.9.7
-- **Sources (sensor mapping) tidied up.** Wider dialog; columns reordered to *id · entity_id · sample · live · type · HA-type*. The type dropdown now has a small **↺** icon right behind it to snap just that row to what HA detects (greyed when it already matches), and a separate **HA-type** column shows a green ✓ when the dropdown agrees with HA, or a red ✗ + the detected type when it doesn't. The bottom **Detect types** button still fixes them all at once.
-
-## 3.9.6
-- **Auto-detect a source's type from Home Assistant.** In Sources (sensor mapping), with Live data on, each row shows the type HA detects (number / bool / time / string) from the entity's domain, `device_class` and live value. A mismatch becomes a one-click **HA: \<type\> ↺** chip, and a **Detect types** button sets them all at once. The manual dropdown still wins — it's only a suggestion from the live entity. (Would have caught the classic "marked an `ai_task` entity as number" mistake.)
-
-## 3.9.5
-- **Warning when a graph trace uses a non-numeric source.** A graph expects a numeric sensor; binding a trace to a string/time/bool source (or a non-numeric Home Assistant entity such as an `ai_task`) can crash the ESPHome graph at runtime. The pre-generate check now flags this so you can fix it before flashing.
-- **Honest wording for 3.9.3 / 3.9.4.** Those entries claimed to fix a multi-screen bootloop. That bootloop turned out to be an unrelated ESPHome graph bug (a graph trace on a non-numeric `ai_task` entity), not a studio problem — the 3.9.3/3.9.4 changes were defensive hardening, not the fix. Re-worded below.
-
-## 3.9.4
-- **Screen-control hardening (not the bootloop fix it was first described as).** Dropped `restore_value` from the HA screen `select` so it can't publish a restored value during early boot. Side effect: the active screen resets to the first screen after a reboot (manual switching and rotation are unaffected).
-
-## 3.9.3
-- **Screen-control hardening (not the bootloop fix it was first described as).** A screen-change redraw is now guarded by `initial_data_received`, so switching screens can never render the display before boot completes — the first render still happens via `on_boot`, as before.
-
-## 3.9.2
-- **Fix: multi-screen YAML no longer needs a `current_screen` global** (which caused `Couldn't find ID 'current_screen'` when merged into a config that keeps its own `globals:` block). The display lambda now reads the active screen straight from the HA select via `active_index()`, so the select is the single source of truth — nothing to add to `globals:`. The select also restores its choice across reboots (`restore_value: true`).
-
-## 3.9.1
-- **Rename a screen via the app's own dialog** instead of the browser's native prompt — consistent styling, Enter to save, Escape/×/backdrop to cancel.
-
-## 3.9.0
-- **Multiple screens, switchable from Home Assistant.** Next to the screen selector above the canvas you can now **add, duplicate, rename and remove** designed screens (up to 5), each with its own elements — the waiting screen stays separate. When you have two or more screens the generated YAML gains a `current_screen` global and the display lambda branches per screen, plus:
-  - a **template `select`** entity (the screen names become the dropdown options) to pick the active screen from HA;
-  - one **push-button** per screen for dashboards;
-  - an optional **"Rotate Screens" switch** (toggle *Auto-rotate screens* under Profile settings → Generated YAML Blocks) that advances to the next screen on every refresh interval.
-  Switching a screen forces an immediate redraw, independent of new sensor data. Single-screen designs generate exactly the same YAML as before. Your existing layout migrates automatically into the first screen, and the base64 recovery code round-trips all screens.
-
-## 3.7.15
-- **Fix: snap-grid / snap-ruler now reliably stick after a refresh.** Two issues: the change was only written to the server after a 2s debounce (a quick refresh reloaded the stale copy and lost it — now it flushes immediately), and toggling the grid/ruler could leave the profile with a stale snap combo (now those toggles persist the snap state too, so you don't end up with both snaps off).
-
-## 3.7.14
-- **Snap-grid / snap-ruler checkboxes are remembered per profile** — they now survive a refresh and follow each profile, just like the Ruler toggle. (Existing profiles default to snap-grid on, snap-ruler off.)
-
-## 3.7.13
-- **Tighter selection boxes.** Text, value, MDI icon, Wi-Fi icon and refresh-time selections now hug the actual pixels (Wi-Fi/refresh use the ink box like text/icons do) with a smaller margin, and the gauge selection no longer leaves empty space below it (its node is now just the visible top half). Grid- and ruler/guide-snapping share the exact same bounds as the selection outline, so snapping stays pixel-accurate.
-
-## 3.7.12
-- **Fix: the light accent fill on shape selections is now actually visible.** A sync-order bug left the fill rectangle sized 0×0 (it was measured before being added to the layer), so Rectangle/Circle/Ring/etc. showed no fill. They now match the text/icon selection.
-
-## 3.7.11
-- **Shape selections now get the light accent fill too**, kept in sync while resizing/dragging, so Rectangle/Circle/Ring/etc. look the same as a text/icon selection. The fill tint is lighter and the dashed border is a touch thinner (2px).
-
-## 3.7.10
-- **Consistent, theme-aware selection styling.** The light fill inside a text/icon selection is now a tint of the accent colour (so it matches a red/blue/etc. HA accent instead of a fixed orange), and the dashed border is a touch thinner. Shape selections (Rectangle, Circle, Triangle, Polygon, Ring, Gauge, QR, Graph) now use the same dashed accent border and accent-coloured resize/rotate handles instead of a hardcoded amber, so every element type selects the same way.
-
-## 3.7.9
-- **No stray selection box when placing a guide.** Dragging a new guide off the ruler no longer also starts a marquee selection (the rulers live inside the canvas wrap, so their mousedown was triggering the rubber-band box) — the orange selection rectangle that flashed at the top is gone.
-
-## 3.7.8
-- **Ruler guide arrows follow the HA theme too** — the little triangular markers on the rulers now use the same primary colour as the guide lines (no longer hardcoded blue).
-- **Single insertion line when reordering layers** — dragging a layer into a gap now shows exactly one orange bar (on the top edge of the row below the cursor) instead of flipping between "below the upper row" and "above the lower row".
-
-## 3.7.7
-- **Light/Dark choice now sticks across windows.** A manual theme toggle is carried from the editor into the file manager (and back) for the session; leaving the add-on and re-entering via Home Assistant resets to the theme configured on the Configuration tab (Auto/Light/Dark). The NL/EN language toggle behaves identically. (Session handoff via `sessionStorage`; a fresh entry or browser refresh follows the configured default again.)
-- **Straight insertion line when reordering layers.** The drag-drop indicator is now a crisp full-width bar instead of a box-shadow that rounded with the row corners.
-- **Accent & guide colours follow the Home Assistant theme.** Inside HA, the orange UI accents (Generate YAML button, selection handles, marquee) use HA's `--accent-color` and the ruler/guide lines use HA's `--primary-color`; the primary button auto-picks black/white text for contrast. The e-ink colour palette (incl. tri-colour red) is untouched. Outside ingress it falls back to the bundled amber/blue.
-
-## 3.7.6
-- **Generate YAML header now carries a date/time** — language-bound, e.g. `Wed 10/06/2026 - 14:44` (NL `Woe …`), appended to the *Generated by E-ink Studio* line.
-- **Richer, more legible recovery code (base64).** The round-trip snapshot now also carries a `meta` block (app, version, profile name, generation date), the `waitEnabled` flag, and a `device` name/comment derived from the **profile name** (`Nano Cubes` → `nano-cubes`) instead of the generic `eink-display`. Element ids in the snapshot are now **derived from the layer name** (`background` instead of `exsa7ck`), de-duplicated across the design — so decoding the base64 to JSON reads cleanly. Older recovery codes still restore (missing fields are tolerated).
-
-## 3.7.5
-- **Docs:** documented the new *Download Fonts (.zip)* button across the Documentation tab, the GitHub README/About tab and the bilingual (EN/NL) **Fonts & Colours** wiki page — including why E-ink Studio never writes into the ESPHome config itself.
-
-## 3.7.4
-- **Download Fonts (.zip).** The Font Editor now has a *Download Fonts (.zip)* button (bottom-left, next to Cancel/Save) that bundles every font in the add-on's `fonts/` folder into one archive. Drop it into your ESPHome `config/fonts/` folder by hand — ESPHome only reads fonts that live next to its own YAML, so the add-on never writes into the ESPHome config itself (that would need a broad read/write mount into another add-on's config, which we deliberately avoid).
-
-## 3.7.3
-- **Pre-flight check on Generate YAML.** Before the code drawer opens, the design is validated; if a layer points at a missing/empty **source** (the cause of ESPHome's `Couldn't find ID 'undefined'` build error), a missing **condition source**, a missing **graph-trace source** or a missing **font**, a popup lists exactly which layers are wrong and on which screen. Click a row to jump to that element and fix it, or **Generate anyway**.
-
-## 3.7.2
-- Documentation overhaul: the **About** tab, **Documentation** tab and the GitHub README now describe the rulers & guide lines, pixel-perfect snapping, layer-order controls, the zoom/status bar, the graph legend's custom labels and pixel-accurate placement.
-- Added a full **bilingual (EN/NL) wiki** under `docs/wiki/` (15 pages) ready to publish to the GitHub Wiki, plus a screenshot checklist.
-
-## 3.7.1
-- MDI icon fonts now generate **only their icons** in the `glyphs:` block — the extra plain text/digit characters are dropped entirely (an icon font has no such glyphs, so they caused the "Font … is missing N glyphs" build error). This also covers chars that an element happened to reference while bound to an MDI font, which the charset migration alone didn't catch.
-
-## 3.6.11
-- **Fixes "Font … is missing N glyphs" build error on the MDI font.** An icon font has no text/digit glyphs, but the bundled `font_mdi_small` was wrongly seeded with a text safety-charset (space, digits, %, °, …), which ESPHome rejects. New profiles now keep MDI fonts' charset empty, the YAML importer does the same, and existing profiles are auto-migrated on load (the stray charset is stripped). The generated `glyphs:` block for an MDI font now contains only its actual icons.
-
-## 3.6.10
-- MDI icon-font glyphs: the generated `glyphs:` block now uses a multi-line inline `[ … ]` array (a valid ESPHome form). The MDI icons still sit one-per-line so each keeps its `# mdi:<name>` comment, but the plain "safety" characters (space, digits, %, °, …) are now clustered into a single quoted string on one line instead of sprawling over many lines.
-
-## 3.6.9
-- MDI icon-font glyphs: the plain "safety" characters (space, digits, %, °, …) that are added to prevent build errors are now grouped under an explanatory comment in the generated `glyphs:` block.
-
-## 3.6.8
-- Ruler guides now sit **behind** your elements (sent to the back, just above the grid) instead of overlaying everything.
-- Default text font id is now always **`font_small`** (it was language-dependent `font_klein` in Dutch), so the id in the generated YAML is stable.
-- The **waiting screen** text now uses `font_small` by default. Existing profiles are auto-migrated: any element (including the waiting screen and graph axis/legend) pointing at a font that no longer exists is repointed to a valid text font, so the ESPHome build no longer fails on a missing `font_klein`.
-
-## 3.6.7
-- **Pixel-perfect snap to guides** — snapping now uses the element's *visible-ink* box (the same tight box the selection outline hugs) instead of the looser font-metric box, so text/icons snap exactly where their pixels begin.
-- **Cross snapping** — the two axes snap independently, so an element can lock onto a vertical guide (left/right edge) and a horizontal guide (top/bottom edge) at the same time, landing in the cross where two guides meet.
-- The snap box is measured once when the drag starts (cached), so live snapping stays smooth even for large text.
-
-## 3.6.6
-- **Alignment grid is back** — the 9-block anchor/alignment picker (top-left … bottom-right) returns in the Position section for text, value, icon and Wi-Fi elements, so you can place text around its anchor point just like ESPHome's `TextAlign`. Changing the anchor keeps the element visually in place.
-- **Refresh Time clock fixed**: the time now sits **optically centred** next to its icon (aligned on the visible glyphs, not the font box, so digits no longer float high), and the horizontal gap is based on the icon's actual width instead of a fixed offset — so the time is no longer pushed too far right. Canvas and device stay identical. Empty offset-X/Y fields now auto-compute these; type a value to override.
-
-## 3.6.5
-- Ruler guides: the blue guide line is now shown live on the canvas **while** you drag a new guide out of the ruler (not only after you release).
-- Snap-to-ruler fixed: dragging an element near a guide no longer makes it jitter/oscillate. The snap now tests the element's bounding box at its *intended* position and snaps only the single closest edge per axis.
-
-## 3.6.4
-- **Pixel-accurate text placement** — the canvas now positions text/icons exactly like the device. ESPHome anchors text on the font's real baseline inside its full line-height box (read from the font's hhea/head metrics), where the canvas previously used the browser's own text box. Decorative fonts (display digits, icon fonts, script titles) that looked shifted on the physical e-paper vs. the editor now line up 1:1.
-- Affects text, icons, the WiFi-strength icon and the refresh-time clock. The clock now mirrors the generated YAML exactly: icon and time are centred vertically on the same line.
-
-## 3.6.3
-- Font editor: live preview now also updates when you use the size stepper buttons (▲/▼), and the Google-Fonts weight is now reflected live in the preview too.
-- Font editor: preview sample scales across a wider size range (up to 96px).
-- Ruler guides: blue guide line on the canvas is now redrawn and kept on top on every canvas render, so it reliably shows over your elements.
-
-## 3.6.2
-- Ruler guides: the blue guide line is drawn on the canvas again (now on a top overlay layer, so it stays visible over full-canvas backdrop elements). Remove a guide via its ruler marker.
-- Font editor: the "Local Fonts" source option is renamed to "Upload Font".
-- Font editor: selecting "MDI Fonts" now shows a link to the Material Design Icons library (pictogrammers.com).
-- Font editor: the preview now refreshes live while you change the font size.
-- Graph legend: per-trace label is now a free-text field, so you can give a trace any custom name (empty = the sensor id).
-- Stacked elements: a click now always selects the topmost element (highest in the layers panel) instead of cycling through the stack.
-
-## 3.5.2
-- Ruler context menu now uses the same styling as the canvas context menu (consistent look).
-
-## 3.5.1
-- Snap ruler fixed: now works independently of snap grid (snap grid being off no longer blocks it).
-- Ruler contextmenu label simplified to "Remove guides".
-
-## 3.5.0
-- Grid off → Snap raster checkbox hidden and unchecked automatically (same behaviour as Ruler/Snap lineaal).
-
-## 3.4.9
-- Ruler: outside-canvas zones get a lighter grey background (gradient on the ruler strip).
-- Ruler contextmenu: top ruler shows only "Remove all vertical guides", left ruler shows only "Remove all horizontal guides".
-- Ruler contextmenu: `stopPropagation` prevents the canvas element-contextmenu from also appearing.
-
-## 3.4.8
-- Ruler: ticks outside the canvas range (negative + beyond canvas edge) shown in a dimmer colour.
-- Ruler: right-click on a marker removes that specific guide (reliable via `data-guide-axis` attribute).
-- Ruler: right-click on empty ruler strip shows a popup with "Remove all vertical guides (N)" and "Remove all horizontal guides (N)" options.
-
-## 3.4.7
-- Status bar: Ruler checkbox moved next to Grid/px (zoom | grid+ruler | snap groups).
-- Zoom display changed to editable input: type a value and press Enter; − and + snap to nearest 10% boundary.
-- Ruler: fixed colour rendering (CSS variables now resolved before being set on SVG elements).
-- Ruler: right-click on markers now works (overflow:visible + clip-path instead of overflow:hidden).
-- Ruler: ticks extend into negative values left/above the canvas origin, and continue past the canvas edge.
-
-## 3.4.6
-- Zoom, grid size, snap and ruler controls moved to a sticky **status bar** at the bottom of the canvas area.
-- Snap grid/ruler grey-out removed — was distracting.
-- Canvas padding halved (24px top, 32px bottom).
-
-## 3.4.5
-- Canvas scrolling fixed: frame is now always reachable when zoomed in (padding + max-content sizing).
-- Snap raster greyed when Snap lineaal is active and vice versa.
-- Snap lineaal checkbox hidden (and auto-unchecked) when Ruler is turned off.
-- UI states synced on every profile switch.
-
-## 3.4.4
-- Ruler: guide markers now draggable within the ruler strip to reposition; click elsewhere creates new guide.
-- Ruler: triangle marker positions now correct (fixed offset calculation relative to ruler element).
-- Ruler: new guide created on mouseup at cursor position — no need to drag all the way to canvas first.
-- Snap grid / Snap ruler are now mutually exclusive (enabling one disables the other).
-- Renamed "Snap" → "Snap raster / Snap grid", "Snap lineaal" → "Snap lineaal / Snap ruler".
-- Canvas: more whitespace above (48px) and below (56px) to prevent frame clipping.
-
-## 3.4.3
-- Fix: duplicate `guideLayer` declaration caused a complete crash on load (no canvas, no profiles, font editor unresponsive).
-
-## 3.4.2
-- Font editor: unsaved-form warning now uses an in-app dialog instead of the browser `confirm()`. Toast only fires after an actual save (not on cancel).
-- Ruler: top strip now creates **vertical** guides, left strip creates **horizontal** guides (corrected).
-- Ruler: guide markers (triangle indicators) visible on the ruler strips; right-click on marker or canvas guide to remove it.
-- Ruler: guides are rendered on a Konva layer **behind** canvas elements but above the grid.
-- Ruler: guide lines thinner (0.5 px stroke, smaller dash).
-- Ruler: **Lineaal / Ruler** toggle checkbox added next to Snap (replaces the "clear guides" button); state saved per profile.
-- Ruler: `_guides` array moved into `profile().guides` so guides are per-profile and survive profile switches.
-- Ruler: **Snap lineaal / Snap guides** checkbox (between Snap and Ruler) — snaps element edges to guide lines while dragging.
-
-## 3.4.0
-- **Figma-style rulers + guide lines**: ruler strips along the canvas edges; drag from ruler to create a guide line; right-click to remove; clear all via toolbar button.
-- **Bring to front / send to back** + **step forward / step backward** buttons added to the canvas toolbar (between alignment and undo/redo).
-- **Language toggle** now re-renders all open panels, inspector, and the font modal immediately — no reload needed.
-- **Font editor**: Save now warns when the "Add font" form has unsaved data (filled but not yet clicked +).
-- **Text alignment removed** from text, value, MDI icon, Refresh Time and Wi-Fi icon inspectors — anchor is always CENTER; section renamed to **Position**.
-- **New profile defaults** simplified to two fonts: `font_small` (Roboto 400 25px) + `font_mdi_small` (MDI 30px).
-
-## 3.3.1
-- Profile dropdown re-sorts on every change (no reload needed).
-- Refresh clock renamed to **Refresh Time** in palette + default element name.
-- Clock text-offset X now auto-scales with the icon size; added dedicated X/Y offset fields.
-- MDI path field greyed out in Font Source (path shown, not editable).
-- Layer drag auto-scrolls the list near the top/bottom edge.
-- Click-through uses pixel-accurate hit-test (getAllIntersections).
-- QR: **Name & ID** section at the top of the inspector.
-- Graph legend label is now a **dropdown of your sources** (or "no sources").
-- Prefix/suffix presets localized (gem/avg etc.).
-
-## 3.3.0
-- Profiles are listed **alphabetically (numbers first)** in both the top-bar and
-  Profile-settings dropdowns.
-- **Layers**: drag-reorder now shows an **insertion line** above/below the row and
-  can reach the very top/bottom reliably.
-- **Click-through selection**: click again on the same spot to step to the element
-  *under* the current one (cycles through everything stacked there).
-- New elements default to **CENTER** alignment.
-- **QR**: scale stepper, a custom **ID** field for the `qr_code:` component, and the
-  preview inverts (dark bg) when the QR colour is white so it stays visible.
-- **Graph**: trace colour via swatches, thickness stepper, duplicate Duration removed
-  from “general”, clearer per-trace legend labels (Source → Label).
-- **Value**: Round-to-N-decimals fixed (no longer fights the builder decimals),
-  decimals/factor steppers, prefix/suffix list now has **Custom…** second + more
-  prefixes, and a printf-format help link.
-- **Refresh clock**: separate X/Y text offsets (steppers); horizontal offset
-  auto-scales with the icon size so the time doesn’t overlap big icons; the time text
-  now uses a text font (not the icon font).
-- Adding an **MDI icon / clock / Wi-Fi** element auto-ensures an MDI font (size 30) so
-  nothing shows as tofu. **MDI Fonts** is the 2nd Font-Source option.
-- ▲/▼ steppers across all **Position & Size** fields and the font editor size/weight.
-
-## 3.2.4
-- **Real QR preview**: the editor now renders the actual QR code (bundled
-  qrcode-generator), so both the pattern and the size match the device.
-- **▲/▼ steppers everywhere on Position & Size** (X, Y, width, height, radii, sides)
-  and on the **font editor** size/weight — fields stay editable.
-- **Circle with lock ratio** keeps radius X and Y equal when you change one.
-- **MDI icon font** is now a **Font Source** option (set your own id + size, fixed
-  bundled path) instead of a separate button.
-- Note: a mouse text-selection in the YAML drawer can still be dropped by the browser
-  if you drag outside the window/iframe — use **Kopieer** for a reliable full copy.
-
-## 3.2.3
-- **Gauge** preview now matches the device: a 180° half-ring (top), outlined track,
-  filling from the **left over the top** by the fill % (50% = left half). Gauges no
-  longer show a rotation handle (they can't rotate).
-- **QR code** preview is now sized like the device: the real module count (QR version
-  for the content + ECC) × scale, with an estimated-size hint in the inspector.
-
-## 3.2.2
-- Generated-YAML drawer: copying now keeps the **blank lines** between blocks, and
-  while the drawer is open only its text is selectable (a drag-copy can't grab the
-  rest of the page).
-- **▲/▼ stepper buttons** on the polygon **sides** and the **radius** fields (the
-  field stays editable; sides stay ≥ 3).
-- **Font Editor is transactional**: changes apply only on **Save**; **Cancel** or the
-  **✕** discards them (so an accidental delete is no longer permanent).
-- New **“+ MDI icon font”** button to re-add the bundled Material Design Icons font
-  if it was deleted.
-
-## 3.2.1
-- Polygon **sides** field now shows up/down stepper arrows; minimum 3, no upper cap.
-- **Drag-select over a big backdrop element** now rubber-bands the objects on top of
-  it instead of moving the backdrop (click still selects it; once selected you can
-  drag to move it).
-- **Profile settings** stays open on **Save** (just refreshes the name + switch
-  dropdown) and on **Delete** (switches to the first profile).
-- Version number moved to sit after "Lambda Generator" (grey).
-- Save/Open tooltips simplified to "Save project" / "Open project".
-- Note: the YAML drawer can't physically slow the mouse selection near the base64
-  line, so that line stays visually fenced off (gap + divider) as the stop cue.
-
-## 3.2.0
-- **Fix build error** on rotated polygons: `regular_polygon` now uses the correct
-  ESPHome signature (`VARIATION_POINTY_TOP` + rotation degrees).
-- **Layer order = draw order**: the generated lambda now emits elements in the
-  layers-panel order, so reordering layers changes z-order on the canvas *and* in
-  the YAML (drag the ⠿ handle in Layers).
-- **Marquee select** now only grabs elements **fully inside** the box — a big
-  background rectangle is no longer caught when selecting things on top of it.
-- **Font usage**: only fonts actually used by an element are written to the YAML
-  (fixes the "unable to determine height" error from unused icon fonts); the Font
-  Editor shows an **in use / unused** column and lists unused fonts.
-- **Profile switch dropdown** in Profile settings (no need to go back to the top bar).
-- Version number shown (grey) under "E-ink Studio".
-- Save toast/tooltips now say **profile** and show `profiles/<name>.json`.
-- The base64 recovery line in the YAML drawer is fenced off (gap + divider + dimmed)
-  so manual selection has a clear place to stop.
-- Note: ESPHome's `line/rectangle/circle/triangle` are 1px only — outline thickness
-  is not configurable, so it is left as-is.
-
-## 3.1.8
-- **No more tofu on typed text**: Google-Fonts and Web fonts now always include the
-  full printable-ASCII set (ESPHome downloads them in full anyway), plus any special
-  characters the design uses (e.g. `°`). Editing text no longer needs a clean rebuild
-  to pick up newly-typed letters. Local TTF / icon / 7-segment fonts keep their exact
-  glyph set.
-
-## 3.1.7
-- The main **Save / Open** now use the JSON **`profiles/`** folder (the editable
-  design), not `projects/`. Open switches to a design if it's already loaded, else
-  pulls it in.
-- The **Generate YAML** drawer gained **Open** and **Save** buttons working on the
-  **`projects/`** folder: Save writes `projects/<profile>.yaml`, Open browses saved
-  `.yaml` files and restores the design from the recovery code.
-
-## 3.1.6
-- Lighter line-number gutter in the generated-YAML drawer for better readability.
-
-## 3.1.5
-- The generated YAML is now also saved to **`projects/<profile>.yaml`** (visible in
-  the file manager / over SAMBA) when you open the code drawer or download — the
-  editable design JSON already lives in `profiles/`.
-- **Line numbers** in the generated-YAML drawer (a non-selectable gutter, so they're
-  never copied or downloaded).
-- **Legend labels** are now editable per trace right in the *Graph — legend* section
-  (empty = the sensor id, e.g. `cubewatt`).
-- The graph **duration (hours)** is mirrored into *Graph — axes & labels* with a note
-  that the X-scale runs from −duration (start) to 0 (now).
-
-## 3.1.4
-- **NaN values now render `---`** instead of `nan`: numeric value elements emit an
-  `isnan()` guard, so an unavailable sensor shows three dashes (which every digit /
-  7-segment font has) — no more letters forced into number fonts.
-- **Graph legend tofu fixed properly**: the legend fonts now get the full printable
-  ASCII set (names/values/units are drawn by ESPHome itself), and the glyphs are
-  collected into the exact font the generator emits (name_font falls back to the
-  first font, value_font to the name font).
-
-## 3.1.3
-- **Fix build failure** introduced in 3.1.1: the legend glyph collection no longer
-  force-adds guessed unit symbols (`² ³ µ Ω …`). ESPHome hard-fails when a font lacks
-  a listed glyph, so a legend value font like GothamRnd broke the config.
-- `nan`/`inf` glyphs are still added to text fonts, but **never** to digit/7-segment
-  display fonts (which lack letters and would also fail the build).
-
-## 3.1.2
-- Font editor titled **“Font Editor”**; fonts are grouped by source (local/uploaded,
-  Google, Web, MDI) under each other.
-- The bundled **MDI** icon font is now editable (id + size) and its preview shows
-  **real MDI icons** under a **Preview** heading.
-- **Font Source** dropdown reordered & renamed: Local Fonts · Google Fonts · Web Fonts,
-  with a note that `.ttf .otf .woff .pcf .bdf` are allowed.
-
-## 3.1.1
-- **Graph legend tofu fixed**: each trace now always gets a `name:` when the legend
-  is on, and those glyphs (plus numbers/units) are added to the legend's fonts — no
-  more boxes.
-- **`nan` glyphs**: dynamic fonts always include the `nan`/`inf` letters, so an
-  unavailable sensor shows `nan` instead of a missing-glyph box.
-- **Font sources**: added **Web font (URL)** (`type: web`) next to Google Fonts and
-  local TTF, with a browse link per source (Google Fonts / Fontsource).
-- **Font editor**: the bundled MDI icon font is now editable too (size only).
-- Add-font form: labels above size / family / weight and a **Font Source** label.
-- Legend X/Y note that they are pixel numbers, not text.
-
-## 3.1.0
-- **Font editor**: edit existing fonts (id, size, weight, family, type, file). Renaming
-  an id updates every element, graph axis and legend that uses it.
-- **Graph legend**: full `legend:` support (name/value font, border, show_lines,
-  show_values, show_units, direction) drawn with `it.legend()`, plus a per-trace
-  **name** and a live legend preview on the canvas.
-- **Raw printf glyphs**: literal characters in a raw format (e.g. `°` in `%.1f°C`) are
-  now added to the font's `glyphs:`, so they no longer render as a missing-glyph box.
-- Builder ↔ raw printf now clears the other mode's leftover prefix/suffix/format.
-- Profile → Generated YAML Blocks: deselected pin/SPI values stay visible (greyed) and
-  are remembered; `ignore_strap` / `inverted` are no longer auto-deselected.
-- Tooltips on the font library (weight/family/id), boot params and the format fields.
-- Removed the invalid `STEPLINE` graph line type (ESPHome only has SOLID/DOTTED/DASHED).
-
-## 3.0.2
-- New **app icon** and a **banner** header (shown in About, Documentation and the
-  GitHub README).
-- Added an MIT **LICENSE**, license badge, and a `.gitattributes` for consistent
-  line endings.
-
-## 3.0.1
-- File manager: the tree now starts **fully expanded** (every folder open) on load.
-- Supported architectures trimmed to **aarch64** and **amd64** (matches the badges).
-- Docs: embedded all screenshots and a dark/light hero image.
-
-## 3.0.0
-First stable release. Highlights of everything that landed during 2.x:
-
-- **Elements**: text, value (sensor + format/transform), MDI icon, line, rectangle,
-  circle, triangle, polygon, ring, gauge, QR code, graph, refresh clock, Wi-Fi icon.
-- **Editing**: grid snap to the visible pixels, multi-select, layers (reorder /
-  hide / rename / delete), alignment of the whole selection, undo/redo, duplicate,
-  and **cut/copy/paste** that also works between the main and waiting screen.
-- **Values**: live HA data, number/bool/time/date transforms, weekday & month names
-  (NL/EN), a **custom date/time format**, and prefix/suffix with auto-spacing.
-- **Conditions (if/else)** per element and a separate **waiting-for-data** screen.
-- **Fonts**: Google + local TTF (upload, dedupe, preview); MDI bundled and seeded
-  into `fonts/`.
-- **YAML generator** with **per-block toggles** (refresh logic, globals, font, color,
-  sensor, text_sensor, SPI, and each display pin) and a **base64 recovery code** for
-  round-tripping; resizable code drawer.
-- **Import** of existing ESPHome configs, reverse-engineering the display lambda back
-  into editable elements, with an import summary.
+## 3.9.22 — Docs refresh
+
+- Renamed the editor from a "WYSIWYG editor" to a **visual editor** throughout the docs,
+  READMEs and add-on description (EN + NL).
+- Brought the **Documentation tab, READMEs and wiki** up to date with the current
+  features (multiple screens, negative mode, the HA screen controls & rotation switch,
+  font weight/italic, source type detection).
+- The **wiki is now split per language**: a language picker chooses English or Nederlands
+  and every page exists as a single-language `-EN` / `-NL` page, with a one-click switch at
+  the top and a per-language sidebar.
+
+## 3.9.x — Multiple screens, negative mode, fonts & sources
+
+- **Multiple screens** (up to 10), **switchable from Home Assistant**: the display lambda
+  branches per screen and you pick the HA control — a template `select`, one `button` per
+  screen, **both**, or **none** (the select stays `internal` so your own automations can
+  drive it). An optional **screen rotation switch** advances to the next screen each
+  refresh interval. Existing layouts migrate into the first screen and the recovery code
+  round-trips every screen.
+- **Negative mode** (per profile): a black screen with white content — `it.fill(...)` plus
+  the two base colours swapped, with a dark canvas preview and a light grid.
+- **Font weight & italic** are first-class now: a named **weight** dropdown
+  (Thin 100 … Black 900) and an **Italic** toggle for Google Fonts. Roboto and Noto Sans
+  Display ship as **variable fonts**, so every weight 100–900 (and italic) renders
+  distinctly on the canvas and in the live edit preview.
+- **Source type detection.** With Live on, each source shows the type Home Assistant
+  detects (number / bool / time / string) next to your lambda type, with a one-click
+  **↺ snap** and a **Detect types** button. A graph trace bound to a non-numeric source
+  is flagged before flashing (that combination can crash the ESPHome graph). The Sources
+  table was also tidied — reordered columns, a per-row snap icon, and an optional sample
+  column saved per profile.
+- **No native browser pop-ups left.** Every confirm/prompt (delete profile/font, file
+  manager, screen rename, custom refresh interval) is an in-app dialog that matches the UI.
+- **Profile-settings polish:** Save stays greyed out until you change something; the footer
+  is Duplicate / Delete (left) and Close / Save (right); more canvas-background presets; the
+  grid stays visible on dark/custom backgrounds; and the device rotation (↻ 90°) shows next
+  to the screen selector.
+- **Honest history:** the 3.9.3/3.9.4 "bootloop fix" turned out to be an unrelated ESPHome
+  graph bug (a trace on a non-numeric `ai_task` entity), not a studio problem.
+
+## 3.4–3.7 — Rulers, guides & a theme-aware UI
+
+- **Figma-style rulers + guide lines** with **pixel-perfect snapping** to the visible ink —
+  snap into the **cross** of a vertical and horizontal guide at once. Guides are per profile
+  and sit behind your elements.
+- **Sticky status bar** with editable zoom (to 500 %), grid size, ruler and snap toggles;
+  snap-grid / snap-ruler are remembered per profile and survive a refresh.
+- **Accent & guide colours follow the Home Assistant theme**, and selection styling is
+  unified across every element type.
+- **Pre-flight check on Generate YAML** — lists any layer with a missing source, condition/
+  graph source or font before the code drawer opens.
+- **Download Fonts (.zip)** — grab your whole `fonts/` folder for ESPHome's `config/fonts/`
+  (the add-on never writes into another add-on's config).
+
+## 3.6 — Pixel-accurate placement & MDI glyphs
+
+- Text and icons are positioned on the font's **real baseline**, matching the e-paper 1-to-1;
+  the refresh clock is optically centred next to its icon.
+- **MDI icon fonts generate only their icons** (no text/digit glyphs) — fixes the
+  *"Font … is missing N glyphs"* build error; older profiles auto-migrate, and the default
+  text font id is the stable `font_small`.
+
+## 3.1–3.3 — Fonts, graphs & YAML output
+
+- **Font editor** — edit existing fonts (id, size, weight, family, type, file) with a live
+  preview; Google / Web / local-upload / MDI sources.
+- **Graph legend** (`it.legend`) with per-trace **custom labels**, name/value fonts, units
+  and direction.
+- **Layer order = draw order**, only used fonts are written, and NaN values render as `---`.
+- **Real QR preview** and ▲/▼ steppers across every Position & Size field.
+
+## 3.0.0 — First stable release
+
+- **Elements**: text, value (sensor + format/transform), MDI icon, line, rectangle, circle,
+  triangle, polygon, ring, gauge, QR code, graph, refresh clock, Wi-Fi icon.
+- **Editing**: grid snap to the visible pixels, multi-select, layers (reorder / hide /
+  rename / delete), alignment, undo/redo, duplicate, and cut/copy/paste that also works
+  between screens.
+- **Values**: live HA data, number/bool/time/date transforms, weekday & month names (NL/EN),
+  a custom date/time format, and prefix/suffix with auto-spacing.
+- **Conditions (if/else)** per element and a separate waiting-for-data screen.
+- **Fonts**: Google + local TTF (upload, dedupe, preview); MDI bundled and seeded into
+  `fonts/`.
+- **YAML generator** with per-block toggles (refresh logic, globals, font, color, sensor,
+  text_sensor, SPI, and each display pin) and a base64 recovery code for round-tripping.
+- **Import** of existing ESPHome configs, reverse-engineering the display lambda into
+  editable elements, with an import summary.
 - Built-in **file manager** (tree, multi-select, text editor, font preview) + SAMBA.
 - **Profiles** with duplicate and a model picker that fills native width/height.
 - **NL/EN** + **light/dark** following Home Assistant, custom tooltips, fully offline.
-- Hardening: date/time helper blocks are length-guarded so an empty/unknown value at
-  boot can no longer crash the device.
+- Hardening: date/time helper blocks are length-guarded so an empty/unknown value at boot
+  can't crash the device.
 
 ## 2.x
+
 Iterative development of all of the above. See the Git history for details.
