@@ -4,6 +4,11 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.25 — Font Editor upload button
+
+- The font-upload button (*Choose file / Bestand kiezen*) is now the same height as the
+  adjacent *path* input, so the row lines up.
+
 ## 3.9.24 — Screen button name & Dutch labels
 
 - The generated per-screen **`button`** is now named *`<device> <screen>`* (e.g. *Scherm 1*)
