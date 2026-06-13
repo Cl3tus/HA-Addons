@@ -6,8 +6,8 @@ belong to. The full, per-commit history lives in the
 
 ## 3.9.25 — Font Editor upload button
 
-- The font-upload button (*Choose file / Bestand kiezen*) is now the same height as the
-  adjacent *path* input, so the row lines up.
+- The font-upload button (*Choose file / Bestand kiezen*) now matches the height of the
+  adjacent *path* input, so the row lines up (the 📁 emoji no longer makes it taller).
 
 ## 3.9.24 — Screen button name & Dutch labels
 
