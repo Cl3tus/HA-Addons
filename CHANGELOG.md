@@ -4,6 +4,24 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.23 — Fixes & Dutch polish
+
+- **Ruler guides are easy to move again.** Clicking on (or right next to) an existing guide
+  now grabs and moves it instead of dropping a second guide on top; clicking elsewhere on
+  the ruler still adds a new one.
+- **The main screen can no longer be deleted** in multi-screen mode, and **deleting a screen
+  is undoable** — Ctrl+Z (or Undo) brings the whole screen back.
+- **Switching profiles closes the Generate-YAML drawer** (it showed the old profile's code).
+- **Profile settings:** the *Screen control in HA / rotation* block now sits above the
+  *Refresh logic* block.
+- **Negative mode round-trips on import** — it's stored in the recovery code and detected
+  from an `it.fill(...)` in a foreign lambda.
+- **Dutch/i18n polish in the Font Editor:** localized the file-upload button (no more native
+  "Choose File / No file chosen"), *Weight → Gewicht* with translated options (Dun … Zwaar),
+  and the *Font Source* field no longer truncates. Graph inspector dropdowns (line type, show
+  values, direction) are translated, and the generated rotation `switch` is named *Scherm
+  rotatie* in Dutch.
+
 ## 3.9.22 — Docs refresh
 
 - Renamed the editor from a "WYSIWYG editor" to a **visual editor** throughout the docs,

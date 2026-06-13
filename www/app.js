@@ -252,7 +252,8 @@ function renderScreenSelect(){
   const set=(id,dis)=>{ const b=$(id); if(b) b.disabled=!!dis; };
   set('#scr-add', list.length>=MAX_SCREENS);
   set('#scr-dup', !onScreen || list.length>=MAX_SCREENS);
-  set('#scr-del', !onScreen || list.length<=1);
+  // the main screen (screens[0]) can never be removed
+  set('#scr-del', !onScreen || list.length<=1 || editScreen===list[0].id);
   set('#scr-ren', !onScreen);
 }
 /* switch which screen is being edited (resets selection + undo history, like the
@@ -263,6 +264,7 @@ function switchScreen(id){
   if($('#code-drawer').classList.contains('open')) renderCode();
 }
 function addScreen(){
+  lastScreenDelete=null;
   const list=screensList();
   if(list.length>=MAX_SCREENS){ toast(T('Maximaal 10 schermen','Maximum 10 screens')); return; }
   const id=newScreenId();
@@ -270,6 +272,7 @@ function addScreen(){
   persist(); renderProfiles(); switchScreen(id); toast(T('Scherm toegevoegd','Screen added'));
 }
 function duplicateScreen(){
+  lastScreenDelete=null;
   const list=screensList();
   if(list.length>=MAX_SCREENS){ toast(T('Maximaal 10 schermen','Maximum 10 screens')); return; }
   const cur=activeScreen(); if(!cur) return;
@@ -283,11 +286,30 @@ function removeScreen(){
   const list=screensList();
   if(list.length<=1){ toast(T('Er moet minstens één scherm zijn','At least one screen is required')); return; }
   const cur=activeScreen(); if(!cur) return;
+  if(list.indexOf(cur)===0){ toast(T('Het hoofdscherm kan niet verwijderd worden','The main screen cannot be removed')); return; }
   showAppConfirm(T(`Scherm “${cur.name}” verwijderen?`,`Delete screen “${cur.name}”?`), ()=>{
-    const idx=list.indexOf(cur); list.splice(idx,1);
+    const idx=list.indexOf(cur);
+    // remember the deleted screen so Ctrl+Z / undo can bring it back whole
+    lastScreenDelete={ profileId:profile().id, index:idx, screen:JSON.parse(JSON.stringify(cur)) };
+    list.splice(idx,1);
     const next=list[Math.max(0,idx-1)];
-    persist(); renderProfiles(); switchScreen(next.id); toast(T('Scherm verwijderd','Screen removed'));
+    persist(); renderProfiles(); switchScreen(next.id);
+    toast(T('Scherm verwijderd — Ctrl+Z om terug te halen','Screen removed — Ctrl+Z to bring it back'));
   });
+}
+/* undo a screen deletion: re-inserts the whole screen at its original position. Valid
+   only while no element edit has happened since (pushUndo clears it), on the same profile. */
+let lastScreenDelete=null;
+function restoreLastScreen(){
+  if(!lastScreenDelete || lastScreenDelete.profileId!==profile().id){ lastScreenDelete=null; return false; }
+  const list=screensList();
+  if(list.length>=MAX_SCREENS){ lastScreenDelete=null; return false; }
+  const sc=lastScreenDelete.screen;
+  if(list.some(s=>s.id===sc.id)) sc.id=newScreenId();   // avoid an id collision
+  list.splice(Math.min(lastScreenDelete.index,list.length),0,sc);
+  lastScreenDelete=null;
+  persist(); renderProfiles(); switchScreen(sc.id); toast(T('Scherm hersteld','Screen restored'));
+  return true;
 }
 function renameScreen(){
   const cur=activeScreen(); if(!cur) return;
@@ -338,8 +360,8 @@ function persist(){
 
 /* ---------------- undo / redo ---------------- */
 function snapshot(){ return JSON.stringify(els()); }
-function pushUndo(){ undoStack.push(snapshot()); if(undoStack.length>60) undoStack.shift(); redoStack=[]; }
-function undo(){ if(!undoStack.length) return; redoStack.push(snapshot()); setEls(JSON.parse(undoStack.pop())); afterChange(); }
+function pushUndo(){ lastScreenDelete=null; undoStack.push(snapshot()); if(undoStack.length>60) undoStack.shift(); redoStack=[]; }
+function undo(){ if(!undoStack.length){ restoreLastScreen(); return; } redoStack.push(snapshot()); setEls(JSON.parse(undoStack.pop())); afterChange(); }
 function redo(){ if(!redoStack.length) return; undoStack.push(snapshot()); setEls(JSON.parse(redoStack.pop())); afterChange(); }
 
 function afterChange(){ persist(); renderCanvas(); renderLayers(); renderInspector(); renderProfiles(); if($('#code-drawer').classList.contains('open')) renderCode(); }
@@ -1070,6 +1092,26 @@ function showRulerMenu(clientX, clientY, axis){
   setTimeout(()=>window.addEventListener('mousedown',close),0);
 }
 
+/* how close (screen px) a ruler click must be to an existing guide to grab/move it
+   instead of dropping a new one — the triangle marker itself is only a few px wide */
+const GUIDE_GRAB=6;
+/* start moving an existing guide (shared by the marker and the ruler proximity-grab) */
+function startGuideMove(axis, g){
+  const fr=$('#stage-frame').getBoundingClientRect();
+  const preview=document.createElement('div'); preview.id='guide-preview-'+axis;
+  if(axis==='v') preview.style.left=(fr.left+g.pos*zoom)+'px';
+  else preview.style.top=(fr.top+g.pos*zoom)+'px';
+  document.body.appendChild(preview);
+  showDragGuide(axis, g.pos);
+  const onMove=mv=>{
+    if(axis==='v'){ const pos=Math.round((mv.clientX-fr.left)/zoom); g.pos=Math.max(0,Math.min(pos,Math.round(fr.width/zoom))); preview.style.left=(fr.left+g.pos*zoom)+'px'; }
+    else { const pos=Math.round((mv.clientY-fr.top)/zoom); g.pos=Math.max(0,Math.min(pos,Math.round(fr.height/zoom))); preview.style.top=(fr.top+g.pos*zoom)+'px'; }
+    showDragGuide(axis, g.pos); drawRuler();
+  };
+  const onUp=()=>{ preview.remove(); clearDragGuide(); window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); persistGuides(); drawGuides(); drawRuler(); };
+  window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
+}
+
 function setupRulers(){
   const rxEl=$('#ruler-x'), ryEl=$('#ruler-y'); if(!rxEl||!ryEl) return;
 
@@ -1079,6 +1121,10 @@ function setupRulers(){
     const hit=ev.target.closest('[data-guide-axis]') || (ev.target.dataset&&ev.target.dataset.guideAxis ? ev.target : null);
     if(hit && hit.dataset.guideAxis==='v') return;
     const fr=$('#stage-frame').getBoundingClientRect();
+    // click near an existing guide → move it instead of dropping a new one
+    { const cx=ev.clientX-fr.left;
+      const near=profileGuides().find(g=>g.axis==='v' && Math.abs(g.pos*zoom-cx)<=GUIDE_GRAB);
+      if(near){ ev.preventDefault(); startGuideMove('v', near); return; } }
     const rxR=rxEl.getBoundingClientRect();
     // preview only in the whitespace between ruler-bottom and canvas-top
     const preview=document.createElement('div'); preview.id='guide-preview-v';
@@ -1118,6 +1164,10 @@ function setupRulers(){
     const hit=ev.target.closest('[data-guide-axis]') || (ev.target.dataset&&ev.target.dataset.guideAxis ? ev.target : null);
     if(hit && hit.dataset.guideAxis==='h') return;
     const fr=$('#stage-frame').getBoundingClientRect();
+    // click near an existing guide → move it instead of dropping a new one
+    { const cy=ev.clientY-fr.top;
+      const near=profileGuides().find(g=>g.axis==='h' && Math.abs(g.pos*zoom-cy)<=GUIDE_GRAB);
+      if(near){ ev.preventDefault(); startGuideMove('h', near); return; } }
     const ryR=ryEl.getBoundingClientRect();
     // preview only in the whitespace between ruler-right and canvas-left
     const preview=document.createElement('div'); preview.id='guide-preview-h';
@@ -2305,7 +2355,7 @@ function renderInspector(){
       ${(gr.traces||[]).map((t,i)=>`<div class="cond-box">
         <div class="row"><div><label class="fld">Sensor</label><select data-trace="${i}.sourceId">${srcOpts(t.sourceId,true)}</select></div></div>
         <div class="row tight"><div><label class="fld">${T('Lijntype','Line type')}</label><select data-trace="${i}.lineType">
-          ${['SOLID','DOTTED','DASHED'].map(o=>`<option ${t.lineType===o?'selected':''}>${o}</option>`).join('')}</select></div>
+          ${[['SOLID',T('Doorgetrokken','Solid')],['DOTTED',T('Gestippeld','Dotted')],['DASHED',T('Gestreept','Dashed')]].map(([o,lbl])=>`<option value="${o}" ${t.lineType===o?'selected':''}>${lbl}</option>`).join('')}</select></div>
           <div><label class="fld">${T('Dikte','Thickness')}</label><input data-trace="${i}.thickness" class="spin" type="number" min="1" max="10" value="${t.thickness??2}"></div></div>
         <div><label class="fld">${T('Kleur','Colour')}</label><div class="swatches">${profile().colors.map(c=>`<div class="swatch ${t.colorId===c.id?'on':''}" data-trace-color="${i}.${c.id}" style="background:${c.css}" title="${c.id}"></div>`).join('')}</div></div>
         <label class="toggle"><input type="checkbox" data-trace="${i}.continuous" ${t.continuous!==false?'checked':''}> ${T('Continu','Continuous')}</label>
@@ -2340,8 +2390,8 @@ function renderInspector(){
       <div class="hint" style="margin-bottom:6px">${T('Links de bron-sensor, rechts je eigen label-tekst. Leeg = de sensor-id wordt gebruikt.','Left is the source sensor, right is your own label text. Empty = the sensor id is used.')}</div>
       <div class="row tight"><div><label class="fld">${T('Naam-font','Name font')}</label><select data-legend="nameFontId" title="${T('Verplicht. Font voor de trace-namen in de legenda.','Required. Font for the trace names in the legend.')}">${fontOpts(lg.nameFontId)}</select></div>
         <div><label class="fld">${T('Waarde-font','Value font')}</label><select data-legend="valueFontId" title="${T('Optioneel. Font voor de actuele waarden. Leeg = geen waarden.','Optional. Font for the current values. Empty = no values.')}"><option value="" ${lg.valueFontId?'':'selected'}>${T('(geen)','(none)')}</option>${fontOpts(lg.valueFontId)}</select></div></div>
-      <div class="row tight"><div><label class="fld">${T('Waarden tonen','Show values')}</label><select data-legend="showValues" title="${T('NONE=geen, AUTO=automatisch, BESIDE=naast de naam, BELOW=onder de naam.','NONE=none, AUTO=automatic, BESIDE=next to name, BELOW=below name.')}">${['NONE','AUTO','BESIDE','BELOW'].map(o=>`<option ${(lg.showValues||'AUTO')===o?'selected':''}>${o}</option>`).join('')}</select></div>
-        <div><label class="fld">${T('Richting','Direction')}</label><select data-legend="direction" title="${T('Hoe de items gestapeld worden.','How the items are stacked.')}">${['AUTO','HORIZONTAL','VERTICAL'].map(o=>`<option ${(lg.direction||'AUTO')===o?'selected':''}>${o}</option>`).join('')}</select></div></div>
+      <div class="row tight"><div><label class="fld">${T('Waarden tonen','Show values')}</label><select data-legend="showValues" title="${T('Geen = niets, Automatisch, Naast = naast de naam, Eronder = onder de naam.','None, Auto, Beside the name, Below the name.')}">${[['NONE',T('Geen','None')],['AUTO',T('Automatisch','Auto')],['BESIDE',T('Naast','Beside')],['BELOW',T('Eronder','Below')]].map(([o,lbl])=>`<option value="${o}" ${(lg.showValues||'AUTO')===o?'selected':''}>${lbl}</option>`).join('')}</select></div>
+        <div><label class="fld">${T('Richting','Direction')}</label><select data-legend="direction" title="${T('Hoe de items gestapeld worden.','How the items are stacked.')}">${[['AUTO',T('Automatisch','Auto')],['HORIZONTAL',T('Horizontaal','Horizontal')],['VERTICAL',T('Verticaal','Vertical')]].map(([o,lbl])=>`<option value="${o}" ${(lg.direction||'AUTO')===o?'selected':''}>${lbl}</option>`).join('')}</select></div></div>
       <div class="row tight"><div><label class="fld">${T('Legenda X','Legend X')}</label><input data-legend="x" type="number" value="${attr(lg.x)}" placeholder="${T('auto (rechts)','auto (right)')}" title="${T('Linkerbovenhoek van de legenda. Leeg = rechts naast de grafiek.','Top-left of the legend. Empty = right of the graph.')}"></div>
         <div><label class="fld">${T('Legenda Y','Legend Y')}</label><input data-legend="y" type="number" value="${attr(lg.y)}" placeholder="${T('auto','auto')}" title="${T('Bovenkant van de legenda. Leeg = bovenkant grafiek.','Top of the legend. Empty = top of the graph.')}"></div></div>
       <div class="hint">${T('X en Y zijn pixelposities (getallen), geen tekst. Leeg laten = automatisch rechts van de grafiek.','X and Y are pixel positions (numbers), not text. Leave empty = automatically to the right of the graph.')}</div>
@@ -3428,7 +3478,7 @@ function genYAML(){
     if(rotateBool){
       // a template switch shows up in HA as a toggle automatically — no input_boolean / HA
       // config edit needed. The on_time branch (above) advances the screen while it's on.
-      out+=`switch:\n  - platform: template\n    name: "${esc(friendly)} Screen Rotation"\n    id: rotate_screens\n    icon: mdi:rotate-3d-variant\n    optimistic: true\n    restore_mode: RESTORE_DEFAULT_OFF\n\n`;
+      out+=`switch:\n  - platform: template\n    name: "${esc(friendly)} ${T('Scherm rotatie','Screen Rotation')}"\n    id: rotate_screens\n    icon: mdi:rotate-3d-variant\n    optimistic: true\n    restore_mode: RESTORE_DEFAULT_OFF\n\n`;
     }
   }
 
@@ -3496,6 +3546,7 @@ function genYAML(){
              generated:genStamp(_now), generatedISO:_now.toISOString() },
       device: dev,
       waitEnabled: p.waitEnabled!==false,
+      negative: !!p.negative,
       screens: scrs.map(s=>({ id:s.id, name:s.name||'', elements:reId(s.elements) })),
       waitElements: reId(p.waitElements||[])
     }))));
@@ -3794,9 +3845,28 @@ async function downloadFontsZip(){
 
 /* named font-weight <option> list for the gfonts weight dropdown */
 function weightOptions(sel){
-  return [[100,'Thin'],[200,'Extra-Light'],[300,'Light'],[400,'Regular'],[500,'Medium'],[600,'Semi-Bold'],[700,'Bold'],[800,'Extra-Bold'],[900,'Black']]
+  return [[100,T('Dun','Thin')],[200,T('Extra-Licht','Extra-Light')],[300,T('Licht','Light')],[400,T('Normaal','Regular')],[500,'Medium'],[600,T('Semi-Vet','Semi-Bold')],[700,T('Vet','Bold')],[800,T('Extra-Vet','Extra-Bold')],[900,T('Zwaar','Black')]]
     .map(([v,l])=>`<option value="${v}"${+sel===v?' selected':''}>${l} ${v}</option>`).join('');
 }
+
+/* file picker with a localized label — the native <input type=file> button shows
+   English "Choose File / No file chosen" that the browser won't let us translate, so we
+   hide it and drive it from a styled label + filename span (updated by a delegated
+   listener below). */
+function fileBtn(id, accept, {title='', extra='', compact=false}={}){
+  return `<label class="file-ctl${compact?' compact':''}"${title?` title="${title}"`:''}>`
+    + `<input type="file" id="${id}" accept="${accept}" class="file-hidden" ${extra}>`
+    + `<span class="file-pick">📁 ${T('Bestand kiezen','Choose file')}</span>`
+    + (compact?'':`<span class="file-name" id="${id}-name">${T('geen bestand','no file')}</span>`)
+    + `</label>`;
+}
+document.addEventListener('change', e=>{
+  const t=e.target;
+  if(t && t.classList && t.classList.contains('file-hidden')){
+    const n=document.getElementById(t.id+'-name');
+    if(n){ const f=t.files&&t.files[0]; n.textContent = f ? f.name : T('geen bestand','no file'); }
+  }
+});
 async function openFonts(){
   await refreshServerFonts();
   if(_fontsSnapshot===null) _fontsSnapshot=JSON.parse(JSON.stringify(profile().fonts));   // snapshot once per session
@@ -3819,7 +3889,7 @@ async function openFonts(){
     <td style="white-space:nowrap">${used.has(f.id)
       ? `<span class="tag" style="color:var(--ok)">${T('in gebruik','in use')}</span>`
       : `<span class="tag" style="color:var(--txt-faint)" title="${T('Geen element gebruikt dit font; het komt niet in de YAML.','No element uses this font; it is left out of the YAML.')}">${T('ongebruikt','unused')}</span>`}</td>
-    <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?`<input type="file" accept=".ttf,.otf,.woff,.pcf,.bdf" data-font="${i}" style="font-size:10px">`:''}</td>
+    <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?fileBtn('rowfont-'+i,'.ttf,.otf,.woff,.pcf,.bdf',{compact:true,extra:`data-font="${i}"`}):''}</td>
     <td style="white-space:nowrap"><button class="btn ghost sm" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}">✎</button>
         <button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">✕</button></td>
   </tr>`;
@@ -3840,8 +3910,8 @@ async function openFonts(){
        <label class="fld">${T('Font toevoegen','Add font')}</label>
        <div class="row tight">
          <div style="flex:2"><label class="fld">id</label><input id="nf-id" type="text" class="mono" placeholder="${T('bv. font_groot','e.g. font_large')}" title="${T('De id waarmee je dit font in elementen kiest en die in de YAML verschijnt. Letters, cijfers en _.','The id you select this font by in elements and that appears in the YAML. Letters, digits and _.')}"></div>
-         <div><label class="fld">${T('grootte (size)','size')}</label><input id="nf-size" class="spin" type="number" placeholder="size" value="30" style="width:90px" title="${T('Tekenhoogte in pixels (font size).','Glyph height in pixels (font size).')}"></div>
-         <div><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt.','Where the font comes from.')}"><option value="local">${T('Upload font','Upload Font')}</option><option value="mdi">MDI Fonts</option><option value="gfonts">Google Fonts</option><option value="web">${T('Web-fonts','Web Fonts')}</option></select></div>
+         <div style="flex:0 0 84px"><label class="fld">${T('grootte (size)','size')}</label><input id="nf-size" class="spin" type="number" placeholder="size" value="30" title="${T('Tekenhoogte in pixels (font size).','Glyph height in pixels (font size).')}"></div>
+         <div style="flex:0 0 152px"><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt.','Where the font comes from.')}"><option value="local">${T('Upload font','Upload Font')}</option><option value="mdi">MDI Fonts</option><option value="gfonts">Google Fonts</option><option value="web">${T('Web-fonts','Web Fonts')}</option></select></div>
        </div>
        <div class="row tight" id="nf-mdi" style="display:none">
          <div style="flex:2"><label class="fld">${T('pad (vast)','path (fixed)')}</label><input id="nf-mdi-file" type="text" class="mono" value="fonts/materialdesignicons-webfont.ttf" disabled style="opacity:.55" title="${T('De meegebundelde Material Design Icons-font; dit pad ligt vast.','The bundled Material Design Icons font; this path is fixed.')}"></div>
@@ -3850,13 +3920,13 @@ async function openFonts(){
        <div class="hint" id="nf-mdi-link" style="display:none;margin-top:4px">↗ <a href="https://pictogrammers.com/library/mdi/" target="_blank" rel="noopener">${T('Blader door de MDI icon-bibliotheek','Browse the MDI icon library')}</a> ${T('(opent in nieuw tabblad)','(opens in a new tab)')}</div>
        <div class="row tight" id="nf-gfonts">
          <div style="flex:2"><label class="fld">family</label><input id="nf-family" type="text" placeholder="${T('bv.','e.g.')} Roboto" title="${T('Exacte Google-Fonts-naam, bv. “Roboto”, “Noto Sans Display”.','Exact Google Fonts family name, e.g. “Roboto”, “Noto Sans Display”.')}"></div>
-         <div><label class="fld">weight</label><select id="nf-weight" style="width:auto" title="${T('Letterdikte — moet bestaan voor deze family.','Font weight — must exist for this family.')}">${weightOptions(400)}</select></div>
+         <div><label class="fld">${T('Gewicht','Weight')}</label><select id="nf-weight" style="width:auto" title="${T('Letterdikte — moet bestaan voor deze family.','Font weight — must exist for this family.')}">${weightOptions(400)}</select></div>
          <div><label class="fld">italic</label><input type="checkbox" id="nf-italic" style="margin-top:6px" title="${T('Cursieve variant (Google Fonts).','Italic variant (Google Fonts).')}"></div>
        </div>
        <div class="hint" id="nf-gfonts-link" style="margin-top:4px">↗ <a href="https://fonts.google.com/" target="_blank" rel="noopener">${T('Bekijk en kies een Google Font','Browse and pick a Google Font')}</a> ${T('(opent in nieuw tabblad)','(opens in a new tab)')}</div>
        <div class="row tight" id="nf-local" style="display:none">
          <div style="flex:2"><label class="fld">${T('pad','path')}</label><input id="nf-file" type="text" placeholder="${T('bv. fonts/mijn.ttf','e.g. fonts/my.ttf')}" title="${T('Pad zoals het in je ESPHome-config staat, relatief aan de config-map. Moet exact kloppen.','Path as referenced in your ESPHome config, relative to the config folder. Must match exactly.')}"></div>
-         <div><label class="fld">upload</label><input id="nf-upload" type="file" accept=".ttf,.otf,.woff,.pcf,.bdf" style="font-size:10px" title="${T('Upload het fontbestand zodat de preview klopt en het in fonts/ komt.','Upload the font file so the preview is accurate and it lands in fonts/.')}"></div>
+         <div><label class="fld">upload</label>${fileBtn('nf-upload','.ttf,.otf,.woff,.pcf,.bdf',{title:T('Upload het fontbestand zodat de preview klopt en het in fonts/ komt.','Upload the font file so the preview is accurate and it lands in fonts/.')})}</div>
        </div>
        <div class="hint" id="nf-local-note" style="display:none;margin-top:4px">${T('Toegestane formaten','Allowed formats')}: <span class="mono">.ttf .otf .woff .pcf .bdf</span></div>
        <div class="row tight" id="nf-web" style="display:none">
@@ -3983,21 +4053,21 @@ function editFont(i){
   openModal(T('Font bewerken','Edit font'),
     `<div class="row tight">
        <div style="flex:2"><label class="fld">id</label><input id="ef-id" class="mono" value="${attr(f.id)}" title="${T('Wordt overal bijgewerkt waar dit font gebruikt wordt.','Updated everywhere this font is used.')}"></div>
-       <div><label class="fld">${T('grootte','size')}</label><input id="ef-size" class="spin" type="number" min="6" value="${f.size||30}" style="width:90px" title="${T('Tekenhoogte in pixels.','Glyph height in pixels.')}"></div>
-       <div><label class="fld">Font Source</label><select id="ef-kind" title="${T('Lokaal font-bestand, Google Fonts of een download-URL.','Local font file, Google Fonts or a download URL.')}">
+       <div style="flex:0 0 84px"><label class="fld">${T('grootte','size')}</label><input id="ef-size" class="spin" type="number" min="6" value="${f.size||30}" title="${T('Tekenhoogte in pixels.','Glyph height in pixels.')}"></div>
+       <div style="flex:0 0 152px"><label class="fld">Font Source</label><select id="ef-kind" title="${T('Lokaal font-bestand, Google Fonts of een download-URL.','Local font file, Google Fonts or a download URL.')}">
          <option value="local" ${kind0==='local'?'selected':''}>${T('Upload font','Upload Font')}</option>
          <option value="gfonts" ${kind0==='gfonts'?'selected':''}>Google Fonts</option>
          <option value="web" ${kind0==='web'?'selected':''}>${T('Web-fonts','Web Fonts')}</option></select></div>
      </div>
      <div class="row tight" id="ef-gfonts" style="${kind0==='gfonts'?'':'display:none'}">
        <div style="flex:2"><label class="fld">family</label><input id="ef-family" value="${attr(f.family||'Roboto')}" title="${T('Exacte Google-Fonts-naam.','Exact Google Fonts family name.')}"></div>
-       <div><label class="fld">weight</label><select id="ef-weight" style="width:auto">${weightOptions(f.weight||400)}</select></div>
+       <div><label class="fld">${T('Gewicht','Weight')}</label><select id="ef-weight" style="width:auto">${weightOptions(f.weight||400)}</select></div>
        <div><label class="fld">italic</label><input type="checkbox" id="ef-italic"${f.italic?' checked':''} style="margin-top:6px" title="${T('Cursieve variant (Google Fonts).','Italic variant (Google Fonts).')}"></div>
      </div>
      <div class="hint" id="ef-gfonts-link" style="${kind0==='gfonts'?'':'display:none'};margin-top:4px">↗ <a href="https://fonts.google.com/" target="_blank" rel="noopener">${T('Bekijk Google Fonts','Browse Google Fonts')}</a></div>
      <div class="row tight" id="ef-local" style="${kind0==='local'?'':'display:none'}">
        <div style="flex:2"><label class="fld">${T('pad','path')}</label><input id="ef-file" value="${attr(f.file||'fonts/font.ttf')}" title="${T('Pad zoals in je ESPHome-config.','Path as in your ESPHome config.')}"></div>
-       <div><label class="fld">${T('vervang font','replace font')}</label><input id="ef-upload" type="file" accept=".ttf,.otf,.woff,.pcf,.bdf" style="font-size:10px"></div>
+       <div><label class="fld">${T('vervang font','replace font')}</label>${fileBtn('ef-upload','.ttf,.otf,.woff,.pcf,.bdf')}</div>
      </div>
      <div class="hint" id="ef-local-note" style="${kind0==='local'?'':'display:none'};margin-top:4px">${T('Toegestane formaten','Allowed formats')}: <span class="mono">.ttf .otf .woff .pcf .bdf</span></div>
      <div class="row tight" id="ef-web" style="${kind0==='web'?'':'display:none'}">
@@ -4125,13 +4195,6 @@ function openProfileSettings(){
      <hr style="border-color:var(--line);margin:14px 0">
      <button type="button" id="ps-yaml-toggle" style="background:none;border:none;cursor:pointer;font-weight:600;color:var(--accent);padding:0;font-size:13px">▸ ${T('Gegenereerde YAML-blokken','Generated YAML Blocks')}</button>
      <div id="ps-yaml-body" style="display:none;margin-top:8px">
-         <label class="toggle"><input type="checkbox" id="ps-o-refresh" ${o.refresh?'checked':''}> ${T('Refresh-logica (esphome on_boot + script + time)','Refresh logic (esphome on_boot + script + time)')}</label>
-         <div class="row tight" style="margin:4px 0 8px">
-           <div><label class="fld">${T('Boot-prioriteit','Boot priority')}</label><input id="ps-o-prio" value="${attr(o.bootPriority)}" title="${T('ESPHome on_boot prioriteit. Hoger = vroeger. 600 draait ná WiFi/API (aanrader voor displays).','ESPHome on_boot priority. Higher = earlier. 600 runs after WiFi/API (recommended for displays).')}"></div>
-           <div><label class="fld">${T('Boot-vertraging','Boot delay')}</label><input id="ps-o-delay" value="${attr(o.bootDelay)}" title="${T('Wachttijd na boot vóór de eerste refresh, bv. “2s”. Geeft sensoren tijd om binnen te komen.','Wait after boot before the first refresh, e.g. “2s”. Gives sensors time to arrive.')}"></div>
-           <div><label class="fld">${T('Wacht-timeout','Wait timeout')}</label><input id="ps-o-timeout" value="${attr(o.waitTimeout)}" title="${T('Maximale wachttijd op data vóór het scherm tóch tekent, bv. “30s”.','Maximum time to wait for data before drawing anyway, e.g. “30s”.')}"></div>
-           <div><label class="fld">${T('Interval (min)','Interval (min)')}</label><input id="ps-o-interval" type="number" min="1" value="${o.timeInterval}" style="width:70px" title="${T('Hoe vaak (in minuten) het display ververst via de time-trigger.','How often (in minutes) the display refreshes via the time trigger.')}"></div>
-         </div>
          <div style="margin:6px 0"><label class="fld">${T('Schermbediening in HA (bij ≥2 schermen)','Screen controls in HA (with ≥2 screens)')}</label>
            <select id="ps-o-screenctrl" style="width:auto">
              <option value="both"${(o.screenControl||'both')==='both'?' selected':''}>${T('Dropdown + knoppen','Dropdown + buttons')}</option>
@@ -4142,6 +4205,13 @@ function openProfileSettings(){
            <div class="hint" style="margin:2px 0 6px">${T('Hoe je in HA tussen schermen wisselt: dropdown, losse knoppen per scherm, beide, of geen (geen HA-bediening — je stuurt zelf).','How you switch screens in HA: a dropdown, one button per screen, both, or none (no HA controls — you drive it yourself).')}</div>
            <label class="toggle"><input type="checkbox" id="ps-o-rotbool" ${o.rotateBoolean?'checked':''}> ${T('Schermrotatie (HA-schakelaar)','Screen rotation (HA switch)')}</label>
            <div class="hint" style="margin:2px 0 0">${T('Voegt een schakelaar toe die ESPHome zelf aan HA toont (geen HA-config nodig): staat hij aan, dan schuift het display elk interval naar het volgende scherm. Vereist ≥2 schermen.','Adds a switch that ESPHome exposes to HA itself (no HA-config edit needed): when it is on, the display advances to the next screen each interval. Needs ≥2 screens.')}</div>
+         </div>
+         <label class="toggle"><input type="checkbox" id="ps-o-refresh" ${o.refresh?'checked':''}> ${T('Refresh-logica (esphome on_boot + script + time)','Refresh logic (esphome on_boot + script + time)')}</label>
+         <div class="row tight" style="margin:4px 0 8px">
+           <div><label class="fld">${T('Boot-prioriteit','Boot priority')}</label><input id="ps-o-prio" value="${attr(o.bootPriority)}" title="${T('ESPHome on_boot prioriteit. Hoger = vroeger. 600 draait ná WiFi/API (aanrader voor displays).','ESPHome on_boot priority. Higher = earlier. 600 runs after WiFi/API (recommended for displays).')}"></div>
+           <div><label class="fld">${T('Boot-vertraging','Boot delay')}</label><input id="ps-o-delay" value="${attr(o.bootDelay)}" title="${T('Wachttijd na boot vóór de eerste refresh, bv. “2s”. Geeft sensoren tijd om binnen te komen.','Wait after boot before the first refresh, e.g. “2s”. Gives sensors time to arrive.')}"></div>
+           <div><label class="fld">${T('Wacht-timeout','Wait timeout')}</label><input id="ps-o-timeout" value="${attr(o.waitTimeout)}" title="${T('Maximale wachttijd op data vóór het scherm tóch tekent, bv. “30s”.','Maximum time to wait for data before drawing anyway, e.g. “30s”.')}"></div>
+           <div><label class="fld">${T('Interval (min)','Interval (min)')}</label><input id="ps-o-interval" type="number" min="1" value="${o.timeInterval}" style="width:70px" title="${T('Hoe vaak (in minuten) het display ververst via de time-trigger.','How often (in minutes) the display refreshes via the time trigger.')}"></div>
          </div>
          <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0">
            <label class="toggle"><input type="checkbox" id="ps-o-globals" ${o.globals?'checked':''}> globals</label>
@@ -4559,6 +4629,7 @@ function doImport(textArg){
     // full round-trip: restore the editable layout if this YAML came from the studio
     if(snap.device) p.device=snap.device;
     if(typeof snap.waitEnabled==='boolean') p.waitEnabled=snap.waitEnabled;
+    if(typeof snap.negative==='boolean') p.negative=snap.negative;
     if(Array.isArray(snap.screens) && snap.screens.length){
       p.screens=snap.screens.map((s,i)=>({
         id: s.id || (i===0?'scr_main':'scr_'+(i+1)),
@@ -4574,6 +4645,8 @@ function doImport(textArg){
   } else if(drawn.length){
     const s0=ensureScreens(p)[0]; s0.elements=(s0.elements||[]).concat(drawn);
   }
+  // best-effort: a full-screen it.fill(...) in the lambda means a negative (inverted) design
+  if(!snap && /it\.fill\s*\(/.test(text)) p.negative=true;
   if(snap || drawn.length){
     editScreen = ensureScreens(p)[0].id;
     selectedIds=new Set(); selectedId=null; applyZoom();   // device may have changed → resize the stage
@@ -4973,7 +5046,10 @@ function setupPaletteDnD(){
 function wire(){
   setupPaletteDnD();
   setupContextMenu();
-  $('#profile-select').onchange=e=>{ state.current=e.target.value; selectedId=null; persist(); boot(); };
+  $('#profile-select').onchange=e=>{
+    // close the Generate-YAML drawer on a profile switch (its code is for the old profile)
+    const d=$('#code-drawer'); if(d){ d.classList.remove('open'); document.body.classList.remove('code-open'); }
+    state.current=e.target.value; selectedId=null; persist(); boot(); };
   $('#profile-new').onclick=()=>{ const p=seedProfile(T('Nieuw profiel ','New profile ')+(state.profiles.length+1)); p.elements=[]; state.profiles.push(p); state.current=p.id; persist(); boot(); };
   $('#profile-settings').onclick=openProfileSettings;
 
