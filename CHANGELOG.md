@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.24 — Screen button name & Dutch labels
+
+- The generated per-screen **`button`** is now named *`<device> <screen>`* (e.g. *Scherm 1*)
+  instead of *`<device> Show <screen>`* — the English "Show" is dropped so the Dutch name
+  reads naturally.
+- Font Editor: the **Italic** label is now *Cursief* in Dutch, and the *grootte (size)*
+  label is just *grootte*.
+
 ## 3.9.23 — Fixes & Dutch polish
 
 - **Ruler guides are easy to move again.** Clicking on (or right next to) an existing guide

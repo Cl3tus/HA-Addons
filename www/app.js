@@ -3470,7 +3470,7 @@ function genYAML(){
       out+=`button:\n`;
       scrNames.forEach((nm)=>{
         // press → set the select, which fires on_value (redraws the display)
-        out+=`  - platform: template\n    name: "${esc(friendly)} Show ${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: screen_select\n            option: "${esc(nm)}"\n`;
+        out+=`  - platform: template\n    name: "${esc(friendly)} ${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: screen_select\n            option: "${esc(nm)}"\n`;
       });
       out+='\n';
     }
@@ -3910,7 +3910,7 @@ async function openFonts(){
        <label class="fld">${T('Font toevoegen','Add font')}</label>
        <div class="row tight">
          <div style="flex:2"><label class="fld">id</label><input id="nf-id" type="text" class="mono" placeholder="${T('bv. font_groot','e.g. font_large')}" title="${T('De id waarmee je dit font in elementen kiest en die in de YAML verschijnt. Letters, cijfers en _.','The id you select this font by in elements and that appears in the YAML. Letters, digits and _.')}"></div>
-         <div style="flex:0 0 84px"><label class="fld">${T('grootte (size)','size')}</label><input id="nf-size" class="spin" type="number" placeholder="size" value="30" title="${T('Tekenhoogte in pixels (font size).','Glyph height in pixels (font size).')}"></div>
+         <div style="flex:0 0 84px"><label class="fld">${T('grootte','size')}</label><input id="nf-size" class="spin" type="number" placeholder="size" value="30" title="${T('Tekenhoogte in pixels (font size).','Glyph height in pixels (font size).')}"></div>
          <div style="flex:0 0 152px"><label class="fld">Font Source</label><select id="nf-kind" title="${T('Waar het font vandaan komt.','Where the font comes from.')}"><option value="local">${T('Upload font','Upload Font')}</option><option value="mdi">MDI Fonts</option><option value="gfonts">Google Fonts</option><option value="web">${T('Web-fonts','Web Fonts')}</option></select></div>
        </div>
        <div class="row tight" id="nf-mdi" style="display:none">
@@ -3921,7 +3921,7 @@ async function openFonts(){
        <div class="row tight" id="nf-gfonts">
          <div style="flex:2"><label class="fld">family</label><input id="nf-family" type="text" placeholder="${T('bv.','e.g.')} Roboto" title="${T('Exacte Google-Fonts-naam, bv. “Roboto”, “Noto Sans Display”.','Exact Google Fonts family name, e.g. “Roboto”, “Noto Sans Display”.')}"></div>
          <div><label class="fld">${T('Gewicht','Weight')}</label><select id="nf-weight" style="width:auto" title="${T('Letterdikte — moet bestaan voor deze family.','Font weight — must exist for this family.')}">${weightOptions(400)}</select></div>
-         <div><label class="fld">italic</label><input type="checkbox" id="nf-italic" style="margin-top:6px" title="${T('Cursieve variant (Google Fonts).','Italic variant (Google Fonts).')}"></div>
+         <div><label class="fld">${T('Cursief','Italic')}</label><input type="checkbox" id="nf-italic" style="margin-top:6px" title="${T('Cursieve variant (Google Fonts).','Italic variant (Google Fonts).')}"></div>
        </div>
        <div class="hint" id="nf-gfonts-link" style="margin-top:4px">↗ <a href="https://fonts.google.com/" target="_blank" rel="noopener">${T('Bekijk en kies een Google Font','Browse and pick a Google Font')}</a> ${T('(opent in nieuw tabblad)','(opens in a new tab)')}</div>
        <div class="row tight" id="nf-local" style="display:none">
@@ -4062,7 +4062,7 @@ function editFont(i){
      <div class="row tight" id="ef-gfonts" style="${kind0==='gfonts'?'':'display:none'}">
        <div style="flex:2"><label class="fld">family</label><input id="ef-family" value="${attr(f.family||'Roboto')}" title="${T('Exacte Google-Fonts-naam.','Exact Google Fonts family name.')}"></div>
        <div><label class="fld">${T('Gewicht','Weight')}</label><select id="ef-weight" style="width:auto">${weightOptions(f.weight||400)}</select></div>
-       <div><label class="fld">italic</label><input type="checkbox" id="ef-italic"${f.italic?' checked':''} style="margin-top:6px" title="${T('Cursieve variant (Google Fonts).','Italic variant (Google Fonts).')}"></div>
+       <div><label class="fld">${T('Cursief','Italic')}</label><input type="checkbox" id="ef-italic"${f.italic?' checked':''} style="margin-top:6px" title="${T('Cursieve variant (Google Fonts).','Italic variant (Google Fonts).')}"></div>
      </div>
      <div class="hint" id="ef-gfonts-link" style="${kind0==='gfonts'?'':'display:none'};margin-top:4px">↗ <a href="https://fonts.google.com/" target="_blank" rel="noopener">${T('Bekijk Google Fonts','Browse Google Fonts')}</a></div>
      <div class="row tight" id="ef-local" style="${kind0==='local'?'':'display:none'}">
