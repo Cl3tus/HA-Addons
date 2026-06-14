@@ -2357,7 +2357,7 @@ function renderInspector(){
         <div class="row tight"><div><label class="fld">${T('Lijntype','Line type')}</label><select data-trace="${i}.lineType">
           ${[['SOLID',T('Doorgetrokken','Solid')],['DOTTED',T('Gestippeld','Dotted')],['DASHED',T('Gestreept','Dashed')]].map(([o,lbl])=>`<option value="${o}" ${t.lineType===o?'selected':''}>${lbl}</option>`).join('')}</select></div>
           <div><label class="fld">${T('Dikte','Thickness')}</label><input data-trace="${i}.thickness" class="spin" type="number" min="1" max="10" value="${t.thickness??2}"></div></div>
-        <div><label class="fld">${T('Kleur','Colour')}</label><div class="swatches">${profile().colors.map(c=>`<div class="swatch ${t.colorId===c.id?'on':''}" data-trace-color="${i}.${c.id}" style="background:${c.css}" title="${c.id}"></div>`).join('')}</div></div>
+        <div><label class="fld">${T('Kleur','Colour')}</label><div class="swatches">${profile().colors.map(c=>`<div class="swatch ${c.id===negColorId(t.colorId)?'on':''}" data-trace-color="${i}.${c.id}" style="background:${c.css}" title="${c.id}"></div>`).join('')}</div></div>
         <label class="toggle"><input type="checkbox" data-trace="${i}.continuous" ${t.continuous!==false?'checked':''}> ${T('Continu','Continuous')}</label>
         ${(gr.traces.length>1)?`<button class="btn ghost sm danger" data-trace-del="${i}">${T('Trace verwijderen','Remove trace')}</button>`:''}
       </div>`).join('')}
@@ -2418,7 +2418,10 @@ function anchorGrid(el){
 }
 function fontOpts(sel){ return profile().fonts.map(f=>`<option value="${f.id}" ${f.id===sel?'selected':''}>${f.id} (${f.size}px)</option>`).join(''); }
 function colorSwatches(sel,key){
-  return '<div class="swatches">'+profile().colors.map(c=>`<div class="swatch ${c.id===sel?'on':''}" data-color="${c.id}" data-key="${key}" style="background:${c.css}" title="${c.id}"></div>`).join('')+'</div>';
+  // in negative mode the canvas swaps text/bg, so present + store colours in that swapped
+  // space too (negColorId is a no-op when negative is off) → the highlighted swatch matches
+  // what you actually see, and clicking white gives white.
+  return '<div class="swatches">'+profile().colors.map(c=>`<div class="swatch ${c.id===negColorId(sel)?'on':''}" data-color="${c.id}" data-key="${key}" style="background:${c.css}" title="${c.id}"></div>`).join('')+'</div>';
 }
 function srcOpts(sel,allowEmpty){
   let o = allowEmpty?`<option value="">— kies —</option>`:'';
@@ -2638,7 +2641,7 @@ function branchEditor(el,key,title,cls){
   let h=`<div class="branch ${cls}"><h5>${title}</h5>`;
   if(el.type==='text') h+=`<div class="row"><div><label class="fld">${T('Tekst (override)','Text (override)')}</label><input data-br="${key}.text" type="text" value="${attr(b.text)}" placeholder="${T('(leeg = waarde uit bron)','(empty = value from source)')}"></div></div>`;
   if(el.type==='icon') h+=`<div class="row" style="align-items:center"><div style="flex:none">${b.iconName?`<span class="mdi mdi-${b.iconName}" style="font-size:26px"></span>`:`<span class="hint">${T('geen','none')}</span>`}</div><div><button class="btn sm" data-pickbranch="${key}">${T('Icoon…','Icon…')}</button></div></div>`;
-  h+=`<div class="row"><div><label class="fld">${T('Kleur (override)','Colour (override)')}</label><select data-br="${key}.colorId"><option value="">${T('— geen —','— none —')}</option>${profile().colors.map(c=>`<option value="${c.id}" ${b.colorId===c.id?'selected':''}>${c.id}</option>`).join('')}</select></div></div>`;
+  h+=`<div class="row"><div><label class="fld">${T('Kleur (override)','Colour (override)')}</label><select data-br="${key}.colorId"><option value="">${T('— geen —','— none —')}</option>${profile().colors.map(c=>`<option value="${c.id}" ${c.id===negColorId(b.colorId)?'selected':''}>${c.id}</option>`).join('')}</select></div></div>`;
   h+=`<label class="toggle"><input type="checkbox" data-br="${key}.visible" ${b.visible!==false?'checked':''}> ${T('Zichtbaar','Visible')}</label>`;
   return h+`</div>`;
 }
@@ -2715,7 +2718,7 @@ function bindInspector(host, el){
     el.anchor=b.dataset.anchor; afterChange();
   }));
   // color swatches
-  host.querySelectorAll('.swatch[data-color]').forEach(sw=>sw.addEventListener('click',()=>{ pushUndo(); el[sw.dataset.key]=sw.dataset.color; afterChange(); }));
+  host.querySelectorAll('.swatch[data-color]').forEach(sw=>sw.addEventListener('click',()=>{ pushUndo(); el[sw.dataset.key]=negColorId(sw.dataset.color); afterChange(); }));
   // source
   host.querySelectorAll('[data-src]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.source=el.source||{}; el.source[inp.dataset.src]=inp.value; afterChange(); }));
   // format
@@ -2744,7 +2747,7 @@ function bindInspector(host, el){
   host.querySelectorAll('[data-ta]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.transformArg=el.transformArg||{}; el.transformArg[inp.dataset.ta]= inp.type==='number'?(+inp.value):inp.value; afterChange(); }));
   // condition
   host.querySelectorAll('[data-cd]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.condition=el.condition||{}; const k=inp.dataset.cd; el.condition[k]= inp.type==='checkbox'?inp.checked:inp.value; afterChange(); }));
-  host.querySelectorAll('[data-br]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); const [bk,prop]=inp.dataset.br.split('.'); el.condition[bk]=el.condition[bk]||{}; el.condition[bk][prop]= inp.type==='checkbox'?inp.checked:inp.value; afterChange(); }));
+  host.querySelectorAll('[data-br]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); const [bk,prop]=inp.dataset.br.split('.'); el.condition[bk]=el.condition[bk]||{}; el.condition[bk][prop]= inp.type==='checkbox'?inp.checked:(prop==='colorId'?negColorId(inp.value):inp.value); afterChange(); }));
   // icon pickers
   const pi=host.querySelector('#pick-icon'); if(pi) pi.addEventListener('click',()=>openIconPicker(sel=>{ pushUndo(); el.iconName=sel.name; el.iconHex=sel.hex; afterChange(); }));
   host.querySelectorAll('[data-pickbranch]').forEach(b=>b.addEventListener('click',()=>openIconPicker(sel=>{ pushUndo(); const k=b.dataset.pickbranch; el.condition[k]=el.condition[k]||{}; el.condition[k].iconName=sel.name; el.condition[k].iconHex=sel.hex; afterChange(); })));
@@ -2767,7 +2770,7 @@ function bindInspector(host, el){
   host.querySelectorAll('[data-legend]').forEach(inp=>inp.addEventListener('change',()=>{ pushUndo(); el.graph.legend=el.graph.legend||{}; const k=inp.dataset.legend; el.graph.legend[k]= inp.type==='checkbox'?inp.checked:(inp.type==='number'?(inp.value===''?'':+inp.value):inp.value); afterChange(); }));
   host.querySelectorAll('[data-trace-color]').forEach(sw=>sw.addEventListener('click',()=>{ pushUndo();
     const dot=sw.dataset.traceColor.indexOf('.'); const i=+sw.dataset.traceColor.slice(0,dot), cid=sw.dataset.traceColor.slice(dot+1);
-    el.graph.traces[i].colorId=cid; afterChange(); }));
+    el.graph.traces[i].colorId=negColorId(cid); afterChange(); }));
   host.querySelectorAll('[data-trace-del]').forEach(b=>b.addEventListener('click',()=>{ pushUndo(); el.graph.traces.splice(+b.dataset.traceDel,1); afterChange(); }));
   const ta=host.querySelector('#trace-add'); if(ta) ta.addEventListener('click',()=>{ pushUndo(); el.graph.traces.push({sourceId:'', lineType:'SOLID', thickness:2, continuous:true, colorId:'color_text'}); afterChange(); });
 }

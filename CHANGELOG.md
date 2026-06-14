@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.31 — Negative-mode colour swatches
+
+- In **negative mode** the inspector colour swatches now match what you actually see: the
+  highlighted swatch reflects the on-screen colour, and picking *white* gives white text
+  (the editor was showing/storing the un-swapped colour, so it looked inverted). Applies to
+  every element, graph traces and condition colour overrides. The generated YAML is
+  unchanged — only the editor display/picking was corrected.
+
 ## 3.9.30 — Screenshots
 
 - All documentation screenshots are in place: the **bilingual wiki** now embeds images on
