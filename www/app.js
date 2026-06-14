@@ -3328,9 +3328,11 @@ function genYAML(){
     const coreAct = i => rotateBool
       ? `${i}- if:\n${i}    condition:\n${i}      lambda: 'return id(rotate_screens).state;'\n${i}    then:\n${i}      - select.next:\n${i}          id: screen_select\n${i}          cycle: true\n${i}      - component.update: eink_display\n${i}    else:\n${refreshIf(i+'      ')}`
       : refreshIf(i);
-    // Auto Refresh switch off (= Static mode) → do nothing (frozen). On → rotate/refresh.
+    // Decide the mode from Static (which freezes) — robust: "not Static" covers Auto Refresh
+    // and any all-off edge state, so the interval always does something sensible. Static on →
+    // skip entirely (the screen stays frozen). Off → Rotation advances, else data-driven refresh.
     const i='          ';
-    out+=`${i}- if:\n${i}    condition:\n${i}      lambda: 'return id(refresh_screen).state;'\n${i}    then:\n`;
+    out+=`${i}- if:\n${i}    condition:\n${i}      lambda: 'return !id(static_display).state;'\n${i}    then:\n`;
     out+=coreAct(i+'      ');
     out+='\n';
   }

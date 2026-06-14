@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.37 — Time block: derive mode from Static
+
+- **Fixed the interval doing nothing.** The `on_time` now keys off **Static** (`!static_display`)
+  instead of `refresh_screen.state`, so Auto Refresh and Rotation actually run again (and any
+  odd all-off state falls back to refreshing). Static still freezes the screen; Rotation
+  advances + redraws; otherwise it refreshes when there's new sensor data.
+
 ## 3.9.36 — Mode-switch interlock fix (no loop)
 
 - **Fixed the three mode switches.** Every interlock action is now guarded by an `if` on the
