@@ -4,6 +4,17 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.34 — Static Display switch & rotation fix
+
+- **New "Static Display" HA switch** (Profile settings → Generated YAML Blocks, needs refresh
+  logic). When **on**, the screen freezes (no refresh); when **off**, the display refreshes
+  **every interval — even without new sensor data**. Generated as a template `switch`
+  (`static_display`), exposed to HA like the rotation switch.
+- **Fixed screen rotation.** The rotation branch now advances the select *and* forces a
+  redraw (`component.update`) instead of relying on the select's guarded `on_value`, so
+  rotating actually changes the screen each interval. Rotation + static now share one
+  `switch:` block.
+
 ## 3.9.33 — Escape closes modals
 
 - **Escape now cancels/closes any popup** (the × or Cancel button) — pairs with Enter for the

@@ -3156,6 +3156,7 @@ function outputDefaults(){
     bootPriority:'600.0', bootDelay:'2s', waitTimeout:'30s', timeInterval:15,
     screenControl:'both',                           // HA screen-picker style with ≥2 screens: 'select' | 'buttons' | 'both'
     rotateBoolean:false,                            // also generate an HA input_boolean + rotation (needs ≥2 screens)
+    staticDisplay:false,                            // generate an HA "Static Display" switch: on = freeze, off = refresh every interval
     globals:true,
     spi:false, spiClk:'GPIO13', spiMosi:'GPIO14',
     fonts:true, colors:true, sensors:true, textSensors:true,
@@ -3294,7 +3295,9 @@ function genYAML(){
   // machinery (branched display lambda, HA select/buttons/rotation).
   const scrs = ensureScreens(p);
   const multi = multiScreenOn(p) && scrs.length>=2;
-  const rotateBool = multi && !!o.rotateBoolean;   // HA input_boolean drives screen rotation
+  const rotateBool = multi && !!o.rotateBoolean;   // HA template switch drives screen rotation
+  const staticOn = !!o.refresh && !!o.staticDisplay;  // HA "Static Display" switch: on = freeze, off = refresh every interval
+  const switchEntries = [];                        // collected template switches (rotation + static) → one switch: block
   // HA-facing option labels for the select/buttons, de-duplicated (ESPHome needs a
   // unique label per option; two screens may share a user-typed name).
   const scrNames = (()=>{ const seen={}; return scrs.map(s=>{ let nm=(s.name||'').trim()||T('Scherm','Screen');
@@ -3316,13 +3319,26 @@ function genYAML(){
   if(o.refresh){
     out+=`script:\n  - id: update_screen\n    then:\n      - lambda: 'id(data_updated) = false;'\n      - component.update: eink_display\n      - lambda: 'id(recorded_display_refresh) += 1;'\n      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'\n\n`;
     out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n`;
-    if(rotateBool){
-      // rotation switch on (the HA-exposed switch) → advance the screen select each interval;
-      // off → behave normally (refresh only when new sensor data arrived)
-      out+=`          - if:\n              condition:\n                lambda: 'return id(rotate_screens).state;'\n              then:\n                - select.next:\n                    id: screen_select\n                    cycle: true\n              else:\n                - if:\n                    condition:\n                      lambda: 'return id(data_updated) == true;'\n                    then:\n                      - script.execute: update_screen\n\n`;
+    // the interval action. `guarded` = only refresh when new sensor data arrived (legacy
+    // behaviour); when the Static Display switch is generated, "off" means refresh every
+    // interval regardless of data, so it's unguarded.
+    const refreshAct = (i, guarded) => guarded
+      ? `${i}- if:\n${i}    condition:\n${i}      lambda: 'return id(data_updated) == true;'\n${i}    then:\n${i}      - script.execute: update_screen\n`
+      : `${i}- script.execute: update_screen\n`;
+    // rotation on → advance the select AND force a redraw (don't rely on on_value, which is
+    // guarded by initial_data_received); rotation off → normal refresh.
+    const coreAct = (i, guarded) => rotateBool
+      ? `${i}- if:\n${i}    condition:\n${i}      lambda: 'return id(rotate_screens).state;'\n${i}    then:\n${i}      - select.next:\n${i}          id: screen_select\n${i}          cycle: true\n${i}      - component.update: eink_display\n${i}    else:\n${refreshAct(i+'      ', guarded)}`
+      : refreshAct(i, guarded);
+    if(staticOn){
+      // Static Display switch on → do nothing (freeze); off → refresh every interval regardless of data
+      const i='          ';
+      out+=`${i}- if:\n${i}    condition:\n${i}      lambda: 'return !id(static_display).state;'\n${i}    then:\n`;
+      out+=coreAct(i+'      ', false);
     } else {
-      out+=`          - if:\n              condition:\n                lambda: 'return id(data_updated) == true;'\n              then:\n                - script.execute: update_screen\n\n`;
+      out+=coreAct('          ', true);
     }
+    out+='\n';
   }
 
   // SPI bus (board-specific pins)
@@ -3461,9 +3477,17 @@ function genYAML(){
     if(rotateBool){
       // a template switch shows up in HA as a toggle automatically — no input_boolean / HA
       // config edit needed. The on_time branch (above) advances the screen while it's on.
-      out+=`switch:\n  - platform: template\n    name: "${esc(friendly)} ${T('Scherm rotatie','Screen Rotation')}"\n    id: rotate_screens\n    icon: mdi:rotate-3d-variant\n    optimistic: true\n    restore_mode: RESTORE_DEFAULT_OFF\n\n`;
+      switchEntries.push(`  - platform: template\n    name: "${esc(friendly)} ${T('Scherm rotatie','Screen Rotation')}"\n    id: rotate_screens\n    icon: mdi:rotate-3d-variant\n    optimistic: true\n    restore_mode: RESTORE_DEFAULT_OFF\n`);
     }
   }
+
+  // Static Display switch — a template switch HA shows as a toggle (no HA config edit). On =
+  // freeze the screen (no refresh), off = refresh every interval (handled in the on_time above).
+  if(staticOn){
+    switchEntries.push(`  - platform: template\n    name: "${esc(friendly)} ${T('Statisch Display','Static Display')}"\n    id: static_display\n    icon: mdi:image-lock-outline\n    optimistic: true\n    restore_mode: RESTORE_DEFAULT_OFF\n`);
+  }
+  // emit the collected template switches as one switch: block (a duplicate top-level key is invalid YAML)
+  if(switchEntries.length){ out+=`switch:\n${switchEntries.join('')}\n`; }
 
   // display + lambda
   out+=`display:\n  - platform: waveshare_epaper\n    id: eink_display\n    model: ${d.model}\n    rotation: ${d.rotation}°\n`;
@@ -4228,6 +4252,8 @@ function openProfileSettings(){
            <div><label class="fld">${T('Wacht-timeout','Wait timeout')}</label><input id="ps-o-timeout" value="${attr(o.waitTimeout)}" title="${T('Maximale wachttijd op data vóór het scherm tóch tekent, bv. “30s”.','Maximum time to wait for data before drawing anyway, e.g. “30s”.')}"></div>
            <div><label class="fld">${T('Interval (min)','Interval (min)')}</label><input id="ps-o-interval" type="number" min="1" value="${o.timeInterval}" style="width:70px" title="${T('Hoe vaak (in minuten) het display ververst via de time-trigger.','How often (in minutes) the display refreshes via the time trigger.')}"></div>
          </div>
+         <label class="toggle"><input type="checkbox" id="ps-o-static" ${o.staticDisplay?'checked':''}> ${T('Statisch Display (HA-schakelaar)','Static Display (HA switch)')}</label>
+         <div class="hint" style="margin:2px 0 8px">${T('Voegt een HA-schakelaar toe: staat hij aan, dan blijft het scherm staan (geen refresh). Staat hij uit, dan ververst het display elk interval — ook zonder nieuwe sensordata. Vereist refresh-logica.','Adds an HA switch: when on, the screen stays put (no refresh). When off, the display refreshes every interval — even without new sensor data. Requires refresh logic.')}</div>
          <div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0">
            <label class="toggle"><input type="checkbox" id="ps-o-globals" ${o.globals?'checked':''}> globals</label>
            <label class="toggle"><input type="checkbox" id="ps-o-fonts" ${o.fonts?'checked':''}> font</label>
@@ -4271,6 +4297,7 @@ function openProfileSettings(){
         timeInterval:+$('#ps-o-interval').value||15,
         screenControl:$('#ps-o-screenctrl').value,
         rotateBoolean:$('#ps-o-rotbool').checked,
+        staticDisplay:$('#ps-o-static').checked,
         globals:$('#ps-o-globals').checked,
         fonts:$('#ps-o-fonts').checked, colors:$('#ps-o-colors').checked,
         sensors:$('#ps-o-sensors').checked, textSensors:$('#ps-o-textsensors').checked,
