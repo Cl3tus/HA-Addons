@@ -4,10 +4,10 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
-## 3.9.28 — Upload button height (exact)
+## 3.9.29 — Upload button height (exact)
 
-- The font-upload button now copies the **exact pixel height** of the adjacent text input
-  at runtime, so it lines up perfectly regardless of font/emoji rendering.
+- The font-upload button now copies the **exact (sub-pixel) height** of the adjacent text
+  input at runtime, so it lines up perfectly regardless of font/emoji rendering.
 
 ## 3.9.27 — Font Editor polish
 

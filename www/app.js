@@ -3871,7 +3871,7 @@ document.addEventListener('change', e=>{
    otherwise makes the line box a px or two taller than the adjacent path field) */
 function syncUploadHeights(){
   const ref=document.querySelector('#modal-body input[type=text], #modal-body input[type=number]');
-  const h=ref && ref.offsetHeight; if(!h) return;
+  const h=ref && ref.getBoundingClientRect().height; if(!h) return;   // sub-pixel exact (offsetHeight rounds)
   document.querySelectorAll('#modal-body .file-ctl:not(.compact) .file-pick').forEach(b=>{
     b.style.boxSizing='border-box'; b.style.height=h+'px';
     b.style.display='inline-flex'; b.style.alignItems='center';
