@@ -3321,8 +3321,8 @@ function genYAML(){
   if(o.refresh){
     out+=`script:\n  - id: update_screen\n    then:\n      - lambda: 'id(data_updated) = false;'\n      - component.update: eink_display\n      - lambda: 'id(recorded_display_refresh) += 1;'\n      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'\n\n`;
     out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n`;
-    // refresh only when new sensor data arrived (skip this round otherwise).
-    const refreshIf = i => `${i}- if:\n${i}    condition:\n${i}      lambda: 'return id(data_updated) == true;'\n${i}    then:\n${i}      - script.execute: update_screen\n`;
+    // refresh only when new sensor data arrived (skip this round otherwise), with a log on both.
+    const refreshIf = i => `${i}- if:\n${i}    condition:\n${i}      lambda: 'return id(data_updated) == true;'\n${i}    then:\n${i}      - logger.log: "E-ink: new sensor data — refreshing display"\n${i}      - script.execute: update_screen\n${i}    else:\n${i}      - logger.log: "E-ink: no new sensor data — refresh skipped"\n`;
     // rotation on → advance the select AND force a redraw (don't rely on the select's on_value,
     // which is guarded by initial_data_received); rotation off → the data-guarded refresh.
     const coreAct = i => rotateBool
@@ -3475,27 +3475,41 @@ function genYAML(){
   }
 
   // --- interlocked HA "display mode" switches (generated with the refresh logic) ---
-  // Exactly one is always on. Turning one on turns the others off; turning Auto Refresh or
-  // Static off flips to the other, so they're never all off. Rotation implies Auto Refresh.
+  // Exactly one is always on. Every cross-action is guarded by an `if` on the target's state
+  // so an optimistic switch never re-fires its own trigger → no infinite turn_on/turn_off loop.
+  //   Auto Refresh on → Static off (rotation may stay).   off → rotation off + Static on.
+  //   Static on       → Refresh off + Rotation off.        off → Refresh on.
+  //   Rotation on     → Static off + Refresh on.           off → nothing (Refresh stays on).
   if(modeSwitches){
     const R='refresh_screen', S='static_display', Rot='rotate_screens';
-    const mkSwitch=(name,id,icon,on,onOn,onOff)=>{
-      const blk=(key,acts)=>acts.length?`    ${key}:\n${acts.map(a=>`      - ${a}\n`).join('')}`:'';
-      return `  - platform: template\n    name: "${name}"\n    id: ${id}\n    icon: ${icon}\n    optimistic: true\n    restore_mode: ${on?'RESTORE_DEFAULT_ON':'RESTORE_DEFAULT_OFF'}\n`
-        + blk('on_turn_on',onOn) + blk('on_turn_off',onOff);
+    // a single guarded action under on_turn_on/on_turn_off (6-space base)
+    const g = (lam, act) => `      - if:\n          condition:\n            lambda: 'return ${lam};'\n          then:\n            - ${act}\n`;
+    const sw = (name, id, icon, on, onOn, onOff) => {
+      let s = `  - platform: template\n    name: "${name}"\n    id: ${id}\n    icon: ${icon}\n    optimistic: true\n    restore_mode: ${on?'RESTORE_DEFAULT_ON':'RESTORE_DEFAULT_OFF'}\n`;
+      if(onOn.length)  s += `    on_turn_on:\n${onOn.join('')}`;
+      if(onOff.length) s += `    on_turn_off:\n${onOff.join('')}`;
+      return s;
     };
-    // Auto Refresh (default on): on → Static off; off → Rotation off + Static on (keep one on)
-    switchEntries.push(mkSwitch(T('Automatisch verversen','Auto Refresh'), R, 'mdi:autorenew', true,
-      [`switch.turn_off: ${S}`],
-      [...(rotateBool?[`switch.turn_off: ${Rot}`]:[]), `switch.turn_on: ${S}`]));
-    // Static (default off): on → Refresh off + Rotation off; off → Refresh on (keep one on)
-    switchEntries.push(mkSwitch(T('Statisch Display','Static Display'), S, 'mdi:image-lock-outline', false,
-      [`switch.turn_off: ${R}`, ...(rotateBool?[`switch.turn_off: ${Rot}`]:[])],
-      [`switch.turn_on: ${R}`]));
-    // Screen Rotation (default off, multi-screen only): on → Static off + Refresh on
     if(rotateBool){
-      switchEntries.push(mkSwitch(T('Scherm rotatie','Screen Rotation'), Rot, 'mdi:rotate-3d-variant', false,
-        [`switch.turn_off: ${S}`, `switch.turn_on: ${R}`], []));
+      switchEntries.push(sw(T('Automatisch verversen','Auto Refresh'), R, 'mdi:autorenew', true,
+        [ g(`id(${S}).state`, `switch.turn_off: ${S}`) ],
+        [ g(`id(${Rot}).state`, `switch.turn_off: ${Rot}`),
+          g(`!id(${S}).state && !id(${Rot}).state`, `switch.turn_on: ${S}`) ]));
+      switchEntries.push(sw(T('Statisch Display','Static Display'), S, 'mdi:image-lock-outline', false,
+        [ g(`id(${R}).state`, `switch.turn_off: ${R}`),
+          g(`id(${Rot}).state`, `switch.turn_off: ${Rot}`) ],
+        [ g(`!id(${R}).state && !id(${Rot}).state`, `switch.turn_on: ${R}`) ]));
+      switchEntries.push(sw(T('Scherm rotatie','Screen Rotation'), Rot, 'mdi:rotate-3d-variant', false,
+        [ g(`id(${S}).state`, `switch.turn_off: ${S}`),
+          g(`!id(${R}).state`, `switch.turn_on: ${R}`) ],
+        []));
+    } else {
+      switchEntries.push(sw(T('Automatisch verversen','Auto Refresh'), R, 'mdi:autorenew', true,
+        [ g(`id(${S}).state`, `switch.turn_off: ${S}`) ],
+        [ g(`!id(${S}).state`, `switch.turn_on: ${S}`) ]));
+      switchEntries.push(sw(T('Statisch Display','Static Display'), S, 'mdi:image-lock-outline', false,
+        [ g(`id(${R}).state`, `switch.turn_off: ${R}`) ],
+        [ g(`!id(${R}).state`, `switch.turn_on: ${R}`) ]));
     }
   }
   // emit the collected template switches as one switch: block (a duplicate top-level key is invalid YAML)

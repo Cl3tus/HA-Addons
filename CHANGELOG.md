@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.36 — Mode-switch interlock fix (no loop)
+
+- **Fixed the three mode switches.** Every interlock action is now guarded by an `if` on the
+  target's state, so an optimistic ESPHome switch can't re-fire its own trigger — no more
+  infinite `turn_on`/`turn_off` loop. The rules now hold reliably: Auto Refresh ↔ Static flip
+  (rotation may ride along with Auto Refresh), Rotation forces Auto Refresh on + Static off,
+  Static forces both off, and exactly one is always on (default Auto Refresh, restored on boot).
+- The interval log now states whether it refreshed or skipped (no new sensor data).
+
 ## 3.9.35 — Interlocked display-mode switches + diagnostics
 
 - **Three interlocked HA "display mode" switches** are generated with the refresh logic:
