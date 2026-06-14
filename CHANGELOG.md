@@ -4,9 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.28 — Upload button height (exact)
+
+- The font-upload button now copies the **exact pixel height** of the adjacent text input
+  at runtime, so it lines up perfectly regardless of font/emoji rendering.
+
 ## 3.9.27 — Font Editor polish
 
-- Font-upload button height nudged 1px to line up exactly with the *path* input.
+- Font-upload button height nudged to line up with the *path* input.
 - The font **preview** header now says *cursief* in Dutch (was "italic").
 
 ## 3.9.25 — Font Editor upload button

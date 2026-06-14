@@ -3867,6 +3867,17 @@ document.addEventListener('change', e=>{
     if(n){ const f=t.files&&t.files[0]; n.textContent = f ? f.name : T('geen bestand','no file'); }
   }
 });
+/* size each upload button to exactly match a real text input's height (the 📁 emoji
+   otherwise makes the line box a px or two taller than the adjacent path field) */
+function syncUploadHeights(){
+  const ref=document.querySelector('#modal-body input[type=text], #modal-body input[type=number]');
+  const h=ref && ref.offsetHeight; if(!h) return;
+  document.querySelectorAll('#modal-body .file-ctl:not(.compact) .file-pick').forEach(b=>{
+    b.style.boxSizing='border-box'; b.style.height=h+'px';
+    b.style.display='inline-flex'; b.style.alignItems='center';
+    b.style.paddingTop='0'; b.style.paddingBottom='0'; b.style.lineHeight='1';
+  });
+}
 async function openFonts(){
   await refreshServerFonts();
   if(_fontsSnapshot===null) _fontsSnapshot=JSON.parse(JSON.stringify(profile().fonts));   // snapshot once per session
@@ -3989,6 +4000,7 @@ async function openFonts(){
   kindSel.onchange=syncKind; syncKind();
   let pendingUpload=null;
   $('#nf-upload').onchange=e=>{ const file=e.target.files[0]; if(!file)return; const rd=new FileReader(); rd.onload=()=>{ pendingUpload=rd.result; if(!$('#nf-file').value) $('#nf-file').value='fonts/'+file.name; }; rd.readAsDataURL(file); };
+  requestAnimationFrame(syncUploadHeights);
   $('#nf-add').onclick=async()=>{
     const id=($('#nf-id').value||'').trim();
     if(!/^[a-z_][a-z0-9_]*$/i.test(id)){ toast(T('Geef een geldig id (letters/cijfers/_)','Enter a valid id (letters/digits/_)')); return; }
@@ -4108,6 +4120,7 @@ function editFont(i){
     $('#ef-web').style.display=k==='web'?'':'none'; $('#ef-web-link').style.display=k==='web'?'':'none'; };
   let efUpload=null;
   const up=$('#ef-upload'); if(up) up.onchange=e=>{ const file=e.target.files[0]; if(!file) return; const rd=new FileReader(); rd.onload=()=>{ efUpload=rd.result; if($('#ef-file') && !$('#ef-file').value) $('#ef-file').value='fonts/'+file.name; }; rd.readAsDataURL(file); };
+  requestAnimationFrame(syncUploadHeights);
   // live preview — re-renders when the size or weight changes (steppers fire 'change')
   const efPrev=$('#ef-preview'), efSize=$('#ef-size'), efWeight=$('#ef-weight'), efItalic=$('#ef-italic');
   // preview a temp font carrying the CURRENT form values (weight + italic), so it updates live
