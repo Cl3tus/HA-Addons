@@ -4,6 +4,11 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.33 — Escape closes modals
+
+- **Escape now cancels/closes any popup** (the × or Cancel button) — pairs with Enter for the
+  default action.
+
 ## 3.9.32 — Guide grabbing & Enter in modals
 
 - **Moving an existing ruler guide is reliable now.** A click within ~12 px of a guide grabs

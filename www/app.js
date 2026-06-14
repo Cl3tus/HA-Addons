@@ -3655,19 +3655,23 @@ $('#modal-back').addEventListener('mouseup', e=>{
   if(_modalDownOnBack && e.target===$('#modal-back')) closeModal();
   _modalDownOnBack=false;
 });
-/* Enter = the modal's default (accent) action. Works for the main modal (the primary
-   footer button) and the in-app confirm/pre-flight popups (#app-confirm-ok). Skips
-   textareas/buttons/links and anything that already handled Enter (e.g. the prompt input). */
+/* Enter = the modal's default (accent) action, Escape = cancel/close (the × or Cancel
+   button). Works for the main modal and the in-app confirm/pre-flight popups. Enter skips
+   textareas/buttons/links; both skip anything that already handled the key (e.g. the prompt
+   input handles its own Enter/Escape). */
 document.addEventListener('keydown', e=>{
-  if(e.key!=='Enter' || e.shiftKey || e.isComposing || e.defaultPrevented) return;
-  const t=e.target;
-  if(t && (t.tagName==='TEXTAREA' || t.tagName==='BUTTON' || t.tagName==='A' || t.isContentEditable)) return;
+  if(e.isComposing || e.defaultPrevented) return;
   const conf=document.getElementById('app-confirm');
-  if(conf){ const ok=conf.querySelector('#app-confirm-ok'); if(ok){ e.preventDefault(); ok.click(); } return; }
   const back=$('#modal-back');
-  if(back && back.classList.contains('open')){
-    const primary=back.querySelector('#modal-footer .btn.primary');
-    if(primary){ e.preventDefault(); primary.click(); }
+  const modalOpen = back && back.classList.contains('open');
+  if(e.key==='Enter' && !e.shiftKey){
+    const t=e.target;
+    if(t && (t.tagName==='TEXTAREA' || t.tagName==='BUTTON' || t.tagName==='A' || t.isContentEditable)) return;
+    if(conf){ const ok=conf.querySelector('#app-confirm-ok'); if(ok){ e.preventDefault(); ok.click(); } return; }
+    if(modalOpen){ const primary=back.querySelector('#modal-footer .btn.primary'); if(primary){ e.preventDefault(); primary.click(); } }
+  } else if(e.key==='Escape'){
+    if(conf){ const cancel=conf.querySelector('#app-confirm-cancel'); e.preventDefault(); if(cancel) cancel.click(); else conf.remove(); return; }
+    if(modalOpen){ e.preventDefault(); closeModal(); }
   }
 });
 
