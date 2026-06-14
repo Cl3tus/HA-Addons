@@ -4,6 +4,19 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.35 — Interlocked display-mode switches + diagnostics
+
+- **Three interlocked HA "display mode" switches** are generated with the refresh logic:
+  **Auto Refresh** (periodic, default on), **Static Display** (freeze) and — with ≥2 screens
+  and the rotation option — **Screen Rotation**. They're mutually exclusive and **exactly one
+  is always on**: turning Static on turns the others off; turning Auto Refresh / Static off
+  flips to the other; Rotation turns Static off and Auto Refresh on. The `on_time` only acts
+  while Auto Refresh is on (Static = frozen), and Rotation advances + redraws.
+- **Diagnostic `Profile` text_sensor** with the profile name, so you can still tell displays
+  apart in Home Assistant.
+- **Removed the profile-name prefix** from every generated entity name (select, buttons,
+  switches and the diagnostic sensors) — ESPHome already prefixes with the device name.
+
 ## 3.9.34 — Static Display switch & rotation fix
 
 - **New "Static Display" HA switch** (Profile settings → Generated YAML Blocks, needs refresh
