@@ -4,6 +4,16 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.32 — Guide grabbing & Enter in modals
+
+- **Moving an existing ruler guide is reliable now.** A click within ~12 px of a guide grabs
+  and moves it (along the whole ruler, not just the tiny marker), so you no longer
+  accidentally drop new guides; clicking further away still adds one. Both the marker and the
+  ruler use the same drag path now.
+- **Enter triggers a modal's default (accent) action.** In every popup, pressing Enter
+  activates the highlighted button (Save / OK / …) — textareas keep their newline, and inputs
+  that already handle Enter are respected.
+
 ## 3.9.31 — Negative-mode colour swatches
 
 - In **negative mode** the inspector colour swatches now match what you actually see: the

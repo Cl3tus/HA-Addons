@@ -951,17 +951,7 @@ function drawRuler(){
     tri.style.pointerEvents='all';
     tri.setAttribute('data-guide-idx',String(gi));
     tri.setAttribute('data-guide-axis','v');
-    tri.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault();
-      const fr=$('#stage-frame').getBoundingClientRect();
-      const preview=document.createElement('div'); preview.id='guide-preview-v';
-      preview.style.left=(fr.left+g.pos*zoom)+'px';
-      document.body.appendChild(preview);
-      const onMove=mv=>{ const pos=Math.round((mv.clientX-fr.left)/zoom);
-        g.pos=Math.max(0,Math.min(pos,Math.round(fr.width/zoom)));
-        preview.style.left=(fr.left+g.pos*zoom)+'px'; drawRuler(); };
-      const onUp=()=>{ preview.remove(); window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); persistGuides(); drawRuler(); };
-      window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
-    });
+    tri.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault(); startGuideMove('v', g); });
     const ttl=document.createElementNS('http://www.w3.org/2000/svg','title');
     ttl.textContent='X: '+g.pos+'px';
     tri.appendChild(ttl); svgX.appendChild(tri);
@@ -1011,17 +1001,7 @@ function drawRuler(){
     tri.style.pointerEvents='all';
     tri.setAttribute('data-guide-idx',String(gi));
     tri.setAttribute('data-guide-axis','h');
-    tri.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault();
-      const fr=$('#stage-frame').getBoundingClientRect();
-      const preview=document.createElement('div'); preview.id='guide-preview-h';
-      preview.style.top=(fr.top+g.pos*zoom)+'px';
-      document.body.appendChild(preview);
-      const onMove=mv=>{ const pos=Math.round((mv.clientY-fr.top)/zoom);
-        g.pos=Math.max(0,Math.min(pos,Math.round(fr.height/zoom)));
-        preview.style.top=(fr.top+g.pos*zoom)+'px'; drawRuler(); };
-      const onUp=()=>{ preview.remove(); window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); persistGuides(); drawRuler(); };
-      window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);
-    });
+    tri.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault(); startGuideMove('h', g); });
     const ttl=document.createElementNS('http://www.w3.org/2000/svg','title');
     ttl.textContent='Y: '+g.pos+'px';
     tri.appendChild(ttl); svgY.appendChild(tri);
@@ -1094,7 +1074,7 @@ function showRulerMenu(clientX, clientY, axis){
 
 /* how close (screen px) a ruler click must be to an existing guide to grab/move it
    instead of dropping a new one — the triangle marker itself is only a few px wide */
-const GUIDE_GRAB=6;
+const GUIDE_GRAB=12;
 /* start moving an existing guide (shared by the marker and the ruler proximity-grab) */
 function startGuideMove(axis, g){
   const fr=$('#stage-frame').getBoundingClientRect();
@@ -3674,6 +3654,21 @@ $('#modal-back').addEventListener('mousedown', e=>{ _modalDownOnBack = (e.target
 $('#modal-back').addEventListener('mouseup', e=>{
   if(_modalDownOnBack && e.target===$('#modal-back')) closeModal();
   _modalDownOnBack=false;
+});
+/* Enter = the modal's default (accent) action. Works for the main modal (the primary
+   footer button) and the in-app confirm/pre-flight popups (#app-confirm-ok). Skips
+   textareas/buttons/links and anything that already handled Enter (e.g. the prompt input). */
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Enter' || e.shiftKey || e.isComposing || e.defaultPrevented) return;
+  const t=e.target;
+  if(t && (t.tagName==='TEXTAREA' || t.tagName==='BUTTON' || t.tagName==='A' || t.isContentEditable)) return;
+  const conf=document.getElementById('app-confirm');
+  if(conf){ const ok=conf.querySelector('#app-confirm-ok'); if(ok){ e.preventDefault(); ok.click(); } return; }
+  const back=$('#modal-back');
+  if(back && back.classList.contains('open')){
+    const primary=back.querySelector('#modal-footer .btn.primary');
+    if(primary){ e.preventDefault(); primary.click(); }
+  }
 });
 
 /* ---- Sources modal ---- */
