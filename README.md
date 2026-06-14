@@ -4,7 +4,7 @@
 
 # E-ink Studio
 
-[![GitHub release](https://img.shields.io/badge/version-3.9.29-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App)
+[![GitHub release](https://img.shields.io/badge/version-3.9.30-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App)
 [![Project Stage](https://img.shields.io/badge/project%20stage-experimental-yellow.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App)
 [![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/blob/main/LICENSE)
@@ -57,7 +57,7 @@ yourself. Everything runs offline, with all libraries and fonts bundled.
 See the **Documentation** tab for the full feature guide and a quick start.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-Editor-Screenshot-Dark-Light.png" alt="E-ink Studio editor — dark & light" width="100%">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/en/E-ink-Studio-Editor-Screenshot-Dark-Light.png" alt="E-ink Studio editor — dark & light" width="100%">
 </p>
 
 [version-badge]: https://img.shields.io/github/v/release/Cl3tus/HA-Eink-Studio-App?label=version&color=ff9800

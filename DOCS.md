@@ -9,7 +9,7 @@ bind it to live Home Assistant values, and generate the ESPHome `lambda:` + the
 matching YAML blocks. No more hand-counting pixels.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-Editor-Screenshot-Dark-Light.png" alt="E-ink Studio editor — dark & light" width="100%">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/en/E-ink-Studio-Editor-Screenshot-Dark-Light.png" alt="E-ink Studio editor — dark & light" width="100%">
 </p>
 
 ---
@@ -73,7 +73,7 @@ with **Ctrl/Shift-click**, or tick the checkboxes in the **Layers** list.
 In the layers list, **T** marks a text element and **#** marks a value.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Palette-Layers.png" alt="Element palette and layers" width="100%">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/en/Palette-Layers.png" alt="Element palette and layers" width="100%">
 </p>
 
 ### Moving, aligning & snapping
@@ -134,7 +134,7 @@ Select a **Value** element → inspector → **Source** + **Format & transform**
 > value on the source to see the live preview.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Inspector-Value.png" alt="Inspector — value element" width="100%">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/en/Inspector-Value.png" alt="Inspector — value element" width="100%">
 </p>
 
 ---
@@ -147,7 +147,7 @@ Click **○ Live** to fetch the current states (read-only, via the Supervisor AP
 - When Live is on, value elements and condition previews follow the real states.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Sources-Picker.png" alt="Value sources picker" width="100%">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/en/Sources-Picker.png" alt="Value sources picker" width="100%">
 </p>
 
 ### Sources & type detection
@@ -250,7 +250,7 @@ Open the **⚙** next to the profile picker.
   (the copy gets `(1)`, `(2)`, …).
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Profile-Yaml-Blocks.png" alt="Profile settings — generated YAML blocks" width="100%">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/en/Profile-Yaml-Blocks.png" alt="Profile settings — generated YAML blocks" width="100%">
 </p>
 
 ---
@@ -291,7 +291,7 @@ display:
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Generate-YAML.png" alt="Generate YAML drawer" width="100%">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/en/Generate-YAML.png" alt="Generate YAML drawer" width="100%">
 </p>
 
 ---
@@ -308,7 +308,7 @@ Paste an existing ESPHome config:
 - A YAML the studio generated itself (with the recovery code) is restored **1-to-1**.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/Import-Summary.png" alt="YAML import summary" width="100%">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/en/Import-Summary.png" alt="YAML import summary" width="100%">
 </p>
 
 ---
@@ -323,7 +323,7 @@ Open **📁 Files** (or `files.html`):
 - The same storage is reachable over **SAMBA** (see below).
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/E-ink-Studio-File-Manager-Screenshot1.png" alt="File manager" width="100%">
+  <img src="https://raw.githubusercontent.com/Cl3tus/HA-Eink-Studio-App/main/docs/screenshots/en/File-Manager.png" alt="File manager" width="100%">
 </p>
 
 ---

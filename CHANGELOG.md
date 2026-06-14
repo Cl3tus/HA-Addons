@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.30 — Screenshots
+
+- All documentation screenshots are in place: the **bilingual wiki** now embeds images on
+  every page (English → `docs/screenshots/en/`, Nederlands → `docs/screenshots/nl/…-NL`),
+  including detail shots (negative mode, type mismatch, weight preview, pre-flight, screen
+  controls, settings footer). The README and Documentation tab were repointed to the new
+  `en/` images.
+
 ## 3.9.29 — Upload button height (exact)
 
 - The font-upload button now copies the **exact (sub-pixel) height** of the adjacent text
