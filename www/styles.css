@@ -175,7 +175,7 @@ input[type=file] { color: var(--txt-dim); }
 .file-ctl { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; max-width: 100%; }
 .file-hidden { position: absolute !important; width: 1px; height: 1px; opacity: 0; overflow: hidden; padding: 0; margin: 0; border: 0; }
 /* match the height of an adjacent text input (padding/border/font equal) */
-.file-pick { display: inline-block; padding: 4px 10px; border: 1px solid var(--line-2); border-radius: 5px; background: var(--bg-2); color: var(--txt-dim); white-space: nowrap; line-height: 1.5; }
+.file-pick { display: inline-block; padding: 3px 10px 4px; border: 1px solid var(--line-2); border-radius: 5px; background: var(--bg-2); color: var(--txt-dim); white-space: nowrap; line-height: 1.5; }
 .file-ctl:hover .file-pick { border-color: var(--accent); color: var(--txt); }
 .file-name { font-size: 10px; color: var(--txt-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; }
 .tbl td .file-ctl.compact .file-pick { padding: 2px 6px; font-size: 10px; }

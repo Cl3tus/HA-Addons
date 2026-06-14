@@ -4,6 +4,11 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.27 — Font Editor polish
+
+- Font-upload button height nudged 1px to line up exactly with the *path* input.
+- The font **preview** header now says *cursief* in Dutch (was "italic").
+
 ## 3.9.25 — Font Editor upload button
 
 - The font-upload button (*Choose file / Bestand kiezen*) now matches the height of the

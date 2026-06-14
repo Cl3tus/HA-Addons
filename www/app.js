@@ -412,7 +412,7 @@ async function previewFontInline(f, host, sizeOverride, weightOverride){
       +`</div>`;
     return;
   }
-  host.innerHTML=`<div class="fld" style="margin-bottom:4px">Preview · ${esc(f.id)} — ${curSize}px${f.kind==='gfonts'?' · '+curWeight+(f.italic?' italic':''):''} · ${esc(fam)}</div>`+
+  host.innerHTML=`<div class="fld" style="margin-bottom:4px">Preview · ${esc(f.id)} — ${curSize}px${f.kind==='gfonts'?' · '+curWeight+(f.italic?' '+T('cursief','italic'):''):''} · ${esc(fam)}</div>`+
     `<div style="font-family:'${fam.replace(/'/g,'')}', sans-serif;font-size:${sz}px;font-weight:${curWeight};font-style:${f.italic?'italic':'normal'};line-height:1.25;word-break:break-word">${sample}</div>`;
 }
 var _previewLoaded=new Set();
