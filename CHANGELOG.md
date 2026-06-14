@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.38 — No duplicate main screen + docs
+
+- The display lambda no longer emits the **main screen twice**: screens 1…N are explicit
+  branches and the main screen is the `else` (which is also the safe fallback), so its code
+  appears once.
+- **Docs updated** — the Documentation tab and the bilingual wiki now describe multiple
+  screens and the interlocked **Auto Refresh / Static / Rotation** mode switches.
+
 ## 3.9.37 — Time block: derive mode from Static
 
 - **Fixed the interval doing nothing.** The `on_time` now keys off **Static** (`!static_display`)

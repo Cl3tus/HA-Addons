@@ -212,11 +212,23 @@ YAML branches per screen and adds your chosen Home Assistant controls — pick t
   still works while you drive it from your own automations.
 
 Switching a screen forces an immediate redraw, independent of new sensor data.
-**Screen rotation (HA switch)** (same panel) adds a template `switch` exposed to Home
-Assistant that advances to the next screen on every refresh interval — no
-`input_boolean` or `configuration.yaml` edit needed. Single-screen designs generate
-exactly the same YAML as before, and your existing layout migrates into the first
-screen automatically (the recovery code round-trips all screens).
+Single-screen designs generate exactly the same YAML as before, and your existing layout
+migrates into the first screen automatically (the recovery code round-trips all screens).
+
+### Display-mode switches (Auto Refresh / Static / Rotation)
+
+When **Refresh logic** is on, the YAML also generates interlocked Home Assistant
+**switches** that decide what the display does on each interval. **Exactly one is always
+on** (default **Auto Refresh**, remembered across reboots):
+
+- **Auto Refresh** — refreshes the display each interval *when a bound sensor has new data*
+  (it logs and skips the round otherwise).
+- **Static Display** — freezes the screen: after the first render it stops refreshing.
+- **Screen Rotation** — advances to the next screen each interval (needs ≥2 screens + the
+  rotation option). Turning it on also turns Auto Refresh on.
+
+Turning one on turns the conflicting ones off, and you can never leave all three off — so
+there's always a defined mode.
 
 ---
 
@@ -237,9 +249,11 @@ Open the **⚙** next to the profile picker.
   with the two base colours swapped.
 - **Generated YAML Blocks** — choose exactly which blocks the generator emits:
   - **Refresh logic** (`esphome` on_boot + `script` + `time`) with boot priority,
-    delay, wait timeout and the refresh interval (minutes).
-  - **Screen control in HA** (dropdown / buttons / both / none) and **Screen rotation
-    (HA switch)** — greyed out unless *Use multiple screens* is on (see *Screens*).
+    delay, wait timeout and the refresh interval (minutes). This also generates the
+    **Auto Refresh / Static Display** mode switches (see *Display-mode switches* under
+    *Screens*).
+  - **Screen control in HA** (dropdown / buttons / both / none) and the **Screen Rotation**
+    mode switch — greyed out unless *Use multiple screens* is on (see *Screens*).
   - **globals**, **font**, **color**, **sensor**, **text_sensor** — each on/off.
   - **SPI bus** (`clk_pin` / `mosi_pin`).
   - **Display pins** — `data_rate`, `cs_pin` (+ ignore_strapping), `dc_pin`,
@@ -396,6 +410,9 @@ including decorative display fonts and icon fonts.
   text/digit glyphs (adding those would fail the ESPHome build).
 - Date/time name transforms generate a small helper block in the lambda (with a
   length guard, so an empty/unknown value at boot can't crash the device).
+- Generated **entity names carry no profile prefix** (ESPHome already prefixes with the
+  device name). A diagnostic **`Profile`** `text_sensor` with the profile name is added so
+  you can still tell displays apart in Home Assistant.
 
 ---
 

@@ -3541,10 +3541,13 @@ function genYAML(){
   // the active index straight from the HA select (no global needed) and branch on it,
   // falling back to screen 0 when out of range / unset.
   const drawScreens=(indent)=>{
-    if(!multi){ drawEls(scrs[0].elements, indent); return; }
+    if(!multi || scrs.length<=1){ drawEls(scrs[0].elements, indent); return; }
     out+=`${indent}int cs = id(screen_select).active_index().value_or(0);\n`;
+    // screens 1..N-1 get explicit branches; screen 0 (the main screen) is the final else —
+    // which is also the safe fallback for an out-of-range index — so it isn't emitted twice.
     scrs.forEach((s,i)=>{
-      out+=`${indent}${i===0?'if':'} else if'} (cs == ${i}) {\n`;
+      if(i===0) return;
+      out+=`${indent}${i===1?'if':'} else if'} (cs == ${i}) {\n`;
       drawEls(s.elements, indent+'  ');
     });
     out+=`${indent}} else {\n`;
