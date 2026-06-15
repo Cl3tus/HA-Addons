@@ -4,6 +4,19 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.40 — Toolbar layout, refresh greying & guide grab
+
+- **Ruler guides are reliably movable now** — each guide has a full-height invisible grab
+  strip on the ruler, so picking one up never depends on hitting the tiny triangle (fixes the
+  "first guide can't be moved / a new one appears instead" bug).
+- **Refresh-logic field greying.** Boot priority / delay / wait timeout follow the **esphome
+  on_boot** block; the interval follows the **time** block; everything greys when Refresh
+  logic is off (values kept). Unticking all three sub-blocks turns Refresh logic off; turning
+  it back on restores them.
+- **Canvas toolbar tidy-up.** The «‹›» screen-nav buttons now sit before the +/⧉/✎/🗑 buttons,
+  the two separators around the old rotation read-out are gone, and the **device-rotation
+  read-out moved to the bottom status bar** (*Screen Rotation: 90°*).
+
 ## 3.9.39 — Mode-switch & screen-control tweaks
 
 - **Screen Rotation** is generated **automatically** with ≥2 screens (the separate "Screen

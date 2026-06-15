@@ -246,10 +246,10 @@ function renderScreenSelect(){
   const single = !mOn && optCount<=1;
   ss.style.display = single ? 'none' : '';
   { const sp=$('#screen-single'); if(sp){ sp.style.display = single ? '' : 'none'; sp.textContent = T('Eén pagina','Single Page'); } }
-  { const rt=$('#screen-rot'); if(rt) rt.textContent = '↻ '+(p.device.rotation||0)+'°'; }
+  { const rt=$('#screen-rot'); if(rt) rt.textContent = T('Schermrotatie','Screen Rotation')+': '+(p.device.rotation||0)+'°'; }
   const grp=$('#screen-grp'); if(grp) grp.style.display = mOn ? '' : 'none';
-  // the prev/next/first/last nav + its separators ride along with multi-screen
-  ['#screen-nav','#screen-nav-sep1','#screen-nav-sep2'].forEach(id=>{ const el=$(id); if(el) el.style.display = mOn ? '' : 'none'; });
+  // the prev/next/first/last nav rides along with multi-screen
+  { const nv=$('#screen-nav'); if(nv) nv.style.display = mOn ? '' : 'none'; }
   const onScreen = editScreen!=='wait';
   const set=(id,dis)=>{ const b=$(id); if(b) b.disabled=!!dis; };
   set('#scr-add', list.length>=MAX_SCREENS);
@@ -960,6 +960,15 @@ function drawRuler(){
   // guide markers — use data-idx so the contextmenu handler can find them reliably
   guides.filter(g=>g.axis==='v').forEach((g,gi)=>{
     const sx=frameOffX+g.pos*zoom;
+    // wide invisible grab strip (full ruler height) so the guide is easy to pick up —
+    // grabbing never depends on hitting the tiny triangle
+    const hit=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    hit.setAttribute('x',sx-GUIDE_GRAB); hit.setAttribute('y',0);
+    hit.setAttribute('width',GUIDE_GRAB*2); hit.setAttribute('height',rxR.height);
+    hit.style.fill='transparent'; hit.style.cursor='ew-resize'; hit.style.pointerEvents='all';
+    hit.setAttribute('data-guide-idx',String(gi)); hit.setAttribute('data-guide-axis','v');
+    hit.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault(); startGuideMove('v', g); });
+    svgX.appendChild(hit);
     const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
     tri.setAttribute('points',`${sx-MARKER},1 ${sx+MARKER},1 ${sx},${MARKER*1.8}`);
     tri.style.fill=colGuide; tri.style.cursor='ew-resize';
@@ -1010,6 +1019,14 @@ function drawRuler(){
   // guide markers
   guides.filter(g=>g.axis==='h').forEach((g,gi)=>{
     const sy=frameOffY+g.pos*zoom;
+    // wide invisible grab strip (full ruler width) so the guide is easy to pick up
+    const hit=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    hit.setAttribute('x',0); hit.setAttribute('y',sy-GUIDE_GRAB);
+    hit.setAttribute('width',ryR.width); hit.setAttribute('height',GUIDE_GRAB*2);
+    hit.style.fill='transparent'; hit.style.cursor='ns-resize'; hit.style.pointerEvents='all';
+    hit.setAttribute('data-guide-idx',String(gi)); hit.setAttribute('data-guide-axis','h');
+    hit.addEventListener('mousedown',ev=>{ if(ev.button!==0) return; ev.stopPropagation(); ev.preventDefault(); startGuideMove('h', g); });
+    svgY.appendChild(hit);
     const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
     tri.setAttribute('points',`1,${sy-MARKER} 1,${sy+MARKER} ${MARKER*1.8},${sy}`);
     tri.style.fill=colGuide; tri.style.cursor='ns-resize';
@@ -4387,12 +4404,28 @@ function openProfileSettings(){
     const syncScreenCtl=()=>{ const box=$('#ps-screenctl-box'); if(box) box.style.display = (m&&m.checked) ? '' : 'none'; };
     if(m) m.addEventListener('change', syncScreenCtl);
     syncScreenCtl(); }
-  // refresh sub-blocks (esphome on_boot / script / time) are greyed out when Refresh logic is off
-  { const r=$('#ps-o-refresh');
-    const syncRefresh=()=>{ const on=!!(r&&r.checked); const box=$('#ps-refresh-sub');
-      if(box) box.style.opacity = on?'':'0.45';
-      ['#ps-o-refresh-esphome','#ps-o-refresh-script','#ps-o-refresh-time'].forEach(id=>{ const el=$(id); if(el) el.disabled=!on; }); };
-    if(r) r.addEventListener('change', syncRefresh);
+  // refresh-logic greying (values always kept): master off → grey everything; boot priority /
+  // delay / wait timeout follow the esphome on_boot block; interval follows the time block.
+  // Turning all three sub-blocks off turns the master off; turning the master on restores them.
+  { const r=$('#ps-o-refresh'), eb=$('#ps-o-refresh-esphome'), sc=$('#ps-o-refresh-script'), tm=$('#ps-o-refresh-time');
+    const syncRefresh=()=>{
+      const on=!!(r&&r.checked);
+      { const box=$('#ps-refresh-sub'); if(box) box.style.opacity = on?'':'0.45'; }
+      [eb,sc,tm].forEach(el=>{ if(el) el.disabled=!on; });
+      const esphomeOn = on && !!(eb&&eb.checked), timeOn = on && !!(tm&&tm.checked);
+      ['#ps-o-prio','#ps-o-delay','#ps-o-timeout'].forEach(id=>{ const el=$(id); if(el) el.disabled=!esphomeOn; });
+      { const el=$('#ps-o-interval'); if(el) el.disabled=!timeOn; }
+    };
+    if(r) r.addEventListener('change', ()=>{
+      // re-enabling the master with all sub-blocks off restores all three
+      if(r.checked && eb&&sc&&tm && !eb.checked && !sc.checked && !tm.checked){ eb.checked=sc.checked=tm.checked=true; }
+      syncRefresh();
+    });
+    [eb,sc,tm].forEach(el=>{ if(el) el.addEventListener('change', ()=>{
+      // all three sub-blocks off → the master Refresh logic turns off too
+      if(r && r.checked && eb&&sc&&tm && !eb.checked && !sc.checked && !tm.checked){ r.checked=false; }
+      syncRefresh();
+    }); });
     syncRefresh(); }
   const infoEl=$('#ps-model-info');
   const applyRes=()=>{ const res=modelRes($('#ps-model').value); if(!res) return;
