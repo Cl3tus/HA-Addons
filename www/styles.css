@@ -107,7 +107,8 @@ body.chrome-hidden #topbar { display: none; }
   background: var(--panel);   /* #1c1c1c dark / #ffffff light — matches HA */
   border-bottom: 1px solid var(--line);
 }
-.brand { display: flex; align-items: center; gap: 9px; }
+.brand { display: flex; align-items: center; gap: 9px; flex: none; }
+.brand-text b, .brand-text span { white-space: nowrap; }
 .brand .logo {
   width: 22px; height: 22px; border-radius: 5px;
   background: var(--paper);
@@ -130,7 +131,7 @@ body.chrome-hidden #topbar { display: none; }
 .topbar-sep { width: 1px; height: 22px; background: var(--line); }
 .topbar-spacer { flex: 1; }
 
-.profile-pick { display: flex; align-items: center; gap: 6px; }
+.profile-pick { display: flex; align-items: center; gap: 6px; flex: none; }
 .profile-pick label { color: var(--txt-dim); font-size: 11px; }
 
 /* ---------- Buttons ---------- */
@@ -170,9 +171,13 @@ body.chrome-hidden #topbar { display: none; }
 .btn.sm .emo { font-size: 13px; }
 /* inline SVG glyphs that need to render identically on every OS (flag emoji
    don't render as flags on Windows, and the ☯ emoji looks flat) */
-.btn .flag { width: 20px; height: 11px; border-radius: 2px; display: block;
-             box-shadow: 0 0 0 1px rgba(0,0,0,.18); }
-.btn .yny  { width: 15px; height: 15px; display: block; }
+.btn .flag { height: 15px; width: auto; border-radius: 2px; display: block;
+             box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+.btn .yny  { width: 16px; height: 16px; display: block; }
+/* keep every top-bar button the same height regardless of icon vs text content */
+#topbar .btn { box-sizing: border-box; min-height: 30px; }
+/* Live + Refresh form an equal-sized pair */
+#btn-live, #btn-refresh { min-width: 68px; justify-content: center; }
 /* tinted MDI icons for the structural groups that have no good emoji
    (alignment = blue, layer order = purple) — readable on dark + light themes */
 .mdi.mdi-c-align { color: #4a90d9; }

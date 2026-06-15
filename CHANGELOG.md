@@ -4,6 +4,17 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.47 — Top-bar sizing + nicer flags + recycle icon
+
+- **Proper Union Jack** (counterchanged diagonals) and a correctly-proportioned Dutch
+  flag, drawn larger so they match the other buttons.
+- **All top-bar buttons share one height** now (icon-only ones no longer look smaller),
+  and **Live + Refresh** are an equal-sized pair. The **Refresh** button uses a ♻️
+  recycle icon.
+- The **brand title** (E-ink Studio / Lambda Generator / version) no longer gets
+  squeezed or shifted when switching to Dutch — it and the profile picker keep their
+  size while the toolbar takes the slack.
+
 ## 3.9.46 — Crisp SVG flags + yin-yang (render the same on every OS)
 
 - The **language toggle** now uses **hand-drawn SVG flags** (Union Jack / Dutch

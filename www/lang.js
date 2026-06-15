@@ -223,15 +223,19 @@
   /* ---- inline SVG flags for the language toggle (the flag emoji 🇬🇧/🇳🇱 render
      as plain "GB"/"NL" letters on Windows, so we draw them ourselves) ---- */
   var FLAG_GB = '<svg class="flag" viewBox="0 0 60 30" aria-hidden="true">'
-    + '<rect width="60" height="30" fill="#012169"/>'
-    + '<path d="M0,0 60,30 M60,0 0,30" stroke="#fff" stroke-width="6"/>'
-    + '<path d="M0,0 60,30 M60,0 0,30" stroke="#c8102e" stroke-width="4"/>'
-    + '<path d="M30,0 V30 M0,15 H60" stroke="#fff" stroke-width="10"/>'
-    + '<path d="M30,0 V30 M0,15 H60" stroke="#c8102e" stroke-width="6"/></svg>';
-  var FLAG_NL = '<svg class="flag" viewBox="0 0 60 30" aria-hidden="true">'
-    + '<rect width="60" height="30" fill="#fff"/>'
-    + '<rect width="60" height="10" fill="#ae1c28"/>'
-    + '<rect y="20" width="60" height="10" fill="#21468b"/></svg>';
+    + '<clipPath id="ujs"><path d="M0,0 v30 h60 v-30 z"/></clipPath>'
+    + '<clipPath id="ujt"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath>'
+    + '<g clip-path="url(#ujs)">'
+    + '<path d="M0,0 v30 h60 v-30 z" fill="#012169"/>'
+    + '<path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/>'
+    + '<path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#ujt)" stroke="#c8102e" stroke-width="4"/>'
+    + '<path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/>'
+    + '<path d="M30,0 v30 M0,15 h60" stroke="#c8102e" stroke-width="6"/>'
+    + '</g></svg>';
+  var FLAG_NL = '<svg class="flag" viewBox="0 0 45 30" aria-hidden="true">'
+    + '<rect width="45" height="30" fill="#fff"/>'
+    + '<rect width="45" height="10" fill="#ae1c28"/>'
+    + '<rect y="20" width="45" height="10" fill="#21468b"/></svg>';
 
   /* ---- apply to DOM ---- */
   function applyTranslations() {
