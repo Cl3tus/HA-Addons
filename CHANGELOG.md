@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.56 — Disabled-state toolbar buttons + icon sizing
+
+- Canvas toolbar buttons now **grey out when there's nothing to do**: undo/redo follow
+  their history, paste follows the clipboard, and copy/cut/duplicate/delete + the
+  alignment and layer-order buttons disable when no element is selected.
+- "Apply what HA detects" chip and the Fonts-modal **edit (pen)** button are sized to
+  match the delete button; **Sources** uses mdi-database; **Download Fonts (.zip)** uses
+  a zip PNG; the zoom **fit** button is an mdi-fit-to-page icon in HA primary.
+
 ## 3.9.55 — Ctrl+wheel zoom + more icon tweaks
 
 - **Ctrl + mouse wheel** (and trackpad pinch) now zooms the canvas toward the cursor.

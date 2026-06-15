@@ -398,7 +398,22 @@ function pushUndo(){ lastScreenDelete=null; undoStack.push(snapshot()); if(undoS
 function undo(){ if(!undoStack.length){ restoreLastScreen(); return; } redoStack.push(snapshot()); setEls(JSON.parse(undoStack.pop())); afterChange(); }
 function redo(){ if(!redoStack.length) return; undoStack.push(snapshot()); setEls(JSON.parse(redoStack.pop())); afterChange(); }
 
-function afterChange(){ persist(); renderCanvas(); renderLayers(); renderInspector(); renderProfiles(); if($('#code-drawer').classList.contains('open')) renderCode(); }
+function afterChange(){ persist(); renderCanvas(); renderLayers(); renderInspector(); renderProfiles(); if($('#code-drawer').classList.contains('open')) renderCode(); updateToolbarState(); }
+
+/* grey out canvas-toolbar buttons that have nothing to act on:
+   - undo/redo follow their stacks; paste follows the clipboard;
+   - copy/cut/duplicate/delete + align + layer-order need a selection. */
+function updateToolbarState(){
+  const sel = selectedIds.size > 0;
+  const dis = (id, cond) => { const b = document.getElementById(id); if (b) b.disabled = cond; };
+  dis('btn-undo', !undoStack.length);
+  dis('btn-redo', !redoStack.length);
+  dis('btn-paste-el', !_clipboard.length);
+  ['btn-dup','btn-copy-el','btn-cut-el','btn-del',
+   'al-left','al-hcenter','al-right','al-top','al-vcenter','al-bottom',
+   'btn-bring-front','btn-step-forward','btn-step-back','btn-bring-back']
+    .forEach(id => dis(id, !sel));
+}
 
 /* ============================================================
    FONT LOADING (preview)
@@ -1920,7 +1935,7 @@ function setSelection(ids, primary){
   selectedIds=new Set(ids);
   selectedId = (primary!=null && selectedIds.has(primary)) ? primary
              : (ids.length ? ids[ids.length-1] : null);
-  renderCanvas(); renderLayers(); renderInspector();
+  renderCanvas(); renderLayers(); renderInspector(); updateToolbarState();
 }
 function select(id){
   if(id==null){ setSelection([],null); }
@@ -2184,6 +2199,7 @@ function copySel(){
   _clipboard = ids.map(id=>arr.find(x=>x.id===id)).filter(Boolean).map(e=>JSON.parse(JSON.stringify(e)));
   _clipScreen = editScreen;
   if(_clipboard.length) toast(T(`Gekopieerd: ${_clipboard.length}`,`Copied: ${_clipboard.length}`));
+  updateToolbarState();
   return _clipboard.length>0;
 }
 function cutSel(){ if(copySel()) deleteSel(); }
@@ -4022,7 +4038,7 @@ async function openFonts(){
       ? `<span class="tag" style="color:var(--ok)">${T('in gebruik','in use')}</span>`
       : `<span class="tag" style="color:var(--txt-faint)" title="${T('Geen element gebruikt dit font; het komt niet in de YAML.','No element uses this font; it is left out of the YAML.')}">${T('ongebruikt','unused')}</span>`}</td>
     <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?fileBtn('rowfont-'+i,'.ttf,.otf,.woff,.pcf,.bdf',{compact:true,extra:`data-font="${i}"`}):''}</td>
-    <td style="white-space:nowrap"><button class="btn ghost sm" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}"><span class="emo">✏️</span></button>
+    <td style="white-space:nowrap"><button class="btn ghost sm" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}"><span class="emo" style="font-size:17px">✏️</span></button>
         <button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">${BIN}</button></td>
   </tr>`;
   const ordered=profile().fonts.map((f,i)=>({f,i})).sort((a,b)=>fontCat(a.f)-fontCat(b.f) || a.i-b.i);
@@ -4069,7 +4085,7 @@ async function openFonts(){
        <div class="hint" style="margin-top:6px">${T('Het','The')} <span class="mono">id</span> ${T('gebruik je in elementen; het','is used in elements; the')} <span class="mono">${T('pad','path')}</span> ${T('moet kloppen met je ESPHome','must match your ESPHome')} <span class="mono">fonts/</span>${T('-map.',' folder.')}</div>
      </div>
      <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')} ${T('Wijzigingen gelden pas na Opslaan.','Changes apply only after Save.')}</div>`,
-    [{label:T('Download Fonts (.zip)','Download Fonts (.zip)'),html:'<span class="mdi mdi-folder-zip-outline mdi-c-nav"></span> '+T('Download Fonts (.zip)','Download Fonts (.zip)'),cls:'ghost',style:'margin-right:auto',onClick:downloadFontsZip},
+    [{label:T('Download Fonts (.zip)','Download Fonts (.zip)'),html:'<img class="zipic" src="img/zip.png" alt="" aria-hidden="true"> '+T('Download Fonts (.zip)','Download Fonts (.zip)'),cls:'ghost',style:'margin-right:auto',onClick:downloadFontsZip},
      {label:T('Annuleren','Cancel'),cls:'ghost',onClick:()=>{ _revertFontsIfUnsaved(); closeModal(); }},
      {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
        // warn if the "add font" form has data that hasn't been added via +
@@ -5339,6 +5355,7 @@ function wire(){
     const v=$('#btn-paste-el'); if(v) v.onclick=pasteClip; }
   $('#al-left').onclick=()=>alignSel('left'); $('#al-hcenter').onclick=()=>alignSel('hcenter'); $('#al-right').onclick=()=>alignSel('right');
   $('#al-top').onclick=()=>alignSel('top'); $('#al-vcenter').onclick=()=>alignSel('vcenter'); $('#al-bottom').onclick=()=>alignSel('bottom');
+  updateToolbarState();   // initial state: nothing selected/clipboard → buttons greyed
 
   document.addEventListener('keydown',e=>{
     if(e.target.matches('input,textarea,select')) return;
