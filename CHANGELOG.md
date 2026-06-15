@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.52 — Primary-colour screen nav + red hidden-eye
+
+- The screen-navigation icons (« ‹ › ») now follow **HA's primary colour** (`--guide`).
+- In the layers panel the **hidden** state (eye-off) is now **red** instead of grey;
+  the visible eye stays blue.
+
 ## 3.9.51 — Replace tofu emoji with MDI icons; blue eye; icon tweaks
 
 - The emoji that showed as empty squares on some systems are now crisp **MDI icons**:

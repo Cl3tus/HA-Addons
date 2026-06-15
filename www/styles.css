@@ -189,6 +189,8 @@ body.chrome-hidden #topbar { display: none; }
    (alignment = blue, layer order = purple) — readable on dark + light themes */
 .mdi.mdi-c-align { color: #4a90d9; }
 .mdi.mdi-c-layer { color: #9b6dd6; }
+/* screen-navigation icons follow HA's primary colour (= --guide) */
+.mdi.mdi-c-nav { color: var(--guide); }
 /* square icon-only close buttons (modal / drawer / editor headers) — the ❌
    emoji needs an equal-sided button, not the default rectangular one */
 #modal-x, #code-close, #fe-editor-close, #fe-fontprev-close {

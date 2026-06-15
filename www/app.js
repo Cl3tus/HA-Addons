@@ -2013,7 +2013,7 @@ function renderLayers(){
       <span class="ltype">${typeGlyph(el)}</span>
       <span class="lname" title="${T('Dubbelklik om te hernoemen','Double-click to rename')}">${el.name||el.type}</span>
       <span class="ldel" title="${T('Verwijderen','Delete')}">${BIN}</span>
-      <span class="lvis" title="${T('Zichtbaarheid','Visibility')}">${el.visible===false?'<span class="mdi mdi-eye-off"></span>':'<span class="mdi mdi-eye" style="color:#3a86ff"></span>'}</span>`;
+      <span class="lvis" title="${T('Zichtbaarheid','Visibility')}">${el.visible===false?'<span class="mdi mdi-eye-off" style="color:var(--red)"></span>':'<span class="mdi mdi-eye" style="color:#3a86ff"></span>'}</span>`;
     // drag-to-reorder via the handle
     const handle=row.querySelector('.lmove'); handle.draggable=true;
     handle.ondragstart=e=>{ _dragLayerId=el.id; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',el.id);}catch(_){} };
