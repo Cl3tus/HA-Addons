@@ -102,8 +102,8 @@ body.chrome-hidden #topbar { display: none; }
   grid-area: top;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px;
+  gap: 6px;
+  padding: 0 10px;
   background: var(--panel);   /* #1c1c1c dark / #ffffff light — matches HA */
   border-bottom: 1px solid var(--line);
 }
@@ -174,10 +174,11 @@ body.chrome-hidden #topbar { display: none; }
 .btn .flag { height: 15px; width: auto; border-radius: 2px; display: block;
              box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
 .btn .yny  { width: 16px; height: 16px; display: block; }
-/* keep every top-bar button the same height regardless of icon vs text content */
-#topbar .btn { box-sizing: border-box; min-height: 30px; }
+/* keep every top-bar button the same height regardless of icon vs text content,
+   and run them tight so the whole bar fits (esp. the longer Dutch labels) */
+#topbar .btn { box-sizing: border-box; min-height: 30px; gap: 5px; padding: 6px 8px; }
 /* Live + Refresh form an equal-sized pair */
-#btn-live, #btn-refresh { min-width: 68px; justify-content: center; }
+#btn-live, #btn-refresh { min-width: 56px; justify-content: center; }
 /* tinted MDI icons for the structural groups that have no good emoji
    (alignment = blue, layer order = purple) — readable on dark + light themes */
 .mdi.mdi-c-align { color: #4a90d9; }

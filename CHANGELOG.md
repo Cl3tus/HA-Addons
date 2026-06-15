@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.48 — Compacter top bar (fits the longer Dutch labels)
+
+- Tighter spacing throughout the top bar (smaller gaps, button padding and profile
+  picker) so the right-hand buttons — up to **Generate YAML** — stay on screen in
+  Dutch instead of overflowing to the right.
+
 ## 3.9.47 — Top-bar sizing + nicer flags + recycle icon
 
 - **Proper Union Jack** (counterchanged diagonals) and a correctly-proportioned Dutch
