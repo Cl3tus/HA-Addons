@@ -251,7 +251,8 @@ function renderScreenSelect(){
   // the prev/next/first/last nav + its separator ride along with multi-screen
   ['#screen-nav','#screen-nav-sep'].forEach(id=>{ const el=$(id); if(el) el.style.display = mOn ? '' : 'none'; });
   // page indicator (status bar): current designed screen / total — shown with multi-screen
-  { const pn=$('#page-num'); if(pn){
+  { const ps=$('#page-sep'); if(ps) ps.style.display = mOn ? '' : 'none';
+    const pn=$('#page-num'); if(pn){
       pn.style.display = mOn ? '' : 'none';
       const idx=list.findIndex(s=>s.id===editScreen);
       pn.textContent = T('Pagina','Page')+': '+(idx>=0?(idx+1):'–')+'/'+list.length;
@@ -268,13 +269,18 @@ function renderScreenSelect(){
   set('#scr-first', ci<=0); set('#scr-prev', ci<=0);
   set('#scr-next', ci>=navOpts.length-1); set('#scr-last', ci>=navOpts.length-1);
 }
-/* jump the screen selector to the first / previous / next / last selectable option */
+/* jump the screen selector to the first / previous / next / last selectable option.
+   « goes to page 1 (the first designed screen) first; the waiting screen sits "before"
+   page 1, so you only reach it by going back again from page 1 (another « or a ‹). */
 function navScreen(where){
   const ss=$('#screen-select'); if(!ss) return;
   const opts=[...ss.options].map(o=>o.value); if(opts.length<2) return;
   let idx=opts.indexOf(editScreen); if(idx<0) idx=0;
-  if(where==='first') idx=0; else if(where==='last') idx=opts.length-1;
-  else if(where==='prev') idx=Math.max(0,idx-1); else idx=Math.min(opts.length-1,idx+1);
+  const firstScr = opts[0]==='wait' ? 1 : 0;   // index of page 1
+  if(where==='first') idx = (idx===firstScr && firstScr>0) ? 0 : firstScr;
+  else if(where==='last') idx=opts.length-1;
+  else if(where==='prev') idx=Math.max(0,idx-1);
+  else idx=Math.min(opts.length-1,idx+1);
   if(opts[idx]!==editScreen) switchScreen(opts[idx]);
 }
 /* switch which screen is being edited (resets selection + undo history, like the

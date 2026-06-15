@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.42 — « stops at page 1 first
+
+- The **« (first)** screen-nav button now jumps to **page 1** (the first designed screen)
+  instead of straight to the waiting screen; you only reach the waiting screen by going back
+  once more from page 1 (another « or a ‹).
+
 ## 3.9.41 — Drag guides on the canvas + page indicator
 
 - **Guides are now grabbed and dragged directly on the canvas** — hover the blue line, then
