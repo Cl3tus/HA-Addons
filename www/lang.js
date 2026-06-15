@@ -232,7 +232,7 @@
     });
     // language toggle buttons show the OTHER language as their label
     document.querySelectorAll('[data-lang-toggle]').forEach(function (btn) {
-      btn.textContent = _lang === 'nl' ? 'EN' : 'NL';
+      btn.textContent = _lang === 'nl' ? '🇬🇧' : '🇳🇱';
       btn.title = _lang === 'nl' ? 'Switch to English' : 'Schakel naar Nederlands';
     });
   }

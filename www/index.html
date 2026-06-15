@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
 
 <!-- Fonts: IBM Plex (UI) + preview display fonts — bundled locally -->
-<link rel="stylesheet" href="vendor/fonts.css?v=3.9.44">
+<link rel="stylesheet" href="vendor/fonts.css?v=3.9.45">
 
 <!-- Material Design Icons 7.4.47 — bundled locally -->
 <link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
@@ -17,7 +17,7 @@
 <script src="vendor/js-yaml.min.js"></script>
 <script src="vendor/qrcode-generator.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=3.9.44">
+<link rel="stylesheet" href="styles.css?v=3.9.45">
 </head>
 <body>
 <div id="app">
@@ -35,15 +35,15 @@
     <div class="profile-pick">
       <label data-i18n="Profiel">Profiel</label>
       <select id="profile-select" style="width:auto;min-width:150px"></select>
-      <button class="btn ghost sm" id="profile-new" data-i18n-title="Nieuw profiel" title="Nieuw profiel">+</button>
-      <button class="btn ghost sm" id="profile-settings" data-i18n-title="Profiel-instellingen" title="Profiel-instellingen">⚙</button>
+      <button class="btn ghost sm" id="profile-new" data-i18n-title="Nieuw profiel" title="Nieuw profiel"><span class="emo">➕</span></button>
+      <button class="btn ghost sm" id="profile-settings" data-i18n-title="Profiel-instellingen" title="Profiel-instellingen"><span class="emo">⚙️</span></button>
     </div>
 
     <div class="topbar-spacer"></div>
 
     <button class="btn ghost" id="btn-import" data-i18n-title="ESPHome-YAML importeren"><span class="emo">📥</span> <span data-i18n="YAML importeren">YAML importeren</span></button>
     <div class="topbar-sep"></div>
-    <button class="btn ghost" id="btn-sources" data-i18n-title="Waardebronnen (sensoren) beheren"><span class="emo">🗄️</span> <span data-i18n="Bronnen">Bronnen</span></button>
+    <button class="btn ghost" id="btn-sources" data-i18n-title="Waardebronnen (sensoren) beheren"><span class="emo">🛢️</span> <span data-i18n="Bronnen">Bronnen</span></button>
     <div class="topbar-sep"></div>
     <button class="btn ghost" id="btn-fonts" data-i18n-title="Fonts beheren"><span class="emo">🔤</span> Fonts</button>
     <a href="files.html" class="btn ghost" data-i18n-title="Bestandsbeheer" title="Bestandsbeheer"><span class="emo">📁</span> <span data-i18n="Bestanden">Bestanden</span></a>
@@ -61,8 +61,8 @@
       <option value="custom" data-i18n="Aangepast…">Aangepast…</option>
     </select>
     <div class="topbar-sep"></div>
-    <button class="btn ghost" id="btn-theme" data-i18n-title="Thema" title="Thema">◐ Dark</button>
-    <button class="btn ghost" id="btn-lang" data-lang-toggle onclick="toggleLang()" title="Taal / Language">EN</button>
+    <button class="btn ghost" id="btn-theme" data-i18n-title="Thema" title="Thema">☯️ Dark</button>
+    <button class="btn ghost" id="btn-lang" data-lang-toggle onclick="toggleLang()" title="Taal / Language">🇬🇧</button>
     <div class="topbar-sep"></div>
     <button class="btn ghost" id="btn-save" data-i18n-title="Project opslaan"><span class="emo">💾</span> <span data-i18n="Opslaan">Opslaan</span></button>
     <button class="btn ghost" id="btn-load" data-i18n-title="Project openen"><span class="emo">📂</span> <span data-i18n="Openen">Openen</span></button>
@@ -139,7 +139,7 @@
         <button class="btn ghost sm" id="btn-dup" data-i18n-title="Dupliceren (Ctrl+D)"><span class="emo">📑</span></button>
         <button class="btn ghost sm" id="btn-copy-el" data-i18n-title="Kopiëren (Ctrl+C)"><span class="emo">📋</span></button>
         <button class="btn ghost sm" id="btn-cut-el" data-i18n-title="Knippen (Ctrl+X)"><span class="emo">✂️</span></button>
-        <button class="btn ghost sm" id="btn-paste-el" data-i18n-title="Plakken (Ctrl+V)"><span class="emo">📌</span></button>
+        <button class="btn ghost sm" id="btn-paste-el" data-i18n-title="Plakken (Ctrl+V)"><span class="emo">📥</span></button>
         <button class="btn ghost sm danger" id="btn-del" data-i18n-title="Verwijderen (Del)"><span class="emo">🗑️</span></button>
       </div>
     </div>
@@ -222,8 +222,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=3.9.44"></script>
-<script src="lang.js?v=3.9.44"></script>
-<script src="theme.js?v=3.9.44"></script>
+<script src="app.js?v=3.9.45"></script>
+<script src="lang.js?v=3.9.45"></script>
+<script src="theme.js?v=3.9.45"></script>
 </body>
 </html>

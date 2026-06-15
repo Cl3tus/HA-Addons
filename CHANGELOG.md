@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.45 — Emoji polish: theme/language, paste, modal crosses, context menu
+
+- **Theme toggle** now shows a ☯️ yin-yang; **language toggle** shows a flag (🇬🇧 / 🇳🇱).
+- **Paste** uses 📥 instead of the pushpin; **Sources** is now 🛢️; the **new-profile (➕)**
+  and **profile-settings (⚙️)** buttons got emoji too.
+- **Modal/drawer close buttons** are now square instead of rectangular.
+- **Right-click menu** items are aligned in clean icon + label columns, and **Rename**
+  has an **F2** shortcut (works from the canvas and the layers panel).
+
 ## 3.9.44 — Colourful emoji toolbar icons
 
 - The toolbar buttons now use **colourful emoji** instead of flat monochrome glyphs:

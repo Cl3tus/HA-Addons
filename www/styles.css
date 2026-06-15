@@ -172,6 +172,11 @@ body.chrome-hidden #topbar { display: none; }
    (alignment = blue, layer order = purple) — readable on dark + light themes */
 .mdi.mdi-c-align { color: #4a90d9; }
 .mdi.mdi-c-layer { color: #9b6dd6; }
+/* square icon-only close buttons (modal / drawer / editor headers) — the ❌
+   emoji needs an equal-sided button, not the default rectangular one */
+#modal-x, #code-close, #fe-editor-close, #fe-fontprev-close {
+  width: 28px; height: 28px; padding: 0; flex: none; justify-content: center;
+}
 
 select, textarea,
 input[type=text], input[type=number], input[type=search], input:not([type]) {
@@ -584,10 +589,12 @@ textarea.import-area { width: 100%; height: 260px; font-family: var(--mono); fon
 }
 .ctxmenu.open { display: block; }
 .ctxmenu button {
-  display: flex; width: 100%; align-items: center; gap: 10px;
+  display: flex; width: 100%; align-items: center; gap: 8px;
   background: transparent; border: 0; color: var(--txt); text-align: left;
   padding: 7px 10px; border-radius: 5px; cursor: pointer; font-size: 12.5px;
 }
+.ctxmenu .ic  { flex: none; width: 18px; text-align: center; font-size: 14px; line-height: 1; }
+.ctxmenu .lbl { flex: 1; }
 .ctxmenu button:hover { background: var(--panel-2); }
 .ctxmenu button:disabled { opacity: .4; cursor: default; }
 .ctxmenu button:disabled:hover { background: transparent; }

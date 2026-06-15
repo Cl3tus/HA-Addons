@@ -83,7 +83,7 @@
     document.body.classList.toggle('light', scheme === 'light');
     if (window.state) window.state.theme = scheme;
     var t = window.t || function (nl, en) { return nl; };
-    var label = scheme === 'light' ? ('◑ ' + t('Licht', 'Light')) : ('◐ ' + t('Donker', 'Dark'));
+    var label = scheme === 'light' ? ('☯️ ' + t('Licht', 'Light')) : ('☯️ ' + t('Donker', 'Dark'));
     var btn   = document.getElementById('btn-theme');
     if (btn)   btn.textContent = label;
     var btnFe = document.getElementById('btn-theme-fe');

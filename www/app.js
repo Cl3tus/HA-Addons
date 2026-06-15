@@ -5098,16 +5098,24 @@ function showAppPrompt(msg, defaultVal, cb, opts){
 /* point 2: right-click context menu on the canvas */
 function hideCtxMenu(){ $('#ctxmenu').classList.remove('open'); }
 
+/* start an inline rename for an element via its layers-panel row (used by the
+   context menu and the F2 shortcut) */
+function renameEl(el){
+  if(!el) return;
+  const row=[...document.querySelectorAll('#layers .layer')].find(r=>r._elId===el.id);
+  if(row){ const span=row.querySelector('.lname'); if(span){ startRename(span, el); return; } }
+  select(el.id);
+}
+
 /* context-menu items for a given element (used by canvas + layers) */
 function elItems(el){
   const items=[];
-  items.push(['📝 '+T('Hernoemen','Rename'),'',()=>{ const row=[...document.querySelectorAll('#layers .layer')].find(r=>r._elId===el.id);
-    if(row){ const span=row.querySelector('.lname'); if(span) startRename(span, el); } else { select(el.id); } }]);
+  items.push(['📝 '+T('Hernoemen','Rename'),'F2',()=>renameEl(el)]);
   items.push(['📑 '+T('Dupliceren','Duplicate'),'Ctrl+D',()=>{ selectedId=el.id; dupSel(); }]);
   items.push(['sep']);
   items.push(['📋 '+T('Kopiëren','Copy'),'Ctrl+C',()=>{ if(!isSelected(el.id)) select(el.id); copySel(); }]);
   items.push(['✂ '+T('Knippen','Cut'),'Ctrl+X',()=>{ if(!isSelected(el.id)) select(el.id); cutSel(); }]);
-  items.push(['📌 '+T('Plakken','Paste'),'Ctrl+V', _clipboard.length?pasteClip:null, _clipboard.length?'':'disabled']);
+  items.push(['📥 '+T('Plakken','Paste'),'Ctrl+V', _clipboard.length?pasteClip:null, _clipboard.length?'':'disabled']);
   items.push(['sep']);
   items.push([el.visible===false?('👁 '+T('Tonen','Show')):('🚫 '+T('Verbergen','Hide')),'',()=>{ pushUndo(); el.visible=el.visible===false?true:false; afterChange(); }]);
   items.push(['↑ '+T('Naar voren','Bring forward'),'',()=>reorder(el,1)]);
@@ -5124,7 +5132,10 @@ function showMenu(x,y,items){
     const dis=it[3]==='disabled';
     const cls=(it[3]&&!dis)?` class="${it[3]}"`:'';
     const k=it[1]?`<span class="k">${it[1]}</span>`:'';
-    return `<button${cls}${dis?' disabled':''} data-act>${it[0]}${k}</button>`;
+    const sp=it[0].indexOf(' ');
+    const icon=sp>0?it[0].slice(0,sp):'';
+    const lbl=sp>0?it[0].slice(sp+1):it[0];
+    return `<button${cls}${dis?' disabled':''} data-act><span class="ic">${icon}</span><span class="lbl">${lbl}</span>${k}</button>`;
   }).join('');
   const acts=items.filter(x=>x[0]!=='sep');
   Array.from(menu.querySelectorAll('[data-act]')).forEach((b,i)=>{
@@ -5149,7 +5160,7 @@ function setupContextMenu(){
     if(hitId){ selectedId=hitId; const node=contentLayer.getChildren(n=>n._elId===hitId)[0]; attachSelection(selected(),node); contentLayer.draw(); renderLayers(); renderInspector(); }
     const el=selected();
     if(el) showMenu(e.clientX,e.clientY, elItems(el));
-    else showMenu(e.clientX,e.clientY, [['📌 '+T('Plakken','Paste'),'Ctrl+V', _clipboard.length?pasteClip:null, _clipboard.length?'':'disabled']]);
+    else showMenu(e.clientX,e.clientY, [['📥 '+T('Plakken','Paste'),'Ctrl+V', _clipboard.length?pasteClip:null, _clipboard.length?'':'disabled']]);
   });
 }
 function reorder(el, dir){
@@ -5323,6 +5334,7 @@ function wire(){
     else if((e.ctrlKey||e.metaKey)&&e.key==='x'){ if(String(window.getSelection()||'')) return; e.preventDefault(); cutSel(); }
     else if((e.ctrlKey||e.metaKey)&&e.key==='v'){ e.preventDefault(); pasteClip(); }
     else if(e.key==='Delete'||e.key==='Backspace'){ deleteSel(); }
+    else if(e.key==='F2'){ e.preventDefault(); renameEl(selected()); }
     else if(e.key==='Escape'){ select(null); }
     else if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){ nudge(e); }
   });
