@@ -3761,7 +3761,7 @@ function openModal(title, body, footerBtns, onClose){
   $('#modal').classList.remove('wide');   // each modal starts at the default width; widen per-modal after opening
   $('#modal-title').textContent=title; $('#modal-body').innerHTML=body;
   const f=$('#modal-footer'); f.innerHTML='';
-  (footerBtns||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'ghost'); el.textContent=b.label; el.onclick=b.onClick; if(b.style) el.style.cssText=b.style; if(b.id) el.id=b.id; f.appendChild(el); });
+  (footerBtns||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'ghost'); if(b.html) el.innerHTML=b.html; else el.textContent=b.label; el.onclick=b.onClick; if(b.style) el.style.cssText=b.style; if(b.id) el.id=b.id; f.appendChild(el); });
   _modalClose = onClose||null;
   addSteppers($('#modal-body'));   // ▲/▼ steppers for any .spin field in modals (font size/weight)
   $('#modal-back').classList.add('open');
@@ -3826,7 +3826,7 @@ function openSources(){
     // per-row "snap to HA" icon — only shown when the dropdown disagrees with HA (so it
     // never crowds the next column when everything already matches)
     const snapBtn = (det && det!==s.kind)
-      ? `<span class="snap-btn" data-detect="${i}" data-kind="${attr(det)}" title="${T('Overnemen wat HA detecteert: '+det,'Apply what HA detects: '+det)}">↺</span>`
+      ? `<span class="snap-btn" data-detect="${i}" data-kind="${attr(det)}" title="${T('Overnemen wat HA detecteert: '+det,'Apply what HA detects: '+det)}">🔍</span>`
       : '';
     // "Type (HA)" column: plain coloured text (no chip border, so adjacent rows don't visually touch)
     const haTypeCell = !det ? `<span class="hint">—</span>`
@@ -4022,8 +4022,8 @@ async function openFonts(){
       ? `<span class="tag" style="color:var(--ok)">${T('in gebruik','in use')}</span>`
       : `<span class="tag" style="color:var(--txt-faint)" title="${T('Geen element gebruikt dit font; het komt niet in de YAML.','No element uses this font; it is left out of the YAML.')}">${T('ongebruikt','unused')}</span>`}</td>
     <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?fileBtn('rowfont-'+i,'.ttf,.otf,.woff,.pcf,.bdf',{compact:true,extra:`data-font="${i}"`}):''}</td>
-    <td style="white-space:nowrap"><button class="btn ghost sm" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}">✎</button>
-        <button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">✕</button></td>
+    <td style="white-space:nowrap"><button class="btn ghost sm" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}"><span class="emo">✏️</span></button>
+        <button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">${BIN}</button></td>
   </tr>`;
   const ordered=profile().fonts.map((f,i)=>({f,i})).sort((a,b)=>fontCat(a.f)-fontCat(b.f) || a.i-b.i);
   let frows='', lastCat=-1;
@@ -4069,7 +4069,7 @@ async function openFonts(){
        <div class="hint" style="margin-top:6px">${T('Het','The')} <span class="mono">id</span> ${T('gebruik je in elementen; het','is used in elements; the')} <span class="mono">${T('pad','path')}</span> ${T('moet kloppen met je ESPHome','must match your ESPHome')} <span class="mono">fonts/</span>${T('-map.',' folder.')}</div>
      </div>
      <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')} ${T('Wijzigingen gelden pas na Opslaan.','Changes apply only after Save.')}</div>`,
-    [{label:T('Download Fonts (.zip)','Download Fonts (.zip)'),cls:'ghost',style:'margin-right:auto',onClick:downloadFontsZip},
+    [{label:T('Download Fonts (.zip)','Download Fonts (.zip)'),html:'<span class="mdi mdi-folder-zip-outline mdi-c-nav"></span> '+T('Download Fonts (.zip)','Download Fonts (.zip)'),cls:'ghost',style:'margin-right:auto',onClick:downloadFontsZip},
      {label:T('Annuleren','Cancel'),cls:'ghost',onClick:()=>{ _revertFontsIfUnsaved(); closeModal(); }},
      {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
        // warn if the "add font" form has data that hasn't been added via +
@@ -5294,6 +5294,21 @@ function wire(){
   $('#zoom-in').onclick=()=>{ const p=Math.round(zoom*100); zoom=clamp(Math.ceil((p+1)/10)*10/100,0.3,5); applyZoom(); };
   $('#zoom-out').onclick=()=>{ const p=Math.round(zoom*100); zoom=clamp(Math.floor((p-1)/10)*10/100,0.3,5); applyZoom(); };
   $('#zoom-fit').onclick=fitZoom;
+  // Ctrl + mouse wheel (and trackpad pinch) zooms toward the cursor; plain wheel
+  // keeps scrolling. preventDefault stops the browser's own page zoom.
+  { const wrap=$('#stage-wrap');
+    if(wrap) wrap.addEventListener('wheel', e=>{
+      if(!e.ctrlKey) return;
+      e.preventDefault();
+      const f1=$('#stage-frame').getBoundingClientRect();
+      const cx=(e.clientX-f1.left)/zoom, cy=(e.clientY-f1.top)/zoom;   // content point under cursor
+      zoom=clamp(zoom*(e.deltaY<0?1.1:1/1.1),0.3,5);
+      applyZoom();
+      const f2=$('#stage-frame').getBoundingClientRect();             // keep that point under the cursor
+      wrap.scrollLeft += (f2.left+cx*zoom)-e.clientX;
+      wrap.scrollTop  += (f2.top +cy*zoom)-e.clientY;
+    }, {passive:false});
+  }
   // zoom input: type a value and press Enter or blur to apply
   { const zv=$('#zoom-val');
     if(zv){

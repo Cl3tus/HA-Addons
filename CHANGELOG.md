@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.55 — Ctrl+wheel zoom + more icon tweaks
+
+- **Ctrl + mouse wheel** (and trackpad pinch) now zooms the canvas toward the cursor.
+- File manager "back to editor" uses a bold left arrow in HA primary; the Fonts modal
+  edit (✏️) / delete (recycle-bin) icons; **Download Fonts (.zip)** gets a zip icon;
+  the per-row "apply what HA detects" chip uses the same 🔍 as Detect types.
+- Top bar **Sources** (mdi-database-outline) and **Fonts** icons now follow HA's
+  primary colour; the **Generate YAML** `</>` badge is a touch larger.
+
 ## 3.9.54 — Unified "+" buttons (mdi-plus-thick in HA primary)
 
 - Every add/plus button now uses **mdi-plus-thick** in HA's primary colour: new

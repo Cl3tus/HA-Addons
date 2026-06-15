@@ -186,7 +186,7 @@ body.chrome-hidden #topbar { display: none; }
 .bin { height: 17px; width: auto; display: inline-block; vertical-align: middle; }
 .ctxmenu .ic .bin { height: 15px; }
 /* </> code badge on the Generate-YAML button */
-.btn .codeic { width: 17px; height: 17px; display: block; }
+.btn .codeic { width: 20px; height: 20px; display: block; }
 /* tinted MDI icons for the structural groups that have no good emoji
    (alignment = blue, layer order = purple) — readable on dark + light themes */
 .mdi.mdi-c-align { color: #4a90d9; }
