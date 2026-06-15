@@ -10,6 +10,14 @@
   var _current  = null;
   var _override = null;   // session-only manual override (NOT persisted) — resets on reload
 
+  /* inline SVG yin-yang for the theme toggle (the ☯ emoji renders flat/ugly;
+     this disc has a currentColor rim so it stays visible on light + dark) */
+  var YINYANG = '<svg class="yny" viewBox="0 0 100 100" aria-hidden="true">'
+    + '<circle cx="50" cy="50" r="47" fill="#e8ebf1" stroke="currentColor" stroke-width="2.5" stroke-opacity=".5"/>'
+    + '<path d="M50,3 a47,47 0 0,1 0,94 a23.5,23.5 0 0,1 0,-47 a23.5,23.5 0 0,0 0,-47z" fill="#3a3f47"/>'
+    + '<circle cx="50" cy="26.5" r="6" fill="#e8ebf1"/>'
+    + '<circle cx="50" cy="73.5" r="6" fill="#3a3f47"/></svg>';
+
   /* ---- ESPHome mechanism: read a system-colour probe ----
      A hidden element with background-color:Canvas + color-scheme:light dark
      resolves to the USED color scheme propagated from HA.            */
@@ -83,11 +91,12 @@
     document.body.classList.toggle('light', scheme === 'light');
     if (window.state) window.state.theme = scheme;
     var t = window.t || function (nl, en) { return nl; };
-    var label = scheme === 'light' ? ('☯️ ' + t('Licht', 'Light')) : ('☯️ ' + t('Donker', 'Dark'));
+    var word = scheme === 'light' ? t('Licht', 'Light') : t('Donker', 'Dark');
+    var html = YINYANG + '<span>' + word + '</span>';
     var btn   = document.getElementById('btn-theme');
-    if (btn)   btn.textContent = label;
+    if (btn)   btn.innerHTML = html;
     var btnFe = document.getElementById('btn-theme-fe');
-    if (btnFe) btnFe.textContent = label;
+    if (btnFe) btnFe.innerHTML = html;
     // notify app.js so theme-dependent canvas elements (rulers) re-render
     if (typeof window.onThemeChanged === 'function') window.onThemeChanged();
   }

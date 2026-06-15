@@ -168,6 +168,11 @@ body.chrome-hidden #topbar { display: none; }
   font-size: 14px; display: inline-block;
 }
 .btn.sm .emo { font-size: 13px; }
+/* inline SVG glyphs that need to render identically on every OS (flag emoji
+   don't render as flags on Windows, and the ☯ emoji looks flat) */
+.btn .flag { width: 20px; height: 11px; border-radius: 2px; display: block;
+             box-shadow: 0 0 0 1px rgba(0,0,0,.18); }
+.btn .yny  { width: 15px; height: 15px; display: block; }
 /* tinted MDI icons for the structural groups that have no good emoji
    (alignment = blue, layer order = purple) — readable on dark + light themes */
 .mdi.mdi-c-align { color: #4a90d9; }

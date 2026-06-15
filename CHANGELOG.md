@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.46 — Crisp SVG flags + yin-yang (render the same on every OS)
+
+- The **language toggle** now uses **hand-drawn SVG flags** (Union Jack / Dutch
+  tricolour) instead of flag emoji — those showed as plain "GB"/"NL" letters on
+  Windows. The **theme toggle** uses an **SVG yin-yang** with a subtle rim so it
+  reads on both light and dark, replacing the flat ☯ emoji.
+
 ## 3.9.45 — Emoji polish: theme/language, paste, modal crosses, context menu
 
 - **Theme toggle** now shows a ☯️ yin-yang; **language toggle** shows a flag (🇬🇧 / 🇳🇱).
