@@ -2009,11 +2009,11 @@ function renderLayers(){
     const row=document.createElement('div');
     row._elId=el.id;
     row.className='layer'+(isSelected(el.id)?' sel':'')+(el.visible===false?' hidden':'');
-    row.innerHTML=`<span class="lmove mdi mdi-drag-vertical" title="${T('Sleep om te verplaatsen','Drag to reorder')}"></span>
+    row.innerHTML=`<span class="lmove mdi mdi-menu" title="${T('Sleep om te verplaatsen','Drag to reorder')}"></span>
       <span class="ltype">${typeGlyph(el)}</span>
       <span class="lname" title="${T('Dubbelklik om te hernoemen','Double-click to rename')}">${el.name||el.type}</span>
       <span class="ldel" title="${T('Verwijderen','Delete')}">${BIN}</span>
-      <span class="lvis" title="${T('Zichtbaarheid','Visibility')}">${el.visible===false?'🚫':'👁'}</span>`;
+      <span class="lvis" title="${T('Zichtbaarheid','Visibility')}">${el.visible===false?'<span class="mdi mdi-eye-off"></span>':'<span class="mdi mdi-eye" style="color:#3a86ff"></span>'}</span>`;
     // drag-to-reorder via the handle
     const handle=row.querySelector('.lmove'); handle.draggable=true;
     handle.ondragstart=e=>{ _dragLayerId=el.id; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',el.id);}catch(_){} };
@@ -2237,7 +2237,7 @@ function renderInspector(){
     host.innerHTML=`<div class="insp-group"><h4>${T('Selectie','Selection')}</h4>
       <div class="hint" style="margin-bottom:10px">${selectedIds.size} ${T('elementen geselecteerd','elements selected')}</div>
       <div class="row tight">
-        <button class="btn sm" id="msel-dup"><span class="emo">📑</span> ${T('Dupliceren','Duplicate')}</button>
+        <button class="btn sm" id="msel-dup"><span class="emo">🗂️</span> ${T('Dupliceren','Duplicate')}</button>
         <button class="btn ghost sm danger" id="msel-del">${BIN} ${T('Verwijderen','Delete')}</button>
       </div>
       <div class="hint" style="margin-top:8px">${T('Sleep een element om de hele selectie te verplaatsen.','Drag an element to move the whole selection.')}</div></div>`;
@@ -5114,11 +5114,11 @@ function renameEl(el){
 function elItems(el){
   const items=[];
   items.push(['📝 '+T('Hernoemen','Rename'),'F2',()=>renameEl(el)]);
-  items.push(['📑 '+T('Dupliceren','Duplicate'),'Ctrl+D',()=>{ selectedId=el.id; dupSel(); }]);
+  items.push(['🗂️ '+T('Dupliceren','Duplicate'),'Ctrl+D',()=>{ selectedId=el.id; dupSel(); }]);
   items.push(['sep']);
-  items.push(['📋 '+T('Kopiëren','Copy'),'Ctrl+C',()=>{ if(!isSelected(el.id)) select(el.id); copySel(); }]);
+  items.push(['📑 '+T('Kopiëren','Copy'),'Ctrl+C',()=>{ if(!isSelected(el.id)) select(el.id); copySel(); }]);
   items.push(['✂ '+T('Knippen','Cut'),'Ctrl+X',()=>{ if(!isSelected(el.id)) select(el.id); cutSel(); }]);
-  items.push(['📥 '+T('Plakken','Paste'),'Ctrl+V', _clipboard.length?pasteClip:null, _clipboard.length?'':'disabled']);
+  items.push(['📋 '+T('Plakken','Paste'),'Ctrl+V', _clipboard.length?pasteClip:null, _clipboard.length?'':'disabled']);
   items.push(['sep']);
   items.push([el.visible===false?('👁 '+T('Tonen','Show')):('🚫 '+T('Verbergen','Hide')),'',()=>{ pushUndo(); el.visible=el.visible===false?true:false; afterChange(); }]);
   items.push(['↑ '+T('Naar voren','Bring forward'),'',()=>reorder(el,1)]);
@@ -5168,7 +5168,7 @@ function setupContextMenu(){
     if(hitId){ selectedId=hitId; const node=contentLayer.getChildren(n=>n._elId===hitId)[0]; attachSelection(selected(),node); contentLayer.draw(); renderLayers(); renderInspector(); }
     const el=selected();
     if(el) showMenu(e.clientX,e.clientY, elItems(el));
-    else showMenu(e.clientX,e.clientY, [['📥 '+T('Plakken','Paste'),'Ctrl+V', _clipboard.length?pasteClip:null, _clipboard.length?'':'disabled']]);
+    else showMenu(e.clientX,e.clientY, [['📋 '+T('Plakken','Paste'),'Ctrl+V', _clipboard.length?pasteClip:null, _clipboard.length?'':'disabled']]);
   });
 }
 function reorder(el, dir){

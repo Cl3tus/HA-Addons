@@ -180,7 +180,8 @@ body.chrome-hidden #topbar { display: none; }
 /* square icon-only refresh button */
 #btn-refresh { width: 30px; padding: 0; justify-content: center; }
 /* recycle-bin glyph used on every delete/trash control */
-.bin { height: 17px; width: auto; display: inline-block; vertical-align: middle; }
+.bin { height: 17px; width: auto; display: inline-block; vertical-align: middle;
+       image-rendering: pixelated; }
 .ctxmenu .ic .bin { height: 15px; }
 /* </> code badge on the Generate-YAML button */
 .btn .codeic { width: 17px; height: 17px; display: block; }

@@ -4,6 +4,17 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.51 — Replace tofu emoji with MDI icons; blue eye; icon tweaks
+
+- The emoji that showed as empty squares on some systems are now crisp **MDI icons**:
+  screen navigation (« ‹ › »), undo/redo (editor + file editor), Fonts, and the
+  file-manager "back to editor" arrow.
+- **Layers**: the visibility toggle is now a **blue MDI eye** (eye-off when hidden),
+  and the drag-to-reorder handle is a ☰ menu icon.
+- **Copy** uses 📑 and **Paste** uses 📋; **Duplicate** moved to 🗂️ (matching the
+  screen-duplicate icon) so it stays distinct from copy.
+- The recycle-bin delete icon now renders **pixelated** (crisp pixel-art look).
+
 ## 3.9.50 — Classic recycle-bin PNG on the delete buttons
 
 - The delete/trash buttons now use the classic Windows-style **recycle-bin PNG**
