@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
 
 <!-- Fonts: IBM Plex (UI) + preview display fonts — bundled locally -->
-<link rel="stylesheet" href="vendor/fonts.css?v=3.9.40">
+<link rel="stylesheet" href="vendor/fonts.css?v=3.9.41">
 
 <!-- Material Design Icons 7.4.47 — bundled locally -->
 <link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
@@ -17,7 +17,7 @@
 <script src="vendor/js-yaml.min.js"></script>
 <script src="vendor/qrcode-generator.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=3.9.40">
+<link rel="stylesheet" href="styles.css?v=3.9.41">
 </head>
 <body>
 <div id="app">
@@ -109,6 +109,7 @@
         <button class="btn ghost sm" id="scr-next" data-i18n-title="Volgend scherm" title="Volgend scherm">&rsaquo;</button>
         <button class="btn ghost sm" id="scr-last" data-i18n-title="Laatste scherm" title="Laatste scherm">&raquo;</button>
       </div>
+      <div class="topbar-sep" id="screen-nav-sep"></div>
       <div class="grp" id="screen-grp">
         <button class="btn ghost sm" id="scr-add" data-i18n-title="Scherm toevoegen">+</button>
         <button class="btn ghost sm" id="scr-dup" data-i18n-title="Scherm dupliceren">&#9099;</button>
@@ -181,6 +182,7 @@
       <label class="toggle"><input type="checkbox" id="tg-snap-guides"> <span data-i18n="Snap lineaal">Snap lineaal</span></label>
       <div style="flex:1"></div>
       <span id="screen-rot" data-i18n-title="Schermrotatie" title="Schermrotatie" style="color:var(--txt-dim);font-size:11px;white-space:nowrap"></span>
+      <span id="page-num" style="margin-left:14px;color:var(--txt-dim);font-size:11px;white-space:nowrap"></span>
     </div>
 
     <!-- slide-in code drawer -->
@@ -219,8 +221,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=3.9.40"></script>
-<script src="lang.js?v=3.9.40"></script>
-<script src="theme.js?v=3.9.40"></script>
+<script src="app.js?v=3.9.41"></script>
+<script src="lang.js?v=3.9.41"></script>
+<script src="theme.js?v=3.9.41"></script>
 </body>
 </html>

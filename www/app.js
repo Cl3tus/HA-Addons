@@ -248,8 +248,14 @@ function renderScreenSelect(){
   { const sp=$('#screen-single'); if(sp){ sp.style.display = single ? '' : 'none'; sp.textContent = T('Eén pagina','Single Page'); } }
   { const rt=$('#screen-rot'); if(rt) rt.textContent = T('Schermrotatie','Screen Rotation')+': '+(p.device.rotation||0)+'°'; }
   const grp=$('#screen-grp'); if(grp) grp.style.display = mOn ? '' : 'none';
-  // the prev/next/first/last nav rides along with multi-screen
-  { const nv=$('#screen-nav'); if(nv) nv.style.display = mOn ? '' : 'none'; }
+  // the prev/next/first/last nav + its separator ride along with multi-screen
+  ['#screen-nav','#screen-nav-sep'].forEach(id=>{ const el=$(id); if(el) el.style.display = mOn ? '' : 'none'; });
+  // page indicator (status bar): current designed screen / total — shown with multi-screen
+  { const pn=$('#page-num'); if(pn){
+      pn.style.display = mOn ? '' : 'none';
+      const idx=list.findIndex(s=>s.id===editScreen);
+      pn.textContent = T('Pagina','Page')+': '+(idx>=0?(idx+1):'–')+'/'+list.length;
+    } }
   const onScreen = editScreen!=='wait';
   const set=(id,dis)=>{ const b=$(id); if(b) b.disabled=!!dis; };
   set('#scr-add', list.length>=MAX_SCREENS);
@@ -677,9 +683,9 @@ function initStage(){
   $('#konva-host').innerHTML='';
   stage = new Konva.Stage({ container:'#konva-host', width:p.device.w, height:p.device.h });
   gridLayer = new Konva.Layer({listening:false});
-  guideLayer = new Konva.Layer({listening:false}); // BEHIND content (just above the grid)
-                                                    // so guides sit at the back and don't
-                                                    // overlay your elements.
+  guideLayer = new Konva.Layer({listening:true});  // BEHIND content (just above the grid) so
+                                                    // guides sit at the back; listening so the
+                                                    // blue line can be grabbed + dragged directly.
   contentLayer = new Konva.Layer();
   stage.add(gridLayer); stage.add(guideLayer); stage.add(contentLayer);
   setupMarquee();
@@ -1073,8 +1079,26 @@ function drawGuides(){
   profileGuides().forEach(g=>{
     const gc=guideCol();
     const line = g.axis==='h'
-      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:gc, strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false})
-      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:gc, strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false});
+      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:gc, strokeWidth:1.2, dash:[5,3], hitStrokeWidth:14, listening:true, perfectDrawEnabled:false})
+      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:gc, strokeWidth:1.2, dash:[5,3], hitStrokeWidth:14, listening:true, perfectDrawEnabled:false});
+    line.on('mouseenter', ()=>{ if(stage) stage.container().style.cursor = g.axis==='h'?'ns-resize':'ew-resize'; });
+    line.on('mouseleave', ()=>{ if(stage) stage.container().style.cursor = ''; });
+    // grab the blue line and drag it directly on the canvas (reliable; no ruler needed)
+    line.on('mousedown', e=>{
+      if(e.evt && e.evt.button!==0) return;
+      e.cancelBubble=true;                          // don't start a marquee selection
+      if(e.evt) e.evt.preventDefault();
+      const rect=stage.container().getBoundingClientRect();
+      const move=ev=>{
+        const sx=(ev.clientX-rect.left-stage.x())/stage.scaleX();
+        const sy=(ev.clientY-rect.top-stage.y())/stage.scaleY();
+        g.pos=Math.max(0, Math.min(Math.round(g.axis==='h'?sy:sx), g.axis==='h'?H:W));
+        drawGuides(); drawRuler();                   // live: the solid line follows the cursor
+      };
+      const up=()=>{ window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up);
+        persistGuides(); };
+      window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+    });
     guideLayer.add(line);
   });
   guideLayer.draw();

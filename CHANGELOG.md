@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.41 — Drag guides on the canvas + page indicator
+
+- **Guides are now grabbed and dragged directly on the canvas** — hover the blue line, then
+  drag it (a wide hit area, exact Konva stage coordinates). This finally fixes the
+  "can't move a guide / it keeps making new ones" problem; the ruler still drops new guides.
+- **`|` separator between the « ‹ › » nav and the +/⧉/✎/🗑 screen buttons.**
+- **Page indicator** in the bottom status bar, next to the rotation read-out: *Page: 2/4*
+  (current designed screen / total), shown with multiple screens.
+
 ## 3.9.40 — Toolbar layout, refresh greying & guide grab
 
 - **Ruler guides are reliably movable now** — each guide has a full-height invisible grab
