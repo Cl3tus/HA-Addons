@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.57 — Fix disabled-state on canvas selection + pen size
+
+- The greyed-out toolbar buttons now update on **every** selection change, including
+  clicking an element directly on the canvas (updateToolbarState moved into
+  renderInspector, which all selection paths call).
+- Fonts-modal edit pen is a bit smaller so it matches the delete button.
+
 ## 3.9.56 — Disabled-state toolbar buttons + icon sizing
 
 - Canvas toolbar buttons now **grey out when there's nothing to do**: undo/redo follow

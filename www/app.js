@@ -2247,6 +2247,7 @@ function alignSel(how){
    INSPECTOR
    ============================================================ */
 function renderInspector(){
+  updateToolbarState();   // selection changed → refresh greyed-out toolbar buttons
   const host=$('#inspector'); const el=selected();
   if(!el){ host.innerHTML='<div class="inspector-empty">'+T('Selecteer een element op het canvas','Select an element on the canvas')+'<br>'+T('of voeg er een toe.','or add a new one.')+'</div>'; return; }
   if(selectedIds.size>1){
@@ -4038,7 +4039,7 @@ async function openFonts(){
       ? `<span class="tag" style="color:var(--ok)">${T('in gebruik','in use')}</span>`
       : `<span class="tag" style="color:var(--txt-faint)" title="${T('Geen element gebruikt dit font; het komt niet in de YAML.','No element uses this font; it is left out of the YAML.')}">${T('ongebruikt','unused')}</span>`}</td>
     <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?fileBtn('rowfont-'+i,'.ttf,.otf,.woff,.pcf,.bdf',{compact:true,extra:`data-font="${i}"`}):''}</td>
-    <td style="white-space:nowrap"><button class="btn ghost sm" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}"><span class="emo" style="font-size:17px">✏️</span></button>
+    <td style="white-space:nowrap"><button class="btn ghost sm" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}"><span class="emo" style="font-size:15px">✏️</span></button>
         <button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">${BIN}</button></td>
   </tr>`;
   const ordered=profile().fonts.map((f,i)=>({f,i})).sort((a,b)=>fontCat(a.f)-fontCat(b.f) || a.i-b.i);
