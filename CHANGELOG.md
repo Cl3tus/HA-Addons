@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.50 — Classic recycle-bin PNG on the delete buttons
+
+- The delete/trash buttons now use the classic Windows-style **recycle-bin PNG**
+  (`www/img/recyclebin.png`, transparent) in place of the drawn SVG, everywhere a
+  delete control appears.
+
 ## 3.9.49 — SVG recycle-bin, square refresh, code badge
 
 - **Delete buttons everywhere** now use a hand-drawn **recycle-bin SVG** (grey bucket

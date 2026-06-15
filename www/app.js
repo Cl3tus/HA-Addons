@@ -5098,9 +5098,8 @@ function showAppPrompt(msg, defaultVal, cb, opts){
 /* point 2: right-click context menu on the canvas */
 function hideCtxMenu(){ $('#ctxmenu').classList.remove('open'); }
 
-/* recycle-bin glyph (grey bucket + green arrows) used on every delete control —
-   inline SVG so it renders identically everywhere and has a transparent bg */
-const BIN = '<svg class="bin" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4.6 a.6 .6 0 0 1 .6-.6 h2.8 a.6 .6 0 0 1 .6 .6 v1" fill="none" stroke="#6f757e" stroke-width="1"/><rect x="4.5" y="5.6" width="15" height="2.2" rx="1.1" fill="#b8bdc5" stroke="#6f757e" stroke-width="1"/><path d="M6 8 H18 L16.7 20.6 A1.1 1.1 0 0 1 15.6 21.6 H8.4 A1.1 1.1 0 0 1 7.3 20.6 Z" fill="#cfd3d9" stroke="#6f757e" stroke-width="1"/><g fill="#2fa033"><polygon points="11.8,9.7 11.8,12.1 14.6,10.9"/><polygon points="11.8,9.7 11.8,12.1 14.6,10.9" transform="rotate(120 12 14)"/><polygon points="11.8,9.7 11.8,12.1 14.6,10.9" transform="rotate(240 12 14)"/></g></svg>';
+/* recycle-bin icon used on every delete control (classic Win-style PNG, transparent) */
+const BIN = '<img class="bin" src="img/recyclebin.png" alt="" aria-hidden="true">';
 
 /* start an inline rename for an element via its layers-panel row (used by the
    context menu and the F2 shortcut) */
@@ -5137,8 +5136,8 @@ function showMenu(x,y,items){
     const cls=(it[3]&&!dis)?` class="${it[3]}"`:'';
     const k=it[1]?`<span class="k">${it[1]}</span>`:'';
     let icon, lbl;
-    if(it[0].charAt(0)==='<'){           // inline SVG icon (e.g. the recycle bin)
-      const end=it[0].indexOf('</svg>')+6;
+    if(it[0].charAt(0)==='<'){           // HTML icon (img / svg, e.g. the recycle bin)
+      const end=it[0].indexOf('</svg>')>=0 ? it[0].indexOf('</svg>')+6 : it[0].indexOf('>')+1;
       icon=it[0].slice(0,end); lbl=it[0].slice(end).replace(/^\s+/,'');
     } else {                             // emoji/text icon: split on first space
       const sp=it[0].indexOf(' ');
