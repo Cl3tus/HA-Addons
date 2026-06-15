@@ -3843,7 +3843,7 @@ function openSources(){
     </select></td>
     <td>${haTypeCell}</td>
     <td style="text-align:center">${snapBtn}</td>
-    <td><button class="btn ghost sm danger" data-del="${i}">✕</button></td></tr>`;}).join('');
+    <td><button class="btn ghost sm danger" data-del="${i}">${BIN}</button></td></tr>`;}).join('');
 
   const help = `<div class="src-box" style="margin-bottom:12px">
     <b>${T('Live data uit Home Assistant','Live data from Home Assistant')}</b>
@@ -3861,9 +3861,9 @@ function openSources(){
     `${help}
      <div style="overflow-x:auto;overflow-y:hidden"><table class="tbl" style="min-width:600px"><thead><tr><th>id (lambda)</th><th>entity_id (HA)</th><th>live (HA)</th>${showSample?`<th>${T('voorbeeld','sample')}</th>`:''}<th>${T('type (lambda)','type (lambda)')}</th><th>${T('type (HA)','type (HA)')}</th><th></th><th></th></tr></thead><tbody id="src-body">${rows}</tbody></table></div>
      <div class="row tight" style="margin-top:10px;align-items:center">
-       <button class="btn sm" id="src-ha">⌂ ${T('Uit Home Assistant…','From Home Assistant…')}</button>
+       <button class="btn sm" id="src-ha"><span class="mdi mdi-home-assistant" style="color:#41bdf5"></span> ${T('Uit Home Assistant…','From Home Assistant…')}</button>
        <button class="btn ghost sm" id="src-add">+ ${T('Handmatig toevoegen','Add manually')}</button>
-       ${liveOn?`<button class="btn ghost sm" id="src-detect" title="${T('Zet het type van elke bron op wat Home Assistant detecteert','Set each source type to what Home Assistant detects')}">↺ ${T('Types detecteren','Detect types')}</button>`:''}
+       ${liveOn?`<button class="btn ghost sm" id="src-detect" title="${T('Zet het type van elke bron op wat Home Assistant detecteert','Set each source type to what Home Assistant detects')}"><span class="emo">🔍</span> ${T('Types detecteren','Detect types')}</button>`:''}
        <label class="toggle" style="margin-left:8px"><input type="checkbox" id="src-show-sample" ${showSample?'checked':''}> ${T('Voorbeeld-kolom','Sample column')}</label>
      </div>`,
     [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ persist(); closeModal(); renderInspector(); }}]);

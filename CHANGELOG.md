@@ -4,6 +4,16 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.53 — More icon polish (un-pixelate bin, HA-logo, sources + file menu)
+
+- The recycle-bin delete icon is **smooth again** (un-pixelated).
+- **Undo/redo** icons now follow HA's primary colour, like the screen nav.
+- **File manager**: the far-right refresh button is a square ♻️ that matches the
+  theme/flag buttons; the **right-click menu** uses emoji icons (and the recycle-bin
+  for delete).
+- **Sources (sensor mapping)**: the *Detect types* button (🔍), the per-row delete
+  (recycle-bin) and the *From Home Assistant* button (the HA logo) got icons.
+
 ## 3.9.52 — Primary-colour screen nav + red hidden-eye
 
 - The screen-navigation icons (« ‹ › ») now follow **HA's primary colour** (`--guide`).

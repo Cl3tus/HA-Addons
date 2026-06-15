@@ -652,7 +652,9 @@ function showCtxMenu(x, y, entry, fullPath) {
   const item = (label, icon, fn, danger = false) => {
     const btn = document.createElement('button');
     if (danger) btn.className = 'danger';
-    btn.innerHTML = `<span class="mdi ${icon}"></span>${label}`;
+    // icon may be raw HTML (e.g. the recycle-bin <img>) or an emoji glyph
+    const ic = icon.charAt(0) === '<' ? icon : `<span class="emo">${icon}</span>`;
+    btn.innerHTML = `<span class="ic">${ic}</span><span class="lbl">${label}</span>`;
     btn.onclick = () => { hideCtxMenu(); fn(); };
     menu.appendChild(btn);
   };
@@ -663,25 +665,25 @@ function showCtxMenu(x, y, entry, fullPath) {
   };
 
   if (entry.type === 'dir') {
-    item(_t('Openen', 'Open'), 'mdi-folder-open-outline',
+    item(_t('Openen', 'Open'), '📂',
       () => navigate(path));
   } else {
     if (isFontFile(entry.name)) {
-      item(_t('Voorbeeld', 'Preview'), 'mdi-format-font',
+      item(_t('Voorbeeld', 'Preview'), '🔍',
         () => openFontPreview(entry.name, path));
     }
     if (isTextFile(entry.name)) {
-      item(_t('Bewerken', 'Edit'), 'mdi-file-edit-outline',
+      item(_t('Bewerken', 'Edit'), '📝',
         () => openEditor(entry.name, path));
     }
-    item(_t('Downloaden', 'Download'), 'mdi-download-outline',
+    item(_t('Downloaden', 'Download'), '📥',
       () => doDownload(entry.name, path));
   }
   sep();
-  item(_t('Hernoemen', 'Rename'), 'mdi-pencil-outline', doRename);
-  item(_t('Verplaatsen', 'Move'), 'mdi-folder-move-outline', doMove);
+  item(_t('Hernoemen', 'Rename'), '✏️', doRename);
+  item(_t('Verplaatsen', 'Move'), '📦', doMove);
   sep();
-  item(_t('Verwijderen', 'Delete'), 'mdi-delete-outline', doDelete, true);
+  item(_t('Verwijderen', 'Delete'), '<img class="bin" src="img/recyclebin.png" alt="" aria-hidden="true">', doDelete, true);
 
   menu.classList.add('open');
   menu.style.left = x + 'px';
