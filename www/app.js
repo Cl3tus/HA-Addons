@@ -2012,7 +2012,7 @@ function renderLayers(){
     row.innerHTML=`<span class="lmove mdi mdi-drag-vertical" title="${T('Sleep om te verplaatsen','Drag to reorder')}"></span>
       <span class="ltype">${typeGlyph(el)}</span>
       <span class="lname" title="${T('Dubbelklik om te hernoemen','Double-click to rename')}">${el.name||el.type}</span>
-      <span class="ldel" title="${T('Verwijderen','Delete')}">🗑</span>
+      <span class="ldel" title="${T('Verwijderen','Delete')}">${BIN}</span>
       <span class="lvis" title="${T('Zichtbaarheid','Visibility')}">${el.visible===false?'🚫':'👁'}</span>`;
     // drag-to-reorder via the handle
     const handle=row.querySelector('.lmove'); handle.draggable=true;
@@ -2238,7 +2238,7 @@ function renderInspector(){
       <div class="hint" style="margin-bottom:10px">${selectedIds.size} ${T('elementen geselecteerd','elements selected')}</div>
       <div class="row tight">
         <button class="btn sm" id="msel-dup"><span class="emo">📑</span> ${T('Dupliceren','Duplicate')}</button>
-        <button class="btn ghost sm danger" id="msel-del"><span class="emo">🗑️</span> ${T('Verwijderen','Delete')}</button>
+        <button class="btn ghost sm danger" id="msel-del">${BIN} ${T('Verwijderen','Delete')}</button>
       </div>
       <div class="hint" style="margin-top:8px">${T('Sleep een element om de hele selectie te verplaatsen.','Drag an element to move the whole selection.')}</div></div>`;
     $('#msel-dup').onclick=dupSel; $('#msel-del').onclick=deleteSel;
@@ -5098,6 +5098,10 @@ function showAppPrompt(msg, defaultVal, cb, opts){
 /* point 2: right-click context menu on the canvas */
 function hideCtxMenu(){ $('#ctxmenu').classList.remove('open'); }
 
+/* recycle-bin glyph (grey bucket + green arrows) used on every delete control —
+   inline SVG so it renders identically everywhere and has a transparent bg */
+const BIN = '<svg class="bin" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4.6 a.6 .6 0 0 1 .6-.6 h2.8 a.6 .6 0 0 1 .6 .6 v1" fill="none" stroke="#6f757e" stroke-width="1"/><rect x="4.5" y="5.6" width="15" height="2.2" rx="1.1" fill="#b8bdc5" stroke="#6f757e" stroke-width="1"/><path d="M6 8 H18 L16.7 20.6 A1.1 1.1 0 0 1 15.6 21.6 H8.4 A1.1 1.1 0 0 1 7.3 20.6 Z" fill="#cfd3d9" stroke="#6f757e" stroke-width="1"/><g fill="#2fa033"><polygon points="11.8,9.7 11.8,12.1 14.6,10.9"/><polygon points="11.8,9.7 11.8,12.1 14.6,10.9" transform="rotate(120 12 14)"/><polygon points="11.8,9.7 11.8,12.1 14.6,10.9" transform="rotate(240 12 14)"/></g></svg>';
+
 /* start an inline rename for an element via its layers-panel row (used by the
    context menu and the F2 shortcut) */
 function renameEl(el){
@@ -5121,7 +5125,7 @@ function elItems(el){
   items.push(['↑ '+T('Naar voren','Bring forward'),'',()=>reorder(el,1)]);
   items.push(['↓ '+T('Naar achteren','Send backward'),'',()=>reorder(el,-1)]);
   items.push(['sep']);
-  items.push(['🗑️ '+T('Verwijderen','Delete'),'Del',()=>{ selectedId=el.id; deleteSel(); },'danger']);
+  items.push([BIN+' '+T('Verwijderen','Delete'),'Del',()=>{ selectedId=el.id; deleteSel(); },'danger']);
   return items;
 }
 
@@ -5132,9 +5136,14 @@ function showMenu(x,y,items){
     const dis=it[3]==='disabled';
     const cls=(it[3]&&!dis)?` class="${it[3]}"`:'';
     const k=it[1]?`<span class="k">${it[1]}</span>`:'';
-    const sp=it[0].indexOf(' ');
-    const icon=sp>0?it[0].slice(0,sp):'';
-    const lbl=sp>0?it[0].slice(sp+1):it[0];
+    let icon, lbl;
+    if(it[0].charAt(0)==='<'){           // inline SVG icon (e.g. the recycle bin)
+      const end=it[0].indexOf('</svg>')+6;
+      icon=it[0].slice(0,end); lbl=it[0].slice(end).replace(/^\s+/,'');
+    } else {                             // emoji/text icon: split on first space
+      const sp=it[0].indexOf(' ');
+      icon=sp>0?it[0].slice(0,sp):''; lbl=sp>0?it[0].slice(sp+1):it[0];
+    }
     return `<button${cls}${dis?' disabled':''} data-act><span class="ic">${icon}</span><span class="lbl">${lbl}</span>${k}</button>`;
   }).join('');
   const acts=items.filter(x=>x[0]!=='sep');

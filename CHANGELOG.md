@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.49 — SVG recycle-bin, square refresh, code badge
+
+- **Delete buttons everywhere** now use a hand-drawn **recycle-bin SVG** (grey bucket
+  + green arrows, transparent background) instead of the wastebasket emoji — canvas
+  toolbar, screen delete, multi-select bar, layers row, context menu and file manager.
+- The **Refresh** button is now a square icon button.
+- The **Generate YAML** button uses an SVG `</>` code badge instead of plain text.
+
 ## 3.9.48 — Compacter top bar (fits the longer Dutch labels)
 
 - Tighter spacing throughout the top bar (smaller gaps, button padding and profile

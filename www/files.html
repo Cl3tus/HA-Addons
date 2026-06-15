@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bestandsbeheer — E-ink Studio</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
-<link rel="stylesheet" href="vendor/fonts.css?v=3.9.48">
+<link rel="stylesheet" href="vendor/fonts.css?v=3.9.49">
 <link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
-<link rel="stylesheet" href="styles.css?v=3.9.48">
+<link rel="stylesheet" href="styles.css?v=3.9.49">
 <style>
   body { overflow: hidden; }
 
@@ -279,7 +279,7 @@
     <button class="btn ghost sm" id="btn-rename" data-i18n-title="Geselecteerd item hernoemen" disabled><span class="emo">📝</span> <span data-i18n="Hernoemen">Hernoemen</span></button>
     <button class="btn ghost sm" id="btn-move" data-i18n-title="Verplaatsen naar een andere map" disabled><span class="emo">📦</span> <span data-i18n="Verplaatsen">Verplaatsen</span></button>
     <button class="btn ghost sm" id="btn-download" data-i18n-title="Bestand downloaden" disabled><span class="emo">📥</span> <span data-i18n="Downloaden">Downloaden</span></button>
-    <button class="btn ghost sm danger" id="btn-delete" data-i18n-title="Geselecteerde items verwijderen (Del)" disabled><span class="emo">🗑️</span> <span data-i18n="Verwijderen">Verwijderen</span></button>
+    <button class="btn ghost sm danger" id="btn-delete" data-i18n-title="Geselecteerde items verwijderen (Del)" disabled><svg class="bin" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4.6 a.6 .6 0 0 1 .6-.6 h2.8 a.6 .6 0 0 1 .6 .6 v1" fill="none" stroke="#6f757e" stroke-width="1"/><rect x="4.5" y="5.6" width="15" height="2.2" rx="1.1" fill="#b8bdc5" stroke="#6f757e" stroke-width="1"/><path d="M6 8 H18 L16.7 20.6 A1.1 1.1 0 0 1 15.6 21.6 H8.4 A1.1 1.1 0 0 1 7.3 20.6 Z" fill="#cfd3d9" stroke="#6f757e" stroke-width="1"/><g fill="#2fa033"><polygon points="11.8,9.7 11.8,12.1 14.6,10.9"/><polygon points="11.8,9.7 11.8,12.1 14.6,10.9" transform="rotate(120 12 14)"/><polygon points="11.8,9.7 11.8,12.1 14.6,10.9" transform="rotate(240 12 14)"/></g></svg> <span data-i18n="Verwijderen">Verwijderen</span></button>
     <div class="topbar-spacer"></div>
     <button class="btn ghost sm" id="btn-theme-fe" data-i18n-title="Thema" title="Thema"><svg class="yny" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47" fill="#e8ebf1" stroke="currentColor" stroke-width="2.5" stroke-opacity=".5"/><path d="M50,3 a47,47 0 0,1 0,94 a23.5,23.5 0 0,1 0,-47 a23.5,23.5 0 0,0 0,-47z" fill="#3a3f47"/><circle cx="50" cy="26.5" r="6" fill="#e8ebf1"/><circle cx="50" cy="73.5" r="6" fill="#3a3f47"/></svg><span>Dark</span></button>
     <button class="btn ghost sm" id="btn-lang-fe" data-lang-toggle onclick="toggleLang()" title="Taal / Language"><svg class="flag" viewBox="0 0 60 30" aria-hidden="true"><clipPath id="ujs"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="ujt"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#ujs)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#ujt)" stroke="#c8102e" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#c8102e" stroke-width="6"/></g></svg></button>
@@ -365,8 +365,8 @@
 <!-- Toast -->
 <div class="toast" id="fe-toast"></div>
 
-<script src="files.js?v=3.9.48"></script>
-<script src="lang.js?v=3.9.48"></script>
-<script src="theme.js?v=3.9.48"></script>
+<script src="files.js?v=3.9.49"></script>
+<script src="lang.js?v=3.9.49"></script>
+<script src="theme.js?v=3.9.49"></script>
 </body>
 </html>

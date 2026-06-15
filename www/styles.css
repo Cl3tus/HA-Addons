@@ -177,8 +177,13 @@ body.chrome-hidden #topbar { display: none; }
 /* keep every top-bar button the same height regardless of icon vs text content,
    and run them tight so the whole bar fits (esp. the longer Dutch labels) */
 #topbar .btn { box-sizing: border-box; min-height: 30px; gap: 5px; padding: 6px 8px; }
-/* Live + Refresh form an equal-sized pair */
-#btn-live, #btn-refresh { min-width: 56px; justify-content: center; }
+/* square icon-only refresh button */
+#btn-refresh { width: 30px; padding: 0; justify-content: center; }
+/* recycle-bin glyph used on every delete/trash control */
+.bin { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
+.ctxmenu .ic .bin { width: 15px; height: 15px; }
+/* </> code badge on the Generate-YAML button */
+.btn .codeic { width: 17px; height: 17px; display: block; }
 /* tinted MDI icons for the structural groups that have no good emoji
    (alignment = blue, layer order = purple) — readable on dark + light themes */
 .mdi.mdi-c-align { color: #4a90d9; }
