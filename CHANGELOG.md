@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.54 — Unified "+" buttons (mdi-plus-thick in HA primary)
+
+- Every add/plus button now uses **mdi-plus-thick** in HA's primary colour: new
+  profile, add screen, the trace/source/font "+" add buttons, and zoom-in. Zoom-out
+  matches with mdi-minus-thick so the pair stays consistent.
+
 ## 3.9.53 — More icon polish (un-pixelate bin, HA-logo, sources + file menu)
 
 - The recycle-bin delete icon is **smooth again** (un-pixelated).

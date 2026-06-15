@@ -2400,7 +2400,7 @@ function renderInspector(){
         <label class="toggle"><input type="checkbox" data-trace="${i}.continuous" ${t.continuous!==false?'checked':''}> ${T('Continu','Continuous')}</label>
         ${(gr.traces.length>1)?`<button class="btn ghost sm danger" data-trace-del="${i}">${T('Trace verwijderen','Remove trace')}</button>`:''}
       </div>`).join('')}
-      <button class="btn sm" id="trace-add" style="margin-top:8px">+ ${T('Trace toevoegen','Add trace')}</button>
+      <button class="btn sm" id="trace-add" style="margin-top:8px"><span class="mdi mdi-plus-thick mdi-c-nav"></span> ${T('Trace toevoegen','Add trace')}</button>
       <div class="hint">${T('Elke trace heeft een eigen lijntype, dikte en kleur. Alleen numerieke sensoren zijn zinvol.','Each trace has its own line type, thickness and colour. Only numeric sensors make sense.')}</div>`);
 
     h+=g(T('Grafiek — assen & labels','Graph — axes & labels'),`
@@ -3862,7 +3862,7 @@ function openSources(){
      <div style="overflow-x:auto;overflow-y:hidden"><table class="tbl" style="min-width:600px"><thead><tr><th>id (lambda)</th><th>entity_id (HA)</th><th>live (HA)</th>${showSample?`<th>${T('voorbeeld','sample')}</th>`:''}<th>${T('type (lambda)','type (lambda)')}</th><th>${T('type (HA)','type (HA)')}</th><th></th><th></th></tr></thead><tbody id="src-body">${rows}</tbody></table></div>
      <div class="row tight" style="margin-top:10px;align-items:center">
        <button class="btn sm" id="src-ha"><span class="mdi mdi-home-assistant" style="color:#41bdf5"></span> ${T('Uit Home Assistant…','From Home Assistant…')}</button>
-       <button class="btn ghost sm" id="src-add">+ ${T('Handmatig toevoegen','Add manually')}</button>
+       <button class="btn ghost sm" id="src-add"><span class="mdi mdi-plus-thick mdi-c-nav"></span> ${T('Handmatig toevoegen','Add manually')}</button>
        ${liveOn?`<button class="btn ghost sm" id="src-detect" title="${T('Zet het type van elke bron op wat Home Assistant detecteert','Set each source type to what Home Assistant detects')}"><span class="emo">🔍</span> ${T('Types detecteren','Detect types')}</button>`:''}
        <label class="toggle" style="margin-left:8px"><input type="checkbox" id="src-show-sample" ${showSample?'checked':''}> ${T('Voorbeeld-kolom','Sample column')}</label>
      </div>`,
@@ -4065,7 +4065,7 @@ async function openFonts(){
          <div style="flex:2"><label class="fld">URL</label><input id="nf-url" type="text" class="mono" placeholder="https://…/Font.ttf" title="${T('Directe download-URL naar een .ttf/.otf/.woff. ESPHome haalt het font op tijdens de build (type: web).','Direct download URL to a .ttf/.otf/.woff. ESPHome fetches the font at build time (type: web).')}"></div>
        </div>
        <div class="hint" id="nf-web-link" style="display:none;margin-top:4px">↗ <a href="https://fontsource.org/" target="_blank" rel="noopener">${T('Zoek een download-URL op Fontsource','Find a download URL on Fontsource')}</a> ${T('(of plak een directe link naar een .ttf/.otf)','(or paste a direct link to a .ttf/.otf)')}</div>
-       <button class="btn sm" id="nf-add" style="margin-top:8px">+ ${T('Font toevoegen','Add font')}</button>
+       <button class="btn sm" id="nf-add" style="margin-top:8px"><span class="mdi mdi-plus-thick mdi-c-nav"></span> ${T('Font toevoegen','Add font')}</button>
        <div class="hint" style="margin-top:6px">${T('Het','The')} <span class="mono">id</span> ${T('gebruik je in elementen; het','is used in elements; the')} <span class="mono">${T('pad','path')}</span> ${T('moet kloppen met je ESPHome','must match your ESPHome')} <span class="mono">fonts/</span>${T('-map.',' folder.')}</div>
      </div>
      <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')} ${T('Wijzigingen gelden pas na Opslaan.','Changes apply only after Save.')}</div>`,
