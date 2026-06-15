@@ -248,6 +248,8 @@ function renderScreenSelect(){
   { const sp=$('#screen-single'); if(sp){ sp.style.display = single ? '' : 'none'; sp.textContent = T('Eén pagina','Single Page'); } }
   { const rt=$('#screen-rot'); if(rt) rt.textContent = '↻ '+(p.device.rotation||0)+'°'; }
   const grp=$('#screen-grp'); if(grp) grp.style.display = mOn ? '' : 'none';
+  // the prev/next/first/last nav + its separators ride along with multi-screen
+  ['#screen-nav','#screen-nav-sep1','#screen-nav-sep2'].forEach(id=>{ const el=$(id); if(el) el.style.display = mOn ? '' : 'none'; });
   const onScreen = editScreen!=='wait';
   const set=(id,dis)=>{ const b=$(id); if(b) b.disabled=!!dis; };
   set('#scr-add', list.length>=MAX_SCREENS);
@@ -255,6 +257,19 @@ function renderScreenSelect(){
   // the main screen (screens[0]) can never be removed
   set('#scr-del', !onScreen || list.length<=1 || editScreen===list[0].id);
   set('#scr-ren', !onScreen);
+  // nav buttons: disable « ‹ at the first option, › » at the last
+  const navOpts=[...ss.options].map(o=>o.value); const ci=Math.max(0,navOpts.indexOf(editScreen));
+  set('#scr-first', ci<=0); set('#scr-prev', ci<=0);
+  set('#scr-next', ci>=navOpts.length-1); set('#scr-last', ci>=navOpts.length-1);
+}
+/* jump the screen selector to the first / previous / next / last selectable option */
+function navScreen(where){
+  const ss=$('#screen-select'); if(!ss) return;
+  const opts=[...ss.options].map(o=>o.value); if(opts.length<2) return;
+  let idx=opts.indexOf(editScreen); if(idx<0) idx=0;
+  if(where==='first') idx=0; else if(where==='last') idx=opts.length-1;
+  else if(where==='prev') idx=Math.max(0,idx-1); else idx=Math.min(opts.length-1,idx+1);
+  if(opts[idx]!==editScreen) switchScreen(opts[idx]);
 }
 /* switch which screen is being edited (resets selection + undo history, like the
    original screen-select onchange did) */
@@ -3152,10 +3167,10 @@ function orderedElements(){ return orderedFor(els()); }
 /* per-profile "which blocks to generate" settings (see Profile settings → Generated YAML) */
 function outputDefaults(){
   return {
-    refresh:true,                                   // esphome on_boot + script + time (grouped — they belong together)
+    refresh:true,                                   // master: esphome on_boot + script + time + the display-mode switches
+    refreshEsphome:true, refreshScript:true, refreshTime:true,  // each block individually on/off (under refresh)
     bootPriority:'600.0', bootDelay:'2s', waitTimeout:'30s', timeInterval:15,
-    screenControl:'both',                           // HA screen-picker style with ≥2 screens: 'select' | 'buttons' | 'both'
-    rotateBoolean:false,                            // also generate the Screen Rotation mode switch (needs ≥2 screens)
+    screenControl:'both',                           // HA screen-picker style with ≥2 screens: 'none' | 'select' | 'buttons' | 'both'
     globals:true,
     spi:false, spiClk:'GPIO13', spiMosi:'GPIO14',
     fonts:true, colors:true, sensors:true, textSensors:true,
@@ -3298,15 +3313,15 @@ function genYAML(){
   // is always on: Static (freeze), Auto Refresh (periodic), or Rotation (cycle screens; implies
   // refresh, multi-screen only). Turning one on turns the others off; you can't turn all off.
   const modeSwitches = !!o.refresh;
-  const rotateBool = modeSwitches && multi && !!o.rotateBoolean;  // Screen Rotation switch (needs ≥2 screens + opt-in)
+  const rotateBool = modeSwitches && multi;              // Screen Rotation switch comes automatically with multi-screen
   const switchEntries = [];                               // collected template switches → one switch: block
   // HA-facing option labels for the select/buttons, de-duplicated (ESPHome needs a
   // unique label per option; two screens may share a user-typed name).
   const scrNames = (()=>{ const seen={}; return scrs.map(s=>{ let nm=(s.name||'').trim()||T('Scherm','Screen');
     if(seen[nm]!=null){ seen[nm]++; nm=nm+' '+seen[nm]; } else seen[nm]=1; return nm; }); })();
 
-  // refresh logic — esphome on_boot + script + time belong together (one toggle)
-  if(o.refresh){
+  // refresh logic — esphome on_boot, script and time can each be toggled individually
+  if(o.refresh && o.refreshEsphome!==false){
     out+=`# ${T('--- vul aan in je bestaande esphome: blok ---','--- add to your existing esphome: block ---')}\n`;
     out+=`esphome:\n  on_boot:\n    priority: ${o.bootPriority}\n    then:\n      - delay: ${o.bootDelay}\n      - component.update: eink_display\n      - wait_until:\n          condition:\n            lambda: 'return id(data_updated) == true;'\n          timeout: ${o.waitTimeout}\n      - lambda: 'id(initial_data_received) = true;'\n      - script.execute: update_screen\n\n`;
   }
@@ -3317,9 +3332,13 @@ function genYAML(){
     out+='\n';
   }
 
-  // script + time (part of the refresh logic)
-  if(o.refresh){
+  // script (part of the refresh logic)
+  if(o.refresh && o.refreshScript!==false){
     out+=`script:\n  - id: update_screen\n    then:\n      - lambda: 'id(data_updated) = false;'\n      - component.update: eink_display\n      - lambda: 'id(recorded_display_refresh) += 1;'\n      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'\n\n`;
+  }
+
+  // time (part of the refresh logic) — the interval driver for the display-mode switches
+  if(o.refresh && o.refreshTime!==false){
     out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n`;
     // refresh only when new sensor data arrived (skip this round otherwise), with a log on both.
     const refreshIf = i => `${i}- if:\n${i}    condition:\n${i}      lambda: 'return id(data_updated) == true;'\n${i}    then:\n${i}      - logger.log: "E-ink: new sensor data — refreshing display"\n${i}      - script.execute: update_screen\n${i}    else:\n${i}      - logger.log: "E-ink: no new sensor data — refresh skipped"\n`;
@@ -3487,7 +3506,8 @@ function genYAML(){
     // a single guarded action under on_turn_on/on_turn_off (6-space base)
     const g = (lam, act) => `      - if:\n          condition:\n            lambda: 'return ${lam};'\n          then:\n            - ${act}\n`;
     const sw = (name, id, icon, on, onOn, onOff) => {
-      let s = `  - platform: template\n    name: "${name}"\n    id: ${id}\n    icon: ${icon}\n    optimistic: true\n    restore_mode: ${on?'RESTORE_DEFAULT_ON':'RESTORE_DEFAULT_OFF'}\n`;
+      // entity_category: config → these show up under Configuration in Home Assistant
+      let s = `  - platform: template\n    name: "${name}"\n    id: ${id}\n    icon: ${icon}\n    entity_category: config\n    optimistic: true\n    restore_mode: ${on?'RESTORE_DEFAULT_ON':'RESTORE_DEFAULT_OFF'}\n`;
       if(onOn.length)  s += `    on_turn_on:\n${onOn.join('')}`;
       if(onOff.length) s += `    on_turn_off:\n${onOff.join('')}`;
       return s;
@@ -4261,22 +4281,25 @@ function openProfileSettings(){
      <label class="toggle"><input type="checkbox" id="ps-wait" ${p.waitEnabled!==false?'checked':''}> ${T('Wachtscherm gebruiken','Use waiting screen')}</label>
      <div class="hint" style="margin:4px 0 0">${T('Genereert de “waiting for data”-tak (if initial_data_received == false). Het wachtscherm ontwerp je via de scherm-keuze boven het canvas.','Generates the “waiting for data” branch (if initial_data_received == false). Design the waiting screen via the screen selector above the canvas.')}</div>
      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="ps-multi" ${multiScreenOn(p)?'checked':''}> ${T('Meerdere schermen gebruiken','Use multiple screens')}</label>
-     <div class="hint" style="margin:4px 0 0">${T('Zet de scherm-knoppen (toevoegen/dupliceren/hernoemen/verwijderen) boven het canvas aan en genereert de HA-bediening om tussen schermen te wisselen. Uit = één scherm.','Enables the screen buttons (add/duplicate/rename/delete) above the canvas and generates the HA controls to switch screens. Off = a single screen.')}</div>
+     <div class="hint" style="margin:4px 0 0">${T('Zet de scherm-knoppen (toevoegen/dupliceren/hernoemen/verwijderen) boven het canvas aan en genereert de HA-bediening om tussen schermen te wisselen. Uit = één scherm. Met meerdere schermen komt automatisch een <b>Scherm rotatie</b>-schakelaar in de YAML.','Enables the screen buttons (add/duplicate/rename/delete) above the canvas and generates the HA controls to switch screens. Off = a single screen. With multiple screens a <b>Screen Rotation</b> switch is added to the YAML automatically.')}</div>
+     <div id="ps-screenctl-box" style="margin:8px 0 0"><label class="fld">${T('Schermbediening in HA','Screen controls in HA')}</label>
+       <select id="ps-o-screenctrl" style="width:auto">
+         <option value="none"${o.screenControl==='none'?' selected':''}>${T('Geen','None')}</option>
+         <option value="select"${o.screenControl==='select'?' selected':''}>${T('Alleen dropdown','Dropdown only')}</option>
+         <option value="buttons"${o.screenControl==='buttons'?' selected':''}>${T('Alleen knoppen','Buttons only')}</option>
+         <option value="both"${(o.screenControl||'both')==='both'?' selected':''}>${T('Dropdown & knoppen','Dropdown & buttons')}</option>
+       </select>
+       <div class="hint" style="margin:2px 0 0">${T('Hoe je in HA tussen schermen wisselt: geen, een dropdown, losse knoppen per scherm, of beide. (Bij “Geen” blijft de schermselect intern zodat het display blijft werken — je stuurt zelf.)','How you switch screens in HA: none, a dropdown, one button per screen, or both. (With “None” the screen select stays internal so the display still works — you drive it yourself.)')}</div>
+     </div>
      <hr style="border-color:var(--line);margin:14px 0">
      <button type="button" id="ps-yaml-toggle" style="background:none;border:none;cursor:pointer;font-weight:600;color:var(--accent);padding:0;font-size:13px">▸ ${T('Gegenereerde YAML-blokken','Generated YAML Blocks')}</button>
      <div id="ps-yaml-body" style="display:none;margin-top:8px">
-         <div style="margin:6px 0"><label class="fld">${T('Schermbediening in HA (bij ≥2 schermen)','Screen controls in HA (with ≥2 screens)')}</label>
-           <select id="ps-o-screenctrl" style="width:auto">
-             <option value="both"${(o.screenControl||'both')==='both'?' selected':''}>${T('Dropdown + knoppen','Dropdown + buttons')}</option>
-             <option value="select"${o.screenControl==='select'?' selected':''}>${T('Alleen dropdown','Dropdown only')}</option>
-             <option value="buttons"${o.screenControl==='buttons'?' selected':''}>${T('Alleen knoppen','Buttons only')}</option>
-             <option value="none"${o.screenControl==='none'?' selected':''}>${T('Geen','None')}</option>
-           </select>
-           <div class="hint" style="margin:2px 0 6px">${T('Hoe je in HA tussen schermen wisselt: dropdown, losse knoppen per scherm, beide, of geen (geen HA-bediening — je stuurt zelf).','How you switch screens in HA: a dropdown, one button per screen, both, or none (no HA controls — you drive it yourself).')}</div>
-           <label class="toggle"><input type="checkbox" id="ps-o-rotbool" ${o.rotateBoolean?'checked':''}> ${T('Schermrotatie (HA-schakelaar)','Screen rotation (HA switch)')}</label>
-           <div class="hint" style="margin:2px 0 0">${T('Voegt een schakelaar toe die ESPHome zelf aan HA toont (geen HA-config nodig): staat hij aan, dan schuift het display elk interval naar het volgende scherm. Vereist ≥2 schermen.','Adds a switch that ESPHome exposes to HA itself (no HA-config edit needed): when it is on, the display advances to the next screen each interval. Needs ≥2 screens.')}</div>
+         <label class="toggle"><input type="checkbox" id="ps-o-refresh" ${o.refresh?'checked':''}> ${T('Refresh-logica','Refresh logic')}</label>
+         <div id="ps-refresh-sub" style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:4px 0 6px 18px">
+           <label class="toggle" style="font-size:12px"><input type="checkbox" id="ps-o-refresh-esphome" ${o.refreshEsphome!==false?'checked':''}> <span class="mono">esphome on_boot</span></label>
+           <label class="toggle" style="font-size:12px"><input type="checkbox" id="ps-o-refresh-script" ${o.refreshScript!==false?'checked':''}> <span class="mono">script</span></label>
+           <label class="toggle" style="font-size:12px"><input type="checkbox" id="ps-o-refresh-time" ${o.refreshTime!==false?'checked':''}> <span class="mono">time</span></label>
          </div>
-         <label class="toggle"><input type="checkbox" id="ps-o-refresh" ${o.refresh?'checked':''}> ${T('Refresh-logica (esphome on_boot + script + time)','Refresh logic (esphome on_boot + script + time)')}</label>
          <div class="row tight" style="margin:4px 0 8px">
            <div><label class="fld">${T('Boot-prioriteit','Boot priority')}</label><input id="ps-o-prio" value="${attr(o.bootPriority)}" title="${T('ESPHome on_boot prioriteit. Hoger = vroeger. 600 draait ná WiFi/API (aanrader voor displays).','ESPHome on_boot priority. Higher = earlier. 600 runs after WiFi/API (recommended for displays).')}"></div>
            <div><label class="fld">${T('Boot-vertraging','Boot delay')}</label><input id="ps-o-delay" value="${attr(o.bootDelay)}" title="${T('Wachttijd na boot vóór de eerste refresh, bv. “2s”. Geeft sensoren tijd om binnen te komen.','Wait after boot before the first refresh, e.g. “2s”. Gives sensors time to arrive.')}"></div>
@@ -4323,10 +4346,12 @@ function openProfileSettings(){
       renderScreenSelect();
       p.output=Object.assign(outCfg(p), {
         refresh:$('#ps-o-refresh').checked,
+        refreshEsphome:$('#ps-o-refresh-esphome').checked, refreshScript:$('#ps-o-refresh-script').checked, refreshTime:$('#ps-o-refresh-time').checked,
         bootPriority:$('#ps-o-prio').value, bootDelay:$('#ps-o-delay').value, waitTimeout:$('#ps-o-timeout').value,
         timeInterval:+$('#ps-o-interval').value||15,
+        // the screen controls are only emitted with multi-screen on (the generator gates on it),
+        // so nothing is generated when it's off; the chosen value is just remembered for next time
         screenControl:$('#ps-o-screenctrl').value,
-        rotateBoolean:$('#ps-o-rotbool').checked,
         globals:$('#ps-o-globals').checked,
         fonts:$('#ps-o-fonts').checked, colors:$('#ps-o-colors').checked,
         sensors:$('#ps-o-sensors').checked, textSensors:$('#ps-o-textsensors').checked,
@@ -4357,11 +4382,18 @@ function openProfileSettings(){
     if(mb && !mb._dirtyHook){ mb._dirtyHook=true;
       const enable=()=>{ const b=$('#ps-save'); if(b) b.disabled=false; };
       mb.addEventListener('input', enable); mb.addEventListener('change', enable); } }
-  // screen-control options only apply with multiple screens → grey them out when that's off
+  // screen controls only apply with multiple screens → only show the dropdown when that's on
   { const m=$('#ps-multi');
-    const syncScreenCtl=()=>{ const on=!!(m&&m.checked); ['#ps-o-screenctrl','#ps-o-rotbool'].forEach(id=>{ const el=$(id); if(el) el.disabled=!on; }); };
+    const syncScreenCtl=()=>{ const box=$('#ps-screenctl-box'); if(box) box.style.display = (m&&m.checked) ? '' : 'none'; };
     if(m) m.addEventListener('change', syncScreenCtl);
     syncScreenCtl(); }
+  // refresh sub-blocks (esphome on_boot / script / time) are greyed out when Refresh logic is off
+  { const r=$('#ps-o-refresh');
+    const syncRefresh=()=>{ const on=!!(r&&r.checked); const box=$('#ps-refresh-sub');
+      if(box) box.style.opacity = on?'':'0.45';
+      ['#ps-o-refresh-esphome','#ps-o-refresh-script','#ps-o-refresh-time'].forEach(id=>{ const el=$(id); if(el) el.disabled=!on; }); };
+    if(r) r.addEventListener('change', syncRefresh);
+    syncRefresh(); }
   const infoEl=$('#ps-model-info');
   const applyRes=()=>{ const res=modelRes($('#ps-model').value); if(!res) return;
     const rot=+$('#ps-rot').value, portrait=(rot===90||rot===270);
@@ -5170,6 +5202,10 @@ function wire(){
   { const b=$('#scr-dup'); if(b) b.onclick=duplicateScreen; }
   { const b=$('#scr-ren'); if(b) b.onclick=renameScreen; }
   { const b=$('#scr-del'); if(b) b.onclick=removeScreen; }
+  { const b=$('#scr-first'); if(b) b.onclick=()=>navScreen('first'); }
+  { const b=$('#scr-prev');  if(b) b.onclick=()=>navScreen('prev');  }
+  { const b=$('#scr-next');  if(b) b.onclick=()=>navScreen('next');  }
+  { const b=$('#scr-last');  if(b) b.onclick=()=>navScreen('last');  }
   $('#code-copy').onclick=()=>{ navigator.clipboard.writeText(genYAML()).then(()=>toast(T('Naar klembord gekopieerd','Copied to clipboard'))); };
   $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); saveGeneratedYaml(false); toast(T('YAML gedownload','YAML downloaded')); };
   { const cs=$('#code-save'); if(cs) cs.onclick=()=>{ if(!SERVER_STORAGE){ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); toast(T('Geen add-on opslag — gedownload','No add-on storage — downloaded')); return; } saveGeneratedYaml(false); }; }

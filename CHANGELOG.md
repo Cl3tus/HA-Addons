@@ -4,6 +4,19 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.39 — Mode-switch & screen-control tweaks
+
+- **Screen Rotation** is generated **automatically** with ≥2 screens (the separate "Screen
+  rotation" checkbox is gone). The **Screen controls in HA** dropdown moved **under Use
+  multiple screens** (shown only when that's on) and is reordered to *None · Dropdown only ·
+  Buttons only · Dropdown & buttons*.
+- The HA mode switches (Auto Refresh / Static / Rotation) now carry **`entity_category:
+  config`**, so they land under **Configuration** in Home Assistant.
+- **Refresh logic** can be toggled per block — **esphome on_boot**, **script** and **time**
+  each have their own checkbox (greyed out when Refresh logic is off, but remembered).
+- **Screen-navigation buttons** in the canvas toolbar: « ‹ › » for first / previous / next /
+  last screen, framed by separators with the rotation read-out after them.
+
 ## 3.9.38 — No duplicate main screen + docs
 
 - The display lambda no longer emits the **main screen twice**: screens 1…N are explicit

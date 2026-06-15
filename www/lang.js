@@ -56,6 +56,11 @@
     'Scherm dupliceren': 'Duplicate screen',
     'Scherm hernoemen': 'Rename screen',
     'Scherm verwijderen': 'Delete screen',
+    'Eerste scherm': 'First screen',
+    'Vorig scherm': 'Previous screen',
+    'Volgend scherm': 'Next screen',
+    'Laatste scherm': 'Last screen',
+    'Schermrotatie': 'Screen rotation',
     'Rastergrootte': 'Grid size',
     "Voegt onderaan een herstelcode toe. Plak die YAML later terug via 'YAML importeren' om je volledige ontwerp te herstellen.":
       "Adds a restore code at the bottom. Paste that YAML back via 'Import YAML' to restore your whole design.",

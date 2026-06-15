@@ -202,14 +202,15 @@ the canvas; turn the waiting screen on/off in **Profile settings → Use waiting
 Turn on **Use multiple screens** in Profile settings to design **up to 10** separate
 screens, each with its own elements. The selector above the canvas then shows
 **add / duplicate / rename / delete** buttons. With two or more screens the generated
-YAML branches per screen and adds your chosen Home Assistant controls — pick them under
-**Profile settings → Generated YAML Blocks → Screen control in HA**:
+YAML branches per screen and adds your chosen Home Assistant controls — pick them right
+under the **Use multiple screens** toggle in Profile settings (**Screen controls in HA**,
+shown only while multiple screens is on):
 
-- **Dropdown (select)** — a template `select` whose options are your screen names.
-- **Buttons** — one template `button` per screen (handy on a dashboard).
-- **Both** — the dropdown *and* the buttons.
 - **None** — no HA controls; the screen select stays `internal: true` so the display
   still works while you drive it from your own automations.
+- **Dropdown only** — a template `select` whose options are your screen names.
+- **Buttons only** — one template `button` per screen (handy on a dashboard).
+- **Dropdown & buttons** — both.
 
 Switching a screen forces an immediate redraw, independent of new sensor data.
 Single-screen designs generate exactly the same YAML as before, and your existing layout
@@ -224,8 +225,8 @@ on** (default **Auto Refresh**, remembered across reboots):
 - **Auto Refresh** — refreshes the display each interval *when a bound sensor has new data*
   (it logs and skips the round otherwise).
 - **Static Display** — freezes the screen: after the first render it stops refreshing.
-- **Screen Rotation** — advances to the next screen each interval (needs ≥2 screens + the
-  rotation option). Turning it on also turns Auto Refresh on.
+- **Screen Rotation** — advances to the next screen each interval; generated automatically
+  with ≥2 screens. Turning it on also turns Auto Refresh on.
 
 Turning one on turns the conflicting ones off, and you can never leave all three off — so
 there's always a defined mode.
@@ -242,18 +243,19 @@ Open the **⚙** next to the profile picker.
 - **Use waiting screen** on/off.
 - **Use multiple screens** on/off (remembered per profile) — off gives a single
   screen and hides the add/duplicate/rename/delete buttons; on enables the full
-  multi-screen controls (see *Screens* above).
+  multi-screen controls (see *Screens* above) and reveals the **Screen controls in HA**
+  dropdown (none / dropdown only / buttons only / both) right below it.
 - **Negative mode** on/off (per profile) — fills the screen with the ink colour and
   draws everything in the paper colour, i.e. a black screen with white content. The
   canvas preview turns dark with a light grid and the YAML gets an `it.fill(...)`
   with the two base colours swapped.
 - **Generated YAML Blocks** — choose exactly which blocks the generator emits:
-  - **Refresh logic** (`esphome` on_boot + `script` + `time`) with boot priority,
-    delay, wait timeout and the refresh interval (minutes). This also generates the
-    **Auto Refresh / Static Display** mode switches (see *Display-mode switches* under
-    *Screens*).
-  - **Screen control in HA** (dropdown / buttons / both / none) and the **Screen Rotation**
-    mode switch — greyed out unless *Use multiple screens* is on (see *Screens*).
+  - **Refresh logic** with boot priority, delay, wait timeout and the refresh interval
+    (minutes). The **esphome on_boot**, **script** and **time** blocks can each be ticked
+    individually (greyed out when Refresh logic is off, but remembered). This also generates
+    the **Auto Refresh / Static Display** mode switches (and **Screen Rotation** with ≥2
+    screens) — see *Display-mode switches* under *Screens*. (The HA mode switches use
+    `entity_category: config`, so they appear under **Configuration** in Home Assistant.)
   - **globals**, **font**, **color**, **sensor**, **text_sensor** — each on/off.
   - **SPI bus** (`clk_pin` / `mosi_pin`).
   - **Display pins** — `data_rate`, `cs_pin` (+ ignore_strapping), `dc_pin`,
