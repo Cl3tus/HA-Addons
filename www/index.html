@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
 
 <!-- Fonts: IBM Plex (UI) + preview display fonts — bundled locally -->
-<link rel="stylesheet" href="vendor/fonts.css?v=3.9.43">
+<link rel="stylesheet" href="vendor/fonts.css?v=3.9.44">
 
 <!-- Material Design Icons 7.4.47 — bundled locally -->
 <link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
@@ -17,7 +17,7 @@
 <script src="vendor/js-yaml.min.js"></script>
 <script src="vendor/qrcode-generator.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=3.9.43">
+<link rel="stylesheet" href="styles.css?v=3.9.44">
 </head>
 <body>
 <div id="app">
@@ -41,15 +41,15 @@
 
     <div class="topbar-spacer"></div>
 
-    <button class="btn ghost" id="btn-import" data-i18n-title="ESPHome-YAML importeren">⇩ <span data-i18n="YAML importeren">YAML importeren</span></button>
+    <button class="btn ghost" id="btn-import" data-i18n-title="ESPHome-YAML importeren"><span class="emo">📥</span> <span data-i18n="YAML importeren">YAML importeren</span></button>
     <div class="topbar-sep"></div>
-    <button class="btn ghost" id="btn-sources" data-i18n-title="Waardebronnen (sensoren) beheren"><span class="mdi mdi-database"></span> <span data-i18n="Bronnen">Bronnen</span></button>
+    <button class="btn ghost" id="btn-sources" data-i18n-title="Waardebronnen (sensoren) beheren"><span class="emo">🗄️</span> <span data-i18n="Bronnen">Bronnen</span></button>
     <div class="topbar-sep"></div>
-    <button class="btn ghost" id="btn-fonts" data-i18n-title="Fonts beheren"><span class="mdi mdi-format-font"></span> Fonts</button>
-    <a href="files.html" class="btn ghost" data-i18n-title="Bestandsbeheer" title="Bestandsbeheer"><span class="mdi mdi-folder-outline"></span> <span data-i18n="Bestanden">Bestanden</span></a>
+    <button class="btn ghost" id="btn-fonts" data-i18n-title="Fonts beheren"><span class="emo">🔤</span> Fonts</button>
+    <a href="files.html" class="btn ghost" data-i18n-title="Bestandsbeheer" title="Bestandsbeheer"><span class="emo">📁</span> <span data-i18n="Bestanden">Bestanden</span></a>
     <div class="topbar-sep"></div>
     <button class="btn ghost" id="btn-live" data-i18n-title="Live data" title="Live data">○ Live</button>
-    <button class="btn ghost" id="btn-refresh" data-i18n-title="Vernieuw live data nu" title="Vernieuw live data nu"><span class="mdi mdi-refresh"></span></button>
+    <button class="btn ghost" id="btn-refresh" data-i18n-title="Vernieuw live data nu" title="Vernieuw live data nu"><span class="emo">🔄</span></button>
     <select id="live-interval" data-i18n-title="Live data automatisch vernieuwen" title="Live data automatisch vernieuwen" style="width:auto;padding:4px 6px">
       <option value="0" data-i18n="Auto-vernieuwen uit">Auto-vernieuwen uit</option>
       <option value="1" selected>1 min</option>
@@ -64,8 +64,8 @@
     <button class="btn ghost" id="btn-theme" data-i18n-title="Thema" title="Thema">◐ Dark</button>
     <button class="btn ghost" id="btn-lang" data-lang-toggle onclick="toggleLang()" title="Taal / Language">EN</button>
     <div class="topbar-sep"></div>
-    <button class="btn ghost" id="btn-save" data-i18n-title="Project opslaan" data-i18n="Opslaan">Opslaan</button>
-    <button class="btn ghost" id="btn-load" data-i18n-title="Project openen" data-i18n="Openen">Openen</button>
+    <button class="btn ghost" id="btn-save" data-i18n-title="Project opslaan"><span class="emo">💾</span> <span data-i18n="Opslaan">Opslaan</span></button>
+    <button class="btn ghost" id="btn-load" data-i18n-title="Project openen"><span class="emo">📂</span> <span data-i18n="Openen">Openen</span></button>
     <div class="topbar-sep"></div>
     <button class="btn primary" id="btn-code" data-i18n-title="Genereer de ESPHome-YAML">&lt;/&gt; <span data-i18n="Genereer YAML">Genereer YAML</span></button>
   </header>
@@ -104,43 +104,43 @@
       <select id="screen-select" data-i18n-title="Scherm" title="Scherm" style="width:auto;padding:3px 6px"></select>
       <span id="screen-single" style="display:none;padding:3px 8px;color:var(--txt-dim);font-weight:500;font-size:12px"></span>
       <div class="grp" id="screen-nav" style="margin-left:4px">
-        <button class="btn ghost sm" id="scr-first" data-i18n-title="Eerste scherm" title="Eerste scherm">&laquo;</button>
-        <button class="btn ghost sm" id="scr-prev" data-i18n-title="Vorig scherm" title="Vorig scherm">&lsaquo;</button>
-        <button class="btn ghost sm" id="scr-next" data-i18n-title="Volgend scherm" title="Volgend scherm">&rsaquo;</button>
-        <button class="btn ghost sm" id="scr-last" data-i18n-title="Laatste scherm" title="Laatste scherm">&raquo;</button>
+        <button class="btn ghost sm" id="scr-first" data-i18n-title="Eerste scherm" title="Eerste scherm"><span class="emo">⏮️</span></button>
+        <button class="btn ghost sm" id="scr-prev" data-i18n-title="Vorig scherm" title="Vorig scherm"><span class="emo">◀️</span></button>
+        <button class="btn ghost sm" id="scr-next" data-i18n-title="Volgend scherm" title="Volgend scherm"><span class="emo">▶️</span></button>
+        <button class="btn ghost sm" id="scr-last" data-i18n-title="Laatste scherm" title="Laatste scherm"><span class="emo">⏭️</span></button>
       </div>
       <div class="topbar-sep" id="screen-nav-sep"></div>
       <div class="grp" id="screen-grp">
-        <button class="btn ghost sm" id="scr-add" data-i18n-title="Scherm toevoegen">+</button>
-        <button class="btn ghost sm" id="scr-dup" data-i18n-title="Scherm dupliceren">&#9099;</button>
-        <button class="btn ghost sm" id="scr-ren" data-i18n-title="Scherm hernoemen">&#9998;</button>
-        <button class="btn ghost sm" id="scr-del" data-i18n-title="Scherm verwijderen">&#128465;</button>
+        <button class="btn ghost sm" id="scr-add" data-i18n-title="Scherm toevoegen"><span class="emo">➕</span></button>
+        <button class="btn ghost sm" id="scr-dup" data-i18n-title="Scherm dupliceren"><span class="emo">🗂️</span></button>
+        <button class="btn ghost sm" id="scr-ren" data-i18n-title="Scherm hernoemen"><span class="emo">📝</span></button>
+        <button class="btn ghost sm" id="scr-del" data-i18n-title="Scherm verwijderen"><span class="emo">🗑️</span></button>
       </div>
       <div class="topbar-spacer" style="flex:1"></div>
       <div class="grp" id="align-grp">
-        <button class="btn ghost sm" id="al-left" data-i18n-title="Links uitlijnen">⊢</button>
-        <button class="btn ghost sm" id="al-hcenter" data-i18n-title="Horizontaal centreren">⊣⊢</button>
-        <button class="btn ghost sm" id="al-right" data-i18n-title="Rechts uitlijnen">⊣</button>
-        <button class="btn ghost sm" id="al-top" data-i18n-title="Boven uitlijnen">⊤</button>
-        <button class="btn ghost sm" id="al-vcenter" data-i18n-title="Verticaal centreren">⊥⊤</button>
-        <button class="btn ghost sm" id="al-bottom" data-i18n-title="Onder uitlijnen">⊥</button>
+        <button class="btn ghost sm" id="al-left" data-i18n-title="Links uitlijnen"><span class="mdi mdi-format-align-left mdi-c-align"></span></button>
+        <button class="btn ghost sm" id="al-hcenter" data-i18n-title="Horizontaal centreren"><span class="mdi mdi-format-align-center mdi-c-align"></span></button>
+        <button class="btn ghost sm" id="al-right" data-i18n-title="Rechts uitlijnen"><span class="mdi mdi-format-align-right mdi-c-align"></span></button>
+        <button class="btn ghost sm" id="al-top" data-i18n-title="Boven uitlijnen"><span class="mdi mdi-format-vertical-align-top mdi-c-align"></span></button>
+        <button class="btn ghost sm" id="al-vcenter" data-i18n-title="Verticaal centreren"><span class="mdi mdi-format-vertical-align-center mdi-c-align"></span></button>
+        <button class="btn ghost sm" id="al-bottom" data-i18n-title="Onder uitlijnen"><span class="mdi mdi-format-vertical-align-bottom mdi-c-align"></span></button>
       </div>
       <div class="topbar-sep"></div>
       <div class="grp">
-        <button class="btn ghost sm" id="btn-bring-front" data-i18n-title="Naar voren (bovenste laag)">⤒</button>
-        <button class="btn ghost sm" id="btn-step-forward" data-i18n-title="Één stap naar voren">↑</button>
-        <button class="btn ghost sm" id="btn-step-back" data-i18n-title="Één stap naar achteren">↓</button>
-        <button class="btn ghost sm" id="btn-bring-back" data-i18n-title="Naar achteren (onderste laag)">⤓</button>
+        <button class="btn ghost sm" id="btn-bring-front" data-i18n-title="Naar voren (bovenste laag)"><span class="mdi mdi-arrange-bring-to-front mdi-c-layer"></span></button>
+        <button class="btn ghost sm" id="btn-step-forward" data-i18n-title="Één stap naar voren"><span class="mdi mdi-arrange-bring-forward mdi-c-layer"></span></button>
+        <button class="btn ghost sm" id="btn-step-back" data-i18n-title="Één stap naar achteren"><span class="mdi mdi-arrange-send-backward mdi-c-layer"></span></button>
+        <button class="btn ghost sm" id="btn-bring-back" data-i18n-title="Naar achteren (onderste laag)"><span class="mdi mdi-arrange-send-to-back mdi-c-layer"></span></button>
       </div>
       <div class="topbar-sep"></div>
       <div class="grp">
-        <button class="btn ghost sm" id="btn-undo" data-i18n-title="Ongedaan maken (Ctrl+Z)">↶</button>
-        <button class="btn ghost sm" id="btn-redo" data-i18n-title="Opnieuw (Ctrl+Y)">↷</button>
-        <button class="btn ghost sm" id="btn-dup" data-i18n-title="Dupliceren (Ctrl+D)">⧉</button>
-        <button class="btn ghost sm" id="btn-copy-el" data-i18n-title="Kopiëren (Ctrl+C)"><span class="mdi mdi-content-copy"></span></button>
-        <button class="btn ghost sm" id="btn-cut-el" data-i18n-title="Knippen (Ctrl+X)"><span class="mdi mdi-content-cut"></span></button>
-        <button class="btn ghost sm" id="btn-paste-el" data-i18n-title="Plakken (Ctrl+V)"><span class="mdi mdi-content-paste"></span></button>
-        <button class="btn ghost sm danger" id="btn-del" data-i18n-title="Verwijderen (Del)">🗑</button>
+        <button class="btn ghost sm" id="btn-undo" data-i18n-title="Ongedaan maken (Ctrl+Z)"><span class="emo">↩️</span></button>
+        <button class="btn ghost sm" id="btn-redo" data-i18n-title="Opnieuw (Ctrl+Y)"><span class="emo">↪️</span></button>
+        <button class="btn ghost sm" id="btn-dup" data-i18n-title="Dupliceren (Ctrl+D)"><span class="emo">📑</span></button>
+        <button class="btn ghost sm" id="btn-copy-el" data-i18n-title="Kopiëren (Ctrl+C)"><span class="emo">📋</span></button>
+        <button class="btn ghost sm" id="btn-cut-el" data-i18n-title="Knippen (Ctrl+X)"><span class="emo">✂️</span></button>
+        <button class="btn ghost sm" id="btn-paste-el" data-i18n-title="Plakken (Ctrl+V)"><span class="emo">📌</span></button>
+        <button class="btn ghost sm danger" id="btn-del" data-i18n-title="Verwijderen (Del)"><span class="emo">🗑️</span></button>
       </div>
     </div>
 
@@ -196,7 +196,7 @@
         <button class="btn sm" id="code-save" data-i18n-title="Deze YAML opslaan in projects/<profiel>.yaml" title="Deze YAML opslaan in projects/" data-i18n="Opslaan">Opslaan</button>
         <button class="btn sm" id="code-copy" data-i18n="Kopieer">Kopieer</button>
         <button class="btn sm" id="code-download" data-i18n="Download .yaml">Download .yaml</button>
-        <button class="btn ghost sm" id="code-close">✕</button>
+        <button class="btn ghost sm" id="code-close"><span class="emo">❌</span></button>
       </header>
       <pre id="code-out"></pre>
     </div>
@@ -213,7 +213,7 @@
 <!-- ============ MODALS ============ -->
 <div class="modal-back" id="modal-back">
   <div class="modal" id="modal">
-    <header><b id="modal-title">Titel</b><button class="btn ghost sm" id="modal-x">✕</button></header>
+    <header><b id="modal-title">Titel</b><button class="btn ghost sm" id="modal-x"><span class="emo">❌</span></button></header>
     <div class="mbody" id="modal-body"></div>
     <footer id="modal-footer"></footer>
   </div>
@@ -222,8 +222,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=3.9.43"></script>
-<script src="lang.js?v=3.9.43"></script>
-<script src="theme.js?v=3.9.43"></script>
+<script src="app.js?v=3.9.44"></script>
+<script src="lang.js?v=3.9.44"></script>
+<script src="theme.js?v=3.9.44"></script>
 </body>
 </html>

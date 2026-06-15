@@ -2237,8 +2237,8 @@ function renderInspector(){
     host.innerHTML=`<div class="insp-group"><h4>${T('Selectie','Selection')}</h4>
       <div class="hint" style="margin-bottom:10px">${selectedIds.size} ${T('elementen geselecteerd','elements selected')}</div>
       <div class="row tight">
-        <button class="btn sm" id="msel-dup">⧉ ${T('Dupliceren','Duplicate')}</button>
-        <button class="btn ghost sm danger" id="msel-del">🗑 ${T('Verwijderen','Delete')}</button>
+        <button class="btn sm" id="msel-dup"><span class="emo">📑</span> ${T('Dupliceren','Duplicate')}</button>
+        <button class="btn ghost sm danger" id="msel-del"><span class="emo">🗑️</span> ${T('Verwijderen','Delete')}</button>
       </div>
       <div class="hint" style="margin-top:8px">${T('Sleep een element om de hele selectie te verplaatsen.','Drag an element to move the whole selection.')}</div></div>`;
     $('#msel-dup').onclick=dupSel; $('#msel-del').onclick=deleteSel;
@@ -5101,9 +5101,9 @@ function hideCtxMenu(){ $('#ctxmenu').classList.remove('open'); }
 /* context-menu items for a given element (used by canvas + layers) */
 function elItems(el){
   const items=[];
-  items.push(['✎ '+T('Hernoemen','Rename'),'',()=>{ const row=[...document.querySelectorAll('#layers .layer')].find(r=>r._elId===el.id);
+  items.push(['📝 '+T('Hernoemen','Rename'),'',()=>{ const row=[...document.querySelectorAll('#layers .layer')].find(r=>r._elId===el.id);
     if(row){ const span=row.querySelector('.lname'); if(span) startRename(span, el); } else { select(el.id); } }]);
-  items.push(['⧉ '+T('Dupliceren','Duplicate'),'Ctrl+D',()=>{ selectedId=el.id; dupSel(); }]);
+  items.push(['📑 '+T('Dupliceren','Duplicate'),'Ctrl+D',()=>{ selectedId=el.id; dupSel(); }]);
   items.push(['sep']);
   items.push(['📋 '+T('Kopiëren','Copy'),'Ctrl+C',()=>{ if(!isSelected(el.id)) select(el.id); copySel(); }]);
   items.push(['✂ '+T('Knippen','Cut'),'Ctrl+X',()=>{ if(!isSelected(el.id)) select(el.id); cutSel(); }]);
@@ -5113,7 +5113,7 @@ function elItems(el){
   items.push(['↑ '+T('Naar voren','Bring forward'),'',()=>reorder(el,1)]);
   items.push(['↓ '+T('Naar achteren','Send backward'),'',()=>reorder(el,-1)]);
   items.push(['sep']);
-  items.push(['🗑 '+T('Verwijderen','Delete'),'Del',()=>{ selectedId=el.id; deleteSel(); },'danger']);
+  items.push(['🗑️ '+T('Verwijderen','Delete'),'Del',()=>{ selectedId=el.id; deleteSel(); },'danger']);
   return items;
 }
 

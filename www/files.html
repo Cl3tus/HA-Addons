@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bestandsbeheer — E-ink Studio</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
-<link rel="stylesheet" href="vendor/fonts.css?v=3.9.43">
+<link rel="stylesheet" href="vendor/fonts.css?v=3.9.44">
 <link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
-<link rel="stylesheet" href="styles.css?v=3.9.43">
+<link rel="stylesheet" href="styles.css?v=3.9.44">
 <style>
   body { overflow: hidden; }
 
@@ -268,22 +268,22 @@
     <div class="topbar-sep"></div>
     <nav id="fe-breadcrumb"></nav>
     <div class="topbar-spacer"></div>
-    <a href="index.html" class="btn ghost sm">← <span data-i18n="Terug naar editor">Terug naar editor</span></a>
+    <a href="index.html" class="btn ghost sm"><span class="emo">⬅️</span> <span data-i18n="Terug naar editor">Terug naar editor</span></a>
   </header>
 
   <!-- ===== TOOLBAR ===== -->
   <div id="fe-toolbar">
-    <button class="btn sm" id="btn-upload" data-i18n-title="Bestanden uploaden naar deze map">⇧ <span data-i18n="Uploaden">Uploaden</span></button>
-    <button class="btn ghost sm" id="btn-mkdir" data-i18n-title="Nieuwe map aanmaken">+ <span data-i18n="Nieuwe map">Nieuwe map</span></button>
+    <button class="btn sm" id="btn-upload" data-i18n-title="Bestanden uploaden naar deze map"><span class="emo">📤</span> <span data-i18n="Uploaden">Uploaden</span></button>
+    <button class="btn ghost sm" id="btn-mkdir" data-i18n-title="Nieuwe map aanmaken"><span class="emo">📁</span> <span data-i18n="Nieuwe map">Nieuwe map</span></button>
     <div class="topbar-sep"></div>
-    <button class="btn ghost sm" id="btn-rename" data-i18n-title="Geselecteerd item hernoemen" disabled>✎ <span data-i18n="Hernoemen">Hernoemen</span></button>
-    <button class="btn ghost sm" id="btn-move" data-i18n-title="Verplaatsen naar een andere map" disabled>→ <span data-i18n="Verplaatsen">Verplaatsen</span></button>
-    <button class="btn ghost sm" id="btn-download" data-i18n-title="Bestand downloaden" disabled>⇩ <span data-i18n="Downloaden">Downloaden</span></button>
-    <button class="btn ghost sm danger" id="btn-delete" data-i18n-title="Geselecteerde items verwijderen (Del)" disabled>🗑 <span data-i18n="Verwijderen">Verwijderen</span></button>
+    <button class="btn ghost sm" id="btn-rename" data-i18n-title="Geselecteerd item hernoemen" disabled><span class="emo">📝</span> <span data-i18n="Hernoemen">Hernoemen</span></button>
+    <button class="btn ghost sm" id="btn-move" data-i18n-title="Verplaatsen naar een andere map" disabled><span class="emo">📦</span> <span data-i18n="Verplaatsen">Verplaatsen</span></button>
+    <button class="btn ghost sm" id="btn-download" data-i18n-title="Bestand downloaden" disabled><span class="emo">📥</span> <span data-i18n="Downloaden">Downloaden</span></button>
+    <button class="btn ghost sm danger" id="btn-delete" data-i18n-title="Geselecteerde items verwijderen (Del)" disabled><span class="emo">🗑️</span> <span data-i18n="Verwijderen">Verwijderen</span></button>
     <div class="topbar-spacer"></div>
     <button class="btn ghost sm" id="btn-theme-fe" data-i18n-title="Thema" title="Thema">◐ Dark</button>
     <button class="btn ghost sm" id="btn-lang-fe" data-lang-toggle onclick="toggleLang()" title="Taal / Language">EN</button>
-    <button class="btn ghost sm" id="btn-refresh" data-i18n-title="Vernieuwen (F5)" title="Vernieuwen (F5)">↺</button>
+    <button class="btn ghost sm" id="btn-refresh" data-i18n-title="Vernieuwen (F5)" title="Vernieuwen (F5)"><span class="emo">🔄</span></button>
   </div>
 
   <!-- ===== FILE LIST ===== -->
@@ -338,10 +338,10 @@
       <span class="mdi mdi-file-edit-outline" style="color:var(--accent);font-size:18px"></span>
       <b id="fe-editor-name"></b>
       <span id="fe-editor-dirty"></span>
-      <button class="btn ghost sm" id="fe-editor-undo" title="Undo (Ctrl+Z)" disabled>↶</button>
-      <button class="btn ghost sm" id="fe-editor-redo" title="Redo (Ctrl+Y)" disabled>↷</button>
+      <button class="btn ghost sm" id="fe-editor-undo" title="Undo (Ctrl+Z)" disabled><span class="emo">↩️</span></button>
+      <button class="btn ghost sm" id="fe-editor-redo" title="Redo (Ctrl+Y)" disabled><span class="emo">↪️</span></button>
       <button class="btn primary sm" id="fe-editor-save" data-i18n="Opslaan">Opslaan</button>
-      <button class="btn ghost sm" id="fe-editor-close">✕</button>
+      <button class="btn ghost sm" id="fe-editor-close"><span class="emo">❌</span></button>
     </header>
     <textarea id="fe-editor-area" spellcheck="false" autocomplete="off" wrap="off"></textarea>
   </div>
@@ -353,7 +353,7 @@
     <header style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);flex:none">
       <span class="mdi mdi-format-font" style="color:var(--accent);font-size:18px"></span>
       <b id="fe-fontprev-name" style="flex:1;font-family:var(--mono);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
-      <button class="btn ghost sm" id="fe-fontprev-close">✕</button>
+      <button class="btn ghost sm" id="fe-fontprev-close"><span class="emo">❌</span></button>
     </header>
     <div id="fe-fontprev-body" style="padding:18px 18px;overflow:auto"></div>
   </div>
@@ -365,8 +365,8 @@
 <!-- Toast -->
 <div class="toast" id="fe-toast"></div>
 
-<script src="files.js?v=3.9.43"></script>
-<script src="lang.js?v=3.9.43"></script>
-<script src="theme.js?v=3.9.43"></script>
+<script src="files.js?v=3.9.44"></script>
+<script src="lang.js?v=3.9.44"></script>
+<script src="theme.js?v=3.9.44"></script>
 </body>
 </html>

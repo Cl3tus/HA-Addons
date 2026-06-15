@@ -159,6 +159,20 @@ body.chrome-hidden #topbar { display: none; }
 .btn.danger:hover { border-color: var(--red); color: var(--red); }
 .btn .k { font-family: var(--mono); font-size: 10px; opacity: .6; }
 
+/* colourful emoji glyphs on buttons (v3.9.44) — force the colour emoji font and
+   a consistent size so they line up with text/MDI icons inside flex buttons */
+.emo {
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji",
+               "Twemoji Mozilla", sans-serif;
+  font-style: normal; font-weight: 400; line-height: 1;
+  font-size: 14px; display: inline-block;
+}
+.btn.sm .emo { font-size: 13px; }
+/* tinted MDI icons for the structural groups that have no good emoji
+   (alignment = blue, layer order = purple) — readable on dark + light themes */
+.mdi.mdi-c-align { color: #4a90d9; }
+.mdi.mdi-c-layer { color: #9b6dd6; }
+
 select, textarea,
 input[type=text], input[type=number], input[type=search], input:not([type]) {
   background: var(--bg-2);

@@ -4,6 +4,17 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.44 — Colourful emoji toolbar icons
+
+- The toolbar buttons now use **colourful emoji** instead of flat monochrome glyphs:
+  top bar (import/sources/fonts/files/save/open/refresh), screen navigation (⏮️ ◀️ ▶️ ⏭️),
+  screen add/duplicate/rename/delete, undo/redo, duplicate, copy/cut/paste, delete,
+  and the file-manager toolbar + text editor.
+- **Alignment and layer-order** buttons (which have no good emoji) switched to **tinted
+  MDI icons** — alignment in blue, layer order in purple — so the groups read at a glance.
+- Modal/drawer **close crosses** are now a red ❌.
+- The left element palette and the layers panel are intentionally left unchanged.
+
 ## 3.9.43 — Guides: ruler-only dragging + per-screen
 
 - Guides are now dragged **only on the ruler**; on the canvas the blue lines are decorative
