@@ -187,6 +187,12 @@ function ensureScreens(p){
                  elements: Array.isArray(p.elements)?p.elements:[] }];
     delete p.elements;   // folded into screens[0]
   }
+  // legacy: profile-level guides → fold into the main screen (guides are now per-screen)
+  if(Array.isArray(p.guides)){
+    if(!Array.isArray(p.screens[0].guides) || !p.screens[0].guides.length)
+      p.screens[0].guides = p.guides;
+    delete p.guides;
+  }
   return p.screens;
 }
 function screensList(){ return ensureScreens(profile()); }
@@ -305,7 +311,8 @@ function duplicateScreen(){
   const cur=activeScreen(); if(!cur) return;
   const id=newScreenId();
   const clone={ id, name:(cur.name||T('Scherm','Screen'))+' '+T('kopie','copy'),
-    elements:(cur.elements||[]).map(e=>{ const c=JSON.parse(JSON.stringify(e)); c.id=uid(); return c; }) };
+    elements:(cur.elements||[]).map(e=>{ const c=JSON.parse(JSON.stringify(e)); c.id=uid(); return c; }),
+    guides:(cur.guides||[]).map(g=>({...g})) };
   list.splice(list.indexOf(cur)+1, 0, clone);
   persist(); renderProfiles(); switchScreen(id); toast(T('Scherm gedupliceerd','Screen duplicated'));
 }
@@ -689,9 +696,9 @@ function initStage(){
   $('#konva-host').innerHTML='';
   stage = new Konva.Stage({ container:'#konva-host', width:p.device.w, height:p.device.h });
   gridLayer = new Konva.Layer({listening:false});
-  guideLayer = new Konva.Layer({listening:true});  // BEHIND content (just above the grid) so
-                                                    // guides sit at the back; listening so the
-                                                    // blue line can be grabbed + dragged directly.
+  guideLayer = new Konva.Layer({listening:false}); // BEHIND content (just above the grid); guides
+                                                    // are decorative on the canvas — you grab/drag
+                                                    // them on the ruler, not here.
   contentLayer = new Konva.Layer();
   stage.add(gridLayer); stage.add(guideLayer); stage.add(contentLayer);
   setupMarquee();
@@ -814,11 +821,18 @@ function applyZoom(){
    RULERS + GUIDE LINES (Figma-style)
    - Top ruler  → vertical guides   (axis 'v', dragged downward onto canvas)
    - Left ruler → horizontal guides (axis 'h', dragged rightward onto canvas)
-   - Guides stored per-profile in profile().guides = [{axis,pos}]
+   - Guides stored per-screen: screen.guides / p.waitGuides = [{axis,pos}] (see profileGuides())
    - Ruler visibility stored per-profile in profile().ruler (default true)
    ============================================================ */
 
-function profileGuides(){ const p=profile(); if(!p.guides) p.guides=[]; return p.guides; }
+/* guides are stored per screen: the waiting screen keeps its own (p.waitGuides),
+   every designed screen keeps its own (screen.guides). */
+function profileGuides(){
+  const p=profile(); if(!p) return [];
+  if(isWaitScreen()){ if(!Array.isArray(p.waitGuides)) p.waitGuides=[]; return p.waitGuides; }
+  const s=activeScreen(); if(s){ if(!Array.isArray(s.guides)) s.guides=[]; return s.guides; }
+  return [];
+}
 function rulerOn(){ const p=profile(); return p.ruler !== false; }
 
 /* sync snap/ruler/grid checkbox visual states:
@@ -1085,26 +1099,8 @@ function drawGuides(){
   profileGuides().forEach(g=>{
     const gc=guideCol();
     const line = g.axis==='h'
-      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:gc, strokeWidth:1.2, dash:[5,3], hitStrokeWidth:14, listening:true, perfectDrawEnabled:false})
-      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:gc, strokeWidth:1.2, dash:[5,3], hitStrokeWidth:14, listening:true, perfectDrawEnabled:false});
-    line.on('mouseenter', ()=>{ if(stage) stage.container().style.cursor = g.axis==='h'?'ns-resize':'ew-resize'; });
-    line.on('mouseleave', ()=>{ if(stage) stage.container().style.cursor = ''; });
-    // grab the blue line and drag it directly on the canvas (reliable; no ruler needed)
-    line.on('mousedown', e=>{
-      if(e.evt && e.evt.button!==0) return;
-      e.cancelBubble=true;                          // don't start a marquee selection
-      if(e.evt) e.evt.preventDefault();
-      const rect=stage.container().getBoundingClientRect();
-      const move=ev=>{
-        const sx=(ev.clientX-rect.left-stage.x())/stage.scaleX();
-        const sy=(ev.clientY-rect.top-stage.y())/stage.scaleY();
-        g.pos=Math.max(0, Math.min(Math.round(g.axis==='h'?sy:sx), g.axis==='h'?H:W));
-        drawGuides(); drawRuler();                   // live: the solid line follows the cursor
-      };
-      const up=()=>{ window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up);
-        persistGuides(); };
-      window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
-    });
+      ? new Konva.Line({points:[0,g.pos,W,g.pos], stroke:gc, strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false})
+      : new Konva.Line({points:[g.pos,0,g.pos,H], stroke:gc, strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false});
     guideLayer.add(line);
   });
   guideLayer.draw();
@@ -1870,8 +1866,9 @@ function renderCanvas(){
     ids.forEach(id=>{ const n=contentLayer.getChildren(x=>x._elId===id)[0]; if(n) _selOutlines[id]=outlineNode(n); });
   }
   contentLayer.draw();
-  // guides live BEHIND content (just above the grid); keep that order and redraw them
-  if(guideLayer){ guideLayer.moveToBottom(); if(gridLayer) gridLayer.moveToBottom(); drawGuides(); }
+  // guides live BEHIND content (just above the grid); keep that order and redraw them.
+  // also redraw the ruler so its guide markers reflect the active screen's guides.
+  if(guideLayer){ guideLayer.moveToBottom(); if(gridLayer) gridLayer.moveToBottom(); drawGuides(); try{ drawRuler(); }catch(e){} }
 }
 
 /* during live graph resize: redraw element nodes but keep current selection visuals */

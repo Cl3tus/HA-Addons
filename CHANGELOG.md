@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.43 — Guides: ruler-only dragging + per-screen
+
+- Guides are now dragged **only on the ruler**; on the canvas the blue lines are decorative
+  (no longer clickable, no hover cursor).
+- **Guides are stored per screen** — each designed screen (and the waiting screen) keeps its
+  own guides. With multiple screens you can place different guides per page.
+- **Duplicating a page copies its guides** along with the elements.
+- Existing profile-level guides are migrated onto the main screen.
+
 ## 3.9.42 — « stops at page 1 first
 
 - The **« (first)** screen-nav button now jumps to **page 1** (the first designed screen)
