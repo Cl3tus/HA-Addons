@@ -1088,37 +1088,38 @@ function persistGuides(){ persist(); }
 
 /* ephemeral blue guide drawn live on the canvas WHILE dragging a guide from the
    ruler (or repositioning an existing one). Committed to profileGuides() on mouseup. */
-let _dragGuide=null, _dragGuideLabel=null, _dragGuideText=null;
+let _dragGuide=null, _dragGuideLabel=null, _dragGuideText=null, _dragTopLayer=null;
 function showDragGuide(axis, pos){
-  if(!guideLayer) return;
+  if(!guideLayer || !stage) return;
   const p=profile(); const W=p.device.w, H=p.device.h;
   pos=Math.max(0, Math.min(pos, axis==='v'?W:H));
   const pts = axis==='h' ? [0,pos,W,pos] : [pos,0,pos,H];
-  // (re)create if missing or detached — drawGuides() destroys the layer's children,
-  // so a guide *move* (which redraws guides) would otherwise wipe these mid-drag
   if(!_dragGuide || !_dragGuide.getLayer()){
     _dragGuide=new Konva.Line({points:pts, stroke:guideCol(), strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false});
     guideLayer.add(_dragGuide);
   } else {
     _dragGuide.points(pts);
   }
-  // live px label that follows the guide while dragging
+  guideLayer.batchDraw();
+  // px label on a dedicated TOP layer so the little blue box sits above all content
+  if(!_dragTopLayer){ _dragTopLayer=new Konva.Layer({listening:false}); stage.add(_dragTopLayer); }
   if(!_dragGuideLabel || !_dragGuideLabel.getLayer()){
     _dragGuideLabel=new Konva.Label({listening:false});
     _dragGuideLabel.add(new Konva.Tag({fill:guideCol(), cornerRadius:2}));
     _dragGuideText=new Konva.Text({text:'', fontSize:10, fontFamily:'monospace', fill:'#fff', padding:3});
     _dragGuideLabel.add(_dragGuideText);
-    guideLayer.add(_dragGuideLabel);
+    _dragTopLayer.add(_dragGuideLabel);
   }
-  _dragGuideText.text(pos+' px');
-  if(axis==='v') _dragGuideLabel.position({x:Math.min(pos+3, W-30), y:3});
+  _dragGuideText.text((axis==='v'?'X: ':'Y: ')+pos+' px');
+  if(axis==='v') _dragGuideLabel.position({x:Math.min(pos+3, W-42), y:3});
   else           _dragGuideLabel.position({x:3, y:Math.min(pos+3, H-16)});
-  guideLayer.batchDraw();
+  _dragTopLayer.batchDraw();
 }
 function clearDragGuide(){
   if(_dragGuide){ _dragGuide.destroy(); _dragGuide=null; }
   if(_dragGuideLabel){ _dragGuideLabel.destroy(); _dragGuideLabel=null; _dragGuideText=null; }
   if(guideLayer) guideLayer.batchDraw();
+  if(_dragTopLayer) _dragTopLayer.batchDraw();
 }
 
 function drawGuides(){
@@ -1166,9 +1167,11 @@ const GUIDE_GRAB=12;
 /* start moving an existing guide (shared by the marker and the ruler proximity-grab) */
 function startGuideMove(axis, g){
   const fr=$('#stage-frame').getBoundingClientRect();
+  const rxR=$('#ruler-x').getBoundingClientRect(), ryR=$('#ruler-y').getBoundingClientRect();
   const preview=document.createElement('div'); preview.id='guide-preview-'+axis;
-  if(axis==='v') preview.style.left=(fr.left+g.pos*zoom)+'px';
-  else preview.style.top=(fr.top+g.pos*zoom)+'px';
+  // span the gap between the ruler and the canvas, like a freshly-dragged guide
+  if(axis==='v'){ preview.style.left=(fr.left+g.pos*zoom)+'px'; preview.style.top=rxR.bottom+'px'; preview.style.height=(fr.top-rxR.bottom)+'px'; }
+  else { preview.style.top=(fr.top+g.pos*zoom)+'px'; preview.style.left=ryR.right+'px'; preview.style.width=(fr.left-ryR.right)+'px'; }
   document.body.appendChild(preview);
   showDragGuide(axis, g.pos);
   const onMove=mv=>{

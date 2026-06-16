@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.75 — Guide drag: ruler-gap on move + X/Y px label on top
+
+- Moving an existing guide now shows the ruler-gap preview line too (like a new guide).
+- The blue px label shows "X:"/"Y:" and is drawn on a dedicated top layer so it sits
+  above all canvas content.
+
 ## 3.9.74 — Server-side entity filter + domain dropdown; revert ruler change
 
 - Restored the ruler-gap guide preview; removed the X/Y px tooltip on the rulers.
