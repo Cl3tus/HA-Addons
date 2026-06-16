@@ -202,7 +202,9 @@ body.chrome-hidden #topbar { display: none; }
 .ctxmenu .ic .bin { height: 15px; }
 /* </> code badge on the Generate-YAML button — scaled up visually (transform doesn't
    affect layout, so the button keeps its size) */
-.btn .codeic { width: 20px; height: 20px; display: block; transform: scale(1.25); }
+/* layout box small enough to keep the button the same height as the others; the
+   icon is scaled up visually (transform doesn't affect layout) */
+.btn .codeic { width: 16px; height: 16px; display: block; transform: scale(1.5); margin-right: 2px; }
 /* zip icon on the Download-Fonts button (smooth, transparent PNG) */
 .btn .zipic { height: 18px; width: auto; display: block; }
 /* fixed-size square icon button: guarantees two action buttons are identical in

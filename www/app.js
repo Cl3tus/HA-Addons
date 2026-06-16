@@ -1088,7 +1088,7 @@ function persistGuides(){ persist(); }
 
 /* ephemeral blue guide drawn live on the canvas WHILE dragging a guide from the
    ruler (or repositioning an existing one). Committed to profileGuides() on mouseup. */
-let _dragGuide=null;
+let _dragGuide=null, _dragGuideLabel=null;
 function showDragGuide(axis, pos){
   if(!guideLayer) return;
   const p=profile(); const W=p.device.w, H=p.device.h;
@@ -1100,10 +1100,22 @@ function showDragGuide(axis, pos){
   } else {
     _dragGuide.points(pts);
   }
+  // live px label that follows the guide while dragging
+  if(!_dragGuideLabel){
+    _dragGuideLabel=new Konva.Label({listening:false});
+    _dragGuideLabel.add(new Konva.Tag({fill:guideCol(), cornerRadius:2}));
+    _dragGuideLabel.add(new Konva.Text({text:'', fontSize:10, fontFamily:'monospace', fill:'#fff', padding:3}));
+    guideLayer.add(_dragGuideLabel);
+  }
+  _dragGuideLabel.getText().text(pos+' px');
+  if(axis==='v') _dragGuideLabel.position({x:Math.min(pos+3, W-30), y:3});
+  else           _dragGuideLabel.position({x:3, y:Math.min(pos+3, H-16)});
   guideLayer.batchDraw();
 }
 function clearDragGuide(){
-  if(_dragGuide){ _dragGuide.destroy(); _dragGuide=null; if(guideLayer) guideLayer.batchDraw(); }
+  if(_dragGuide){ _dragGuide.destroy(); _dragGuide=null; }
+  if(_dragGuideLabel){ _dragGuideLabel.destroy(); _dragGuideLabel=null; }
+  if(guideLayer) guideLayer.batchDraw();
 }
 
 function drawGuides(){
@@ -3778,7 +3790,7 @@ function openModal(title, body, footerBtns, onClose){
   $('#modal').classList.remove('wide');   // each modal starts at the default width; widen per-modal after opening
   $('#modal-title').textContent=title; $('#modal-body').innerHTML=body;
   const f=$('#modal-footer'); f.innerHTML='';
-  (footerBtns||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'ghost'); if(b.html) el.innerHTML=b.html; else el.textContent=b.label; el.onclick=b.onClick; if(b.style) el.style.cssText=b.style; if(b.id) el.id=b.id; f.appendChild(el); });
+  (footerBtns||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'ghost'); if(b.html) el.innerHTML=b.html; else el.textContent=b.label; el.onclick=b.onClick; if(b.style) el.style.cssText=b.style; if(b.id) el.id=b.id; if(b.title) el.title=b.title; f.appendChild(el); });
   _modalClose = onClose||null;
   addSteppers($('#modal-body'));   // ▲/▼ steppers for any .spin field in modals (font size/weight)
   $('#modal-back').classList.add('open');
@@ -4085,7 +4097,7 @@ async function openFonts(){
        <div class="hint" style="margin-top:6px">${T('Het','The')} <span class="mono">id</span> ${T('gebruik je in elementen; het','is used in elements; the')} <span class="mono">${T('pad','path')}</span> ${T('moet kloppen met je ESPHome','must match your ESPHome')} <span class="mono">fonts/</span>${T('-map.',' folder.')}</div>
      </div>
      <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')} ${T('Wijzigingen gelden pas na Opslaan.','Changes apply only after Save.')}</div>`,
-    [{label:T('Download Fonts (.zip)','Download Fonts (.zip)'),html:'<img class="zipic" src="img/zip.png" alt="" aria-hidden="true"> '+T('Download Fonts (.zip)','Download Fonts (.zip)'),cls:'ghost',style:'margin-right:auto',onClick:downloadFontsZip},
+    [{label:T('Download Fonts (.zip)','Download Fonts (.zip)'),html:'<img class="zipic" src="img/zip.png" alt="" aria-hidden="true"> '+T('Download Fonts (.zip)','Download Fonts (.zip)'),title:T('Download alle fonts uit de fonts/-map als één .zip en pak ze uit in ESPHome\'s config/fonts/','Download all fonts from the fonts/ folder as one .zip and unpack into ESPHome config/fonts/'),cls:'ghost',style:'margin-right:auto',onClick:downloadFontsZip},
      {label:T('Annuleren','Cancel'),cls:'ghost',onClick:()=>{ _revertFontsIfUnsaved(); closeModal(); }},
      {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
        // warn if the "add font" form has data that hasn't been added via +

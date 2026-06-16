@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
 
 <!-- Fonts: IBM Plex (UI) + preview display fonts — bundled locally -->
-<link rel="stylesheet" href="vendor/fonts.css?v=3.9.69">
+<link rel="stylesheet" href="vendor/fonts.css?v=3.9.70">
 
 <!-- Material Design Icons 7.4.47 — bundled locally -->
 <link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
@@ -17,7 +17,7 @@
 <script src="vendor/js-yaml.min.js"></script>
 <script src="vendor/qrcode-generator.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=3.9.69">
+<link rel="stylesheet" href="styles.css?v=3.9.70">
 </head>
 <body>
 <div id="app">
@@ -36,15 +36,15 @@
       <button class="btn ghost sm" id="profile-new" data-i18n-title="Nieuw profiel" title="Nieuw profiel"><span class="mdi mdi-plus-thick mdi-c-nav"></span></button>
       <button class="btn ghost sm" id="profile-settings" data-i18n-title="Profiel-instellingen" title="Profiel-instellingen"><span class="emo">⚙️</span></button>
     </div>
-    <button class="btn ghost" id="btn-save" data-i18n-title="Project opslaan"><span class="emo">💾</span> <span data-i18n="Opslaan">Opslaan</span></button>
-    <button class="btn ghost" id="btn-load" data-i18n-title="Project openen"><span class="emo">📂</span> <span data-i18n="Openen">Openen</span></button>
+    <button class="btn ghost" id="btn-save" data-i18n-title="Profiel opslaan"><span class="emo">💾</span> <span data-i18n="Opslaan">Opslaan</span></button>
+    <button class="btn ghost" id="btn-load" data-i18n-title="Profiel openen"><span class="emo">📂</span> <span data-i18n="Openen">Openen</span></button>
     <div class="topbar-sep"></div>
     <div id="topbar-actions">
       <div id="topbar-scroll">
         <button class="btn ghost" id="btn-import" data-i18n-title="ESPHome-YAML importeren"><span class="emo">📥</span> <span data-i18n="YAML importeren">YAML importeren</span></button>
         <div class="topbar-sep"></div>
-        <button class="btn ghost" id="btn-fonts" data-i18n-title="Fonts beheren"><span class="mdi mdi-format-font mdi-c-nav"></span> Fonts</button>
         <a href="files.html" class="btn ghost" data-i18n-title="Bestandsbeheer" title="Bestandsbeheer"><span class="emo">📁</span> <span data-i18n="Bestanden">Bestanden</span></a>
+        <button class="btn ghost" id="btn-fonts" data-i18n-title="Fonts beheren"><span class="mdi mdi-format-font mdi-c-nav"></span> Fonts</button>
         <div class="topbar-sep"></div>
         <button class="btn ghost" id="btn-sources" data-i18n-title="Waardebronnen (sensoren) beheren"><span class="mdi mdi-database mdi-c-nav"></span> <span data-i18n="Bronnen">Bronnen</span></button>
         <button class="btn ghost" id="btn-live" data-i18n-title="Live data" title="Live data">○ Live</button>
@@ -143,7 +143,7 @@
         <button class="btn ghost sm" id="btn-copy-el" data-i18n-title="Kopiëren (Ctrl+C)"><span class="emo">📑</span></button>
         <button class="btn ghost sm" id="btn-cut-el" data-i18n-title="Knippen (Ctrl+X)"><span class="emo">✂️</span></button>
         <button class="btn ghost sm" id="btn-paste-el" data-i18n-title="Plakken (Ctrl+V)"><span class="emo">📋</span></button>
-        <button class="btn ghost sm danger" id="btn-del" data-i18n-title="Verwijderen (Del)"><img class="bin" src="img/recyclebin.png" alt="" aria-hidden="true"></button>
+        <button class="btn ghost sm danger" id="btn-del" data-i18n-title="Element verwijderen (Del)"><img class="bin" src="img/recyclebin.png" alt="" aria-hidden="true"></button>
       </div>
     </div>
     <div id="ctb-fade-l" class="ctb-fade fade-l"><button id="ctb-arrow-l" class="ctb-arrow" tabindex="-1"><span class="mdi mdi-chevron-left"></span></button></div>
@@ -171,7 +171,7 @@
       </div>
       <div class="sb-sep"></div>
       <!-- grid + ruler group -->
-      <label class="toggle"><input type="checkbox" id="tg-grid" checked> <span data-i18n="Raster">Raster</span></label>
+      <label class="toggle" data-i18n-title="Toon of verberg het raster"><input type="checkbox" id="tg-grid" checked> <span data-i18n="Raster">Raster</span></label>
       <select id="grid-size" data-i18n-title="Rastergrootte" title="Rastergrootte" style="width:auto;padding:2px 5px;font-size:11px">
         <option value="8">8 px</option>
         <option value="10">10 px</option>
@@ -180,15 +180,15 @@
         <option value="25">25 px</option>
         <option value="40">40 px</option>
       </select>
-      <label class="toggle"><input type="checkbox" id="tg-ruler" checked> <span data-i18n="Lineaal">Lineaal</span></label>
+      <label class="toggle" data-i18n-title="Toon of verberg de linealen"><input type="checkbox" id="tg-ruler" checked> <span data-i18n="Lineaal">Lineaal</span></label>
       <div class="sb-sep"></div>
       <!-- snap group -->
-      <label class="toggle"><input type="checkbox" id="tg-snap" checked> <span data-i18n="Snap raster">Snap raster</span></label>
-      <label class="toggle"><input type="checkbox" id="tg-snap-guides"> <span data-i18n="Snap lineaal">Snap lineaal</span></label>
+      <label class="toggle" data-i18n-title="Elementen tijdens slepen vastklikken op het raster"><input type="checkbox" id="tg-snap" checked> <span data-i18n="Snap raster">Snap raster</span></label>
+      <label class="toggle" data-i18n-title="Elementen tijdens slepen vastklikken op de hulplijnen"><input type="checkbox" id="tg-snap-guides"> <span data-i18n="Snap lineaal">Snap lineaal</span></label>
       <div style="flex:1"></div>
       <span id="screen-rot" data-i18n-title="Schermrotatie" title="Schermrotatie" style="color:var(--txt-dim);font-size:11px;white-space:nowrap"></span>
       <div class="sb-sep" id="page-sep"></div>
-      <span id="page-num" style="color:var(--txt-dim);font-size:11px;white-space:nowrap"></span>
+      <span id="page-num" data-i18n-title="Huidige pagina / scherm" title="Huidige pagina / scherm" style="color:var(--txt-dim);font-size:11px;white-space:nowrap"></span>
     </div>
 
     <!-- slide-in code drawer -->
@@ -228,8 +228,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=3.9.69"></script>
-<script src="lang.js?v=3.9.69"></script>
-<script src="theme.js?v=3.9.69"></script>
+<script src="app.js?v=3.9.70"></script>
+<script src="lang.js?v=3.9.70"></script>
+<script src="theme.js?v=3.9.70"></script>
 </body>
 </html>

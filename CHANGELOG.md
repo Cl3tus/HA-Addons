@@ -4,6 +4,16 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.70 — Toolbar order/tooltips + live guide px
+
+- Swapped Files/Fonts order; Generate-YAML button is the same height as the others
+  (icon scaled visually). Save/Open tooltips say "profile"; the canvas delete tooltip
+  is "Delete element (Del)".
+- Added tooltips on the status-bar toggles (grid, ruler, snap grid/ruler, page) and on
+  the Fonts modal's "Download Fonts (.zip)".
+- File manager: right-side buttons reordered to refresh › theme › language.
+- Dragging a guide now shows a **live px label** that moves with it.
+
 ## 3.9.69 — Sources next to Live
 
 - Moved Sources to sit just left of Live, with a separator before it.
