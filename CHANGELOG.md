@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.82 — YAML drawer: click-outside closes, stops above the status bar; label tweaks
+
+- Clicking anywhere outside the open Generate-YAML drawer now closes it (clicks inside it,
+  on the Generate button, or in a popup don't count).
+- The drawer now stops **above the status bar** (grid/ruler/snap stay visible) instead of
+  covering it.
+- The restore-code toggle is **Base64 Herstel Code** in Dutch (Base64 Restore Code in EN);
+  its header comment is bilingual and dimmed grey like the rest of the restore code.
+
 ## 3.9.81 — Bilingual default-config comments + clearer button comment
 
 - The **Default config** boilerplate's comments are now bilingual (NL/EN), with an added

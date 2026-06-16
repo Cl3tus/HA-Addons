@@ -556,7 +556,7 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
 
 /* ---------- Code drawer ---------- */
 #code-drawer {
-  position: absolute; right: 0; bottom: 0; top: 40px; width: 0;
+  position: absolute; right: 0; bottom: 32px; top: 40px; width: 0;   /* stop above the status bar */
   background: var(--bg-2); border-left: 1px solid var(--line);
   transition: width .18s ease; overflow: hidden; z-index: 30;
   display: flex; flex-direction: column;

@@ -83,7 +83,7 @@
 
     /* --- code drawer --- */
     'Gegenereerde YAML': 'Generated YAML',
-    'Base64 Restore Code': 'Base64 Restore Code',
+    'Base64 Herstel Code': 'Base64 Restore Code',
     'Kopieer': 'Copy',
     'Download .yaml': 'Download .yaml',
 

@@ -3820,7 +3820,7 @@ function genYAML(){
     }))));
     // wrapped over multiple "#~ " comment lines so it doesn't become one giant line in
     // ESPHome (which never wraps); the importer reassembles them. Legacy single-line still reads.
-    out+=`\n# ${T('Base64-herstelcode — plak terug via "Code importeren" om je ontwerp te herstellen (niet bewerken)','Base64 restore code — paste back via "Import Code" to restore the design (do not edit)')}\n`;
+    out+=`\n# ${T('Base64 Herstel Code — plak terug via "Code importeren" om je ontwerp te herstellen (niet bewerken)','Base64 Restore Code — paste back via "Import Code" to restore the design (do not edit)')}\n`;
     out+=`# eink-editor:v${window.APP_VERSION||'1'}\n`;
     for(let i=0;i<snap.length;i+=120) out+=`#~ ${snap.slice(i,i+120)}\n`;
   }
@@ -3883,10 +3883,13 @@ function renderCode(){
   // dim the recovery marker + its wrapped "#~ " data lines (a "stop here" cue when you
   // drag-select the YAML, since you usually don't want the base64 too)
   const markerRe = /^#\s*eink-editor:v[\w.]+\s*$/;
-  const html = code.replace(/\n$/,'').split('\n').map(line=>{
-    const isB64 = markerRe.test(line) || /^#~ /.test(line);
-    return '<span class="cl'+(isB64?' cl-b64':'')+'">'+h(line)+'</span>';
-  }).join('\n');   // real newlines between lines so blank lines survive copy/paste
+  const lines = code.replace(/\n$/,'').split('\n');
+  const dim = new Array(lines.length).fill(false);
+  lines.forEach((line,i)=>{
+    if(markerRe.test(line)){ dim[i]=true; if(i>0 && /^#/.test(lines[i-1])) dim[i-1]=true; }   // marker + its description line above it
+    else if(/^#~ /.test(line)) dim[i]=true;                                                    // wrapped data lines
+  });
+  const html = lines.map((line,i)=>'<span class="cl'+(dim[i]?' cl-b64':'')+'">'+h(line)+'</span>').join('\n');
   const pre=$('#code-out'); pre.innerHTML = html;
 }
 /* constrain the base64 span to the visible code width so it wraps there (not at
@@ -5445,6 +5448,13 @@ function wire(){
     else openDrawer();
   };
   $('#code-close').onclick=()=>{ $('#code-drawer').classList.remove('open'); document.body.classList.remove('code-open'); };
+  // a click anywhere outside the open YAML drawer closes it (but not clicks inside the
+  // drawer, on the Generate button, or in a popup opened from it)
+  document.addEventListener('click', e=>{
+    const d=$('#code-drawer'); if(!d || !d.classList.contains('open')) return;
+    if(e.target.closest('#code-drawer, #btn-code, .modal-back, #app-confirm, #app-prompt, #ctxmenu, #ruler-menu')) return;
+    d.classList.remove('open'); document.body.classList.remove('code-open');
+  });
   { const rz=$('#code-resizer'), drawer=$('#code-drawer');
     if(rz) rz.addEventListener('mousedown', e=>{ e.preventDefault();
       const rightEdge=drawer.getBoundingClientRect().right;
