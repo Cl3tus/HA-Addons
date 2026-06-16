@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.63 — Branded top-left cell + primary-colour scroll arrows
+
+- The "E-ink Studio / Lambda Generator" brand now sits in its own boxed cell that lines
+  up with the left panel (240px), with centred content and a smaller version number.
+- The canvas-toolbar scroll arrows (‹ ›) follow HA's primary colour.
+
 ## 3.9.62 — Centred panel headers + toolbar scroll arrows
 
 - The "Add elements" and "Inspector" panel titles are centred.

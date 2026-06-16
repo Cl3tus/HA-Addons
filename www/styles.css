@@ -107,7 +107,12 @@ body.chrome-hidden #topbar { display: none; }
   background: var(--panel);   /* #1c1c1c dark / #ffffff light — matches HA */
   border-bottom: 1px solid var(--line);
 }
-.brand { display: flex; align-items: center; gap: 9px; flex: none; }
+/* brand sits in its own boxed cell, flush with the left panel (240px) below it */
+.brand {
+  display: flex; align-items: center; justify-content: center; gap: 9px; flex: none;
+  width: 240px; box-sizing: border-box; margin-left: -10px;   /* cancel #topbar padding → flush left */
+  align-self: stretch; height: 100%; border-right: 1px solid var(--line);
+}
 .brand-text b, .brand-text span { white-space: nowrap; }
 .brand .logo {
   width: 22px; height: 22px; border-radius: 5px;
@@ -126,7 +131,7 @@ body.chrome-hidden #topbar { display: none; }
 .brand .brand-text { display: flex; flex-direction: column; line-height: 1.12; }
 .brand b { font-weight: 600; letter-spacing: .2px; }
 .brand span { color: var(--txt-dim); font-size: 11px; font-family: var(--mono); }
-.brand #brand-version { color: var(--txt-faint); margin-left: 8px; }
+.brand #brand-version { color: var(--txt-faint); margin-left: 6px; font-size: 9px; }
 
 .topbar-sep { width: 1px; height: 22px; background: var(--line); }
 .topbar-spacer { flex: 1; }
@@ -370,7 +375,7 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 .ctb-arrow {
   pointer-events: auto; cursor: pointer;
   width: 24px; height: 24px; border-radius: 50%;
-  border: 1px solid var(--line-2); background: var(--panel-2); color: var(--txt);
+  border: 1px solid var(--line-2); background: var(--panel-2); color: var(--guide);
   display: flex; align-items: center; justify-content: center; padding: 0;
   font-size: 17px; box-shadow: 0 1px 5px rgba(0,0,0,.35);
 }
