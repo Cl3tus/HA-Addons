@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.77 — Keyboard shortcuts keep working after switching screens
+
+- Switching screens via the dropdown left focus on the `<select>`, so Ctrl+C / Ctrl+V /
+  Del were ignored (the keydown handler skips events on inputs/selects). The select now
+  loses focus after a switch, so copy/paste works across screens and the paste button
+  greys correctly with the clipboard.
+
 ## 3.9.76 — Readable generated-YAML text
 
 - The code in the Generate-YAML drawer follows the theme text colour, so it's dark

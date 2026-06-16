@@ -295,6 +295,9 @@ function switchScreen(id){
   editScreen=id; selectedId=null; selectedIds=new Set(); undoStack=[]; redoStack=[];
   renderScreenSelect(); renderCanvas(); renderLayers(); renderInspector();
   if($('#code-drawer').classList.contains('open')) renderCode();
+  // drop focus from the screen <select> so canvas shortcuts (Ctrl+C/V, Del) keep
+  // working — the keydown handler ignores events while a select/input is focused
+  if(document.activeElement && document.activeElement.tagName==='SELECT') document.activeElement.blur();
 }
 function addScreen(){
   lastScreenDelete=null;
