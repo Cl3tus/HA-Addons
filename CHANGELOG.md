@@ -4,6 +4,11 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.67 — Profile picker back on the left (next to the brand)
+
+- The profile picker now sits just right of the brand box (its own cell, no label),
+  with separators before the action strip and before the theme/language cluster.
+
 ## 3.9.66 — Rebalanced top bar (profile right, scrollable action strip)
 
 - The profile picker (no more "Profiel" label) moves to the right with theme + language;

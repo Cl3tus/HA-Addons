@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
 
 <!-- Fonts: IBM Plex (UI) + preview display fonts — bundled locally -->
-<link rel="stylesheet" href="vendor/fonts.css?v=3.9.66">
+<link rel="stylesheet" href="vendor/fonts.css?v=3.9.67">
 
 <!-- Material Design Icons 7.4.47 — bundled locally -->
 <link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
@@ -17,7 +17,7 @@
 <script src="vendor/js-yaml.min.js"></script>
 <script src="vendor/qrcode-generator.js"></script>
 
-<link rel="stylesheet" href="styles.css?v=3.9.66">
+<link rel="stylesheet" href="styles.css?v=3.9.67">
 </head>
 <body>
 <div id="app">
@@ -31,6 +31,12 @@
         <span>Lambda Generator <span id="brand-version"></span></span>
       </div>
     </div>
+    <div class="profile-pick">
+      <select id="profile-select" data-i18n-title="Profiel" title="Profiel" style="width:auto;min-width:120px;max-width:160px"></select>
+      <button class="btn ghost sm" id="profile-new" data-i18n-title="Nieuw profiel" title="Nieuw profiel"><span class="mdi mdi-plus-thick mdi-c-nav"></span></button>
+      <button class="btn ghost sm" id="profile-settings" data-i18n-title="Profiel-instellingen" title="Profiel-instellingen"><span class="emo">⚙️</span></button>
+    </div>
+    <div class="topbar-sep"></div>
     <div id="topbar-actions">
       <div id="topbar-scroll">
         <button class="btn ghost" id="btn-import" data-i18n-title="ESPHome-YAML importeren"><span class="emo">📥</span> <span data-i18n="YAML importeren">YAML importeren</span></button>
@@ -63,11 +69,6 @@
     </div>
 
     <div class="topbar-right">
-      <div class="profile-pick">
-        <select id="profile-select" data-i18n-title="Profiel" title="Profiel" style="width:auto;min-width:120px;max-width:160px"></select>
-        <button class="btn ghost sm" id="profile-new" data-i18n-title="Nieuw profiel" title="Nieuw profiel"><span class="mdi mdi-plus-thick mdi-c-nav"></span></button>
-        <button class="btn ghost sm" id="profile-settings" data-i18n-title="Profiel-instellingen" title="Profiel-instellingen"><span class="emo">⚙️</span></button>
-      </div>
       <div class="topbar-sep"></div>
       <button class="btn ghost" id="btn-theme" data-i18n-title="Thema" title="Thema"><svg class="yny" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47" fill="#e8ebf1" stroke="currentColor" stroke-width="2.5" stroke-opacity=".5"/><path d="M50,3 a47,47 0 0,1 0,94 a23.5,23.5 0 0,1 0,-47 a23.5,23.5 0 0,0 0,-47z" fill="#3a3f47"/><circle cx="50" cy="26.5" r="6" fill="#e8ebf1"/><circle cx="50" cy="73.5" r="6" fill="#3a3f47"/></svg><span>Dark</span></button>
       <button class="btn ghost" id="btn-lang" data-lang-toggle onclick="toggleLang()" title="Taal / Language"><svg class="flag" viewBox="0 0 60 30" aria-hidden="true"><clipPath id="ujs"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="ujt"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#ujs)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#ujt)" stroke="#c8102e" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#c8102e" stroke-width="6"/></g></svg></button>
@@ -229,8 +230,8 @@
 <div class="toast" id="toast"></div>
 <div id="ctxmenu" class="ctxmenu"></div>
 
-<script src="app.js?v=3.9.66"></script>
-<script src="lang.js?v=3.9.66"></script>
-<script src="theme.js?v=3.9.66"></script>
+<script src="app.js?v=3.9.67"></script>
+<script src="lang.js?v=3.9.67"></script>
+<script src="theme.js?v=3.9.67"></script>
 </body>
 </html>
