@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.74 — Server-side entity filter + domain dropdown; revert ruler change
+
+- Restored the ruler-gap guide preview; removed the X/Y px tooltip on the rulers.
+- The entity filter now runs **server-side** in /api/states, so the entity count in the
+  picker (and the live-data toast) reflects the configured domains / hidden-unavailable.
+- The **Entity domains filter** option is now a clickable dropdown of common HA domains
+  instead of a free-text field.
+
 ## 3.9.73 — Cleaner guide drag (blue canvas line only)
 
 - Hid the dark dotted preview line in the ruler gap while dragging a guide; the blue

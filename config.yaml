@@ -1,5 +1,5 @@
 name: E-ink Studio
-version: "3.9.73"
+version: "3.9.74"
 slug: eink_studio
 description: Visual editor for ESPHome e-ink displays — design your layout and generate the lambda + YAML.
 url: https://github.com/Cl3tus/HA-Eink-Studio-App
@@ -42,4 +42,4 @@ schema:
   live_interval: int(0,1440)
   hide_unavailable: bool
   entity_domains:
-    - str
+    - list(sensor|binary_sensor|weather|climate|sun|person|device_tracker|light|switch|number|input_number|input_boolean|input_text|input_select|media_player|cover|fan|lock|vacuum|update|button|camera)

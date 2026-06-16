@@ -1269,14 +1269,6 @@ function setupRulers(){
     showRulerMenu(ev.clientX, ev.clientY, 'h');
   });
 
-  rxEl.addEventListener('mousemove',ev=>{
-    const fr=$('#stage-frame').getBoundingClientRect();
-    rxEl.title='X: '+Math.round((ev.clientX-fr.left)/zoom)+'px';
-  });
-  ryEl.addEventListener('mousemove',ev=>{
-    const fr=$('#stage-frame').getBoundingClientRect();
-    ryEl.title='Y: '+Math.round((ev.clientY-fr.top)/zoom)+'px';
-  });
 }
 
 function gridStep(){ return (profile().device.grid)|| 16; }

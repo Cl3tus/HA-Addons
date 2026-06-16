@@ -133,10 +133,17 @@ async def api_states(request: web.Request) -> web.Response:
 
     slim = []
     for st in data:
+        eid = st.get("entity_id") or ""
+        # apply the add-on entity filter so the picker (and its count) reflect it
+        if ENTITY_DOMAINS and eid.split(".")[0] not in ENTITY_DOMAINS:
+            continue
+        state = st.get("state")
+        if HIDE_UNAVAILABLE and state in ("unavailable", "unknown"):
+            continue
         attrs = st.get("attributes", {}) or {}
         slim.append({
-            "entity_id": st.get("entity_id"),
-            "state": st.get("state"),
+            "entity_id": eid,
+            "state": state,
             "unit": attrs.get("unit_of_measurement"),
             "name": attrs.get("friendly_name"),
             "device_class": attrs.get("device_class"),
