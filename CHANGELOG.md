@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.60 — Equal-sized action buttons in the sources + fonts tables
+
+- The two action buttons (apply/detect + delete in sources; edit + delete in the
+  fonts modal) are now identical fixed-size squares (.icobtn), regardless of glyph,
+  and the gap between them is tighter.
+
 ## 3.9.59 — Align layers eye with the delete cross
 
 - Nudged the layers visibility eye up 1px so it lines up with the red delete cross.

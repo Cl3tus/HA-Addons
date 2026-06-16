@@ -3859,8 +3859,8 @@ function openSources(){
       ${['number','string','time','bool'].map(k=>`<option ${s.kind===k?'selected':''}>${k}</option>`).join('')}
     </select></td>
     <td>${haTypeCell}</td>
-    <td style="text-align:center">${snapBtn}</td>
-    <td><button class="btn ghost sm danger" data-del="${i}"><span class="emo" style="font-size:16px">❌</span></button></td></tr>`;}).join('');
+    <td style="text-align:right;padding-right:2px">${snapBtn}</td>
+    <td style="padding-left:2px"><button class="btn ghost sm danger icobtn" data-del="${i}"><span class="emo" style="font-size:16px">❌</span></button></td></tr>`;}).join('');
 
   const help = `<div class="src-box" style="margin-bottom:12px">
     <b>${T('Live data uit Home Assistant','Live data from Home Assistant')}</b>
@@ -4039,8 +4039,7 @@ async function openFonts(){
       ? `<span class="tag" style="color:var(--ok)">${T('in gebruik','in use')}</span>`
       : `<span class="tag" style="color:var(--txt-faint)" title="${T('Geen element gebruikt dit font; het komt niet in de YAML.','No element uses this font; it is left out of the YAML.')}">${T('ongebruikt','unused')}</span>`}</td>
     <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')&&!onServer(f)&&!fontHasBytes(f)?fileBtn('rowfont-'+i,'.ttf,.otf,.woff,.pcf,.bdf',{compact:true,extra:`data-font="${i}"`}):''}</td>
-    <td style="white-space:nowrap;vertical-align:middle"><button class="btn ghost sm" style="vertical-align:middle" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}"><span class="emo" style="font-size:14px">✏️</span></button>
-        <button class="btn ghost sm danger" style="vertical-align:middle" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}"><span class="emo" style="font-size:16px">❌</span></button></td>
+    <td style="white-space:nowrap;vertical-align:middle"><button class="btn ghost sm icobtn" style="vertical-align:middle" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}"><span class="emo" style="font-size:14px">✏️</span></button><button class="btn ghost sm danger icobtn" style="vertical-align:middle;margin-left:4px" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}"><span class="emo" style="font-size:16px">❌</span></button></td>
   </tr>`;
   const ordered=profile().fonts.map((f,i)=>({f,i})).sort((a,b)=>fontCat(a.f)-fontCat(b.f) || a.i-b.i);
   let frows='', lastCat=-1;

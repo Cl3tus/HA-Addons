@@ -190,6 +190,10 @@ body.chrome-hidden #topbar { display: none; }
 .btn .codeic { width: 20px; height: 20px; display: block; transform: scale(1.25); }
 /* zip icon on the Download-Fonts button (smooth, transparent PNG) */
 .btn .zipic { height: 18px; width: auto; display: block; }
+/* fixed-size square icon button: guarantees two action buttons are identical in
+   size regardless of which glyph sits inside (used in the sources + fonts tables) */
+.btn.icobtn { box-sizing: border-box; width: 26px; height: 26px; padding: 0;
+              justify-content: center; flex: none; }
 /* tinted MDI icons for the structural groups that have no good emoji
    (alignment = blue, layer order = purple) — readable on dark + light themes */
 .mdi.mdi-c-align { color: #4a90d9; }
@@ -601,7 +605,7 @@ body.code-open #code-out, body.code-open input, body.code-open textarea { user-s
 .tag { display: inline-block; padding: 1px 6px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); font-size: 10px; color: var(--txt-dim); }
 /* small "snap to HA" icon used in the Sources table — a plain inline-block (not a flex
    .btn) so table-layout measures it and it never overflows into the next column */
-.snap-btn { display: inline-block; cursor: pointer; margin-left: 8px; padding: 5px 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); color: var(--txt-dim); font-size: 16px; line-height: 1; user-select: none; vertical-align: middle; }
+.snap-btn { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; cursor: pointer; margin-left: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); color: var(--txt-dim); font-size: 16px; line-height: 1; user-select: none; vertical-align: middle; }
 .snap-btn:hover { background: var(--line); color: var(--txt); }
 
 textarea.import-area { width: 100%; height: 260px; font-family: var(--mono); font-size: 11px; }
