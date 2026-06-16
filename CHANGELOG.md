@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.79 — Source sensors grouped; per-profile default-config; renamed toggle
+
+- Source-bound entities are now grouped under an **"# Added source sensors"** comment in
+  both the `sensor:` and `text_sensor:` blocks.
+- The **Default config** checkbox is remembered per profile (like the restore code).
+- Renamed the restore-code toggle to **Base64 Restore Code**.
+
 ## 3.9.78 — Generated YAML: default-config block, section comments, diagnostics
 
 - New **"Standaard config / Default config"** checkbox in the YAML drawer: prepends a

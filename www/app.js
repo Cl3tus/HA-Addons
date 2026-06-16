@@ -3580,7 +3580,8 @@ function genYAML(){
     if(o.refresh && o.refreshTime!==false){
       out+=`  - platform: template\n    id: sensor_uptime_timestamp\n    name: "Uptime"\n    device_class: timestamp\n    accuracy_decimals: 0\n    update_interval: never\n    entity_category: diagnostic\n    lambda: |-\n      static float timestamp = (\n        id(homeassistant_time).utcnow().timestamp - id(sensor_uptime).state\n      );\n      return timestamp;\n`;
     }
-    used.filter(s=>s.kind==='number').forEach(s=>out+=haSensor(s));
+    const srcN = used.filter(s=>s.kind==='number');
+    if(srcN.length){ out+=`# ${T('Toegevoegde bron-sensoren','Added source sensors')}\n`; srcN.forEach(s=>out+=haSensor(s)); }
     out+='\n';
   }
 
