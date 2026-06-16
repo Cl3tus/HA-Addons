@@ -572,7 +572,7 @@ body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8
 #code-out {
   flex: 1; margin: 0; padding: 14px 14px 14px 0; overflow: auto;
   font-family: var(--mono); font-size: 11.5px; line-height: 1.55;
-  color: #c8d0dd; tab-size: 2; white-space: pre;
+  color: var(--txt); tab-size: 2; white-space: pre;   /* theme-aware: dark in light mode */
   counter-reset: cl;
 }
 /* one inline span per line (real newlines between them so copy keeps blank lines) +

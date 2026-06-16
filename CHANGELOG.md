@@ -4,6 +4,11 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.76 — Readable generated-YAML text
+
+- The code in the Generate-YAML drawer follows the theme text colour, so it's dark
+  (readable) in light mode instead of a pale grey.
+
 ## 3.9.44 – 3.9.75 — Visual overhaul: icons, top bar, editor UX & add-on options
 
 A long run of UI-polish releases, folded together:
