@@ -1094,14 +1094,16 @@ function showDragGuide(axis, pos){
   const p=profile(); const W=p.device.w, H=p.device.h;
   pos=Math.max(0, Math.min(pos, axis==='v'?W:H));
   const pts = axis==='h' ? [0,pos,W,pos] : [pos,0,pos,H];
-  if(!_dragGuide){
+  // (re)create if missing or detached — drawGuides() destroys the layer's children,
+  // so a guide *move* (which redraws guides) would otherwise wipe these mid-drag
+  if(!_dragGuide || !_dragGuide.getLayer()){
     _dragGuide=new Konva.Line({points:pts, stroke:guideCol(), strokeWidth:1.2, dash:[5,3], listening:false, perfectDrawEnabled:false});
     guideLayer.add(_dragGuide);
   } else {
     _dragGuide.points(pts);
   }
   // live px label that follows the guide while dragging
-  if(!_dragGuideLabel){
+  if(!_dragGuideLabel || !_dragGuideLabel.getLayer()){
     _dragGuideLabel=new Konva.Label({listening:false});
     _dragGuideLabel.add(new Konva.Tag({fill:guideCol(), cornerRadius:2}));
     _dragGuideText=new Konva.Text({text:'', fontSize:10, fontFamily:'monospace', fill:'#fff', padding:3});
@@ -1172,7 +1174,7 @@ function startGuideMove(axis, g){
   const onMove=mv=>{
     if(axis==='v'){ const pos=Math.round((mv.clientX-fr.left)/zoom); g.pos=Math.max(0,Math.min(pos,Math.round(fr.width/zoom))); preview.style.left=(fr.left+g.pos*zoom)+'px'; }
     else { const pos=Math.round((mv.clientY-fr.top)/zoom); g.pos=Math.max(0,Math.min(pos,Math.round(fr.height/zoom))); preview.style.top=(fr.top+g.pos*zoom)+'px'; }
-    showDragGuide(axis, g.pos); drawRuler();
+    drawRuler(); showDragGuide(axis, g.pos);   // draw the label AFTER drawGuides() runs
   };
   const onUp=()=>{ preview.remove(); clearDragGuide(); window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); persistGuides(); drawGuides(); drawRuler(); };
   window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp);

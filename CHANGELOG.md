@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.72 — Live guide px label also when moving an existing guide
+
+- Moving an existing guide calls drawRuler() → drawGuides(), which cleared the layer
+  and wiped the px label each frame. Now the label is recreated when detached and
+  drawn after the redraw, so it follows both new and existing guides.
+
 ## 3.9.71 — Add-on options: live data + entity filter
 
 - New **add-on Configuration** options: **Live data on start**, **Live refresh interval
