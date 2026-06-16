@@ -3366,6 +3366,98 @@ function snapElId(el, used){
   return id;
 }
 
+/* optional "default device config" boilerplate (the YAML-drawer checkbox). Split so the
+   refresh on_boot can be merged into the single esphome: block. ${...} are ESPHome
+   substitutions (escaped here so JS keeps them literal). */
+const BOILERPLATE_HEAD = `# Substitutions — change this block per device
+substitutions:
+  device_name: "device-name"
+  device_id: deviceidname
+  comment: "Device Naming Comment"
+  friendly_name: "Device Name"
+  time_timezone: "Europe/Amsterdam"
+  board_type: "ESP32"       # Shown in HA Device Info as firmware label
+
+# ESPHome core
+esphome:
+  name: "\${device_name}"
+  comment: "\${comment}"
+  project:
+    name: "HAName.\${friendly_name}"
+    version: "\${board_type}"
+`;
+const BOILERPLATE_TAIL = `# Board
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      # Watchdog Timeout 60 seconds due to full refresh of screen that can take up to 30 seconds. (60 seconds safety)
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "60"
+      # Disable Brownout Detector for long USB cables or low amp power adapters.
+      CONFIG_ESP_BROWNOUT_DET: "n"
+      # Disable Bootloader Rollback
+      # CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE: "n"
+    advanced:
+      minimum_chip_revision: "3.1"
+      sram1_as_iram: true
+    #   Uncomment if logger warns: "Chip rev >= 3.0 detected" — reduces binary size
+    #   Value depends on your specific chip — check logger output after first flash
+    #   Uncomment if logger warns: "Bootloader supports SRAM1 as IRAM (+40KB)"
+
+# Flash write interval (companion to restore_from_flash)
+# preferences:
+#   flash_write_interval: 1min
+#   Too low an interval increases flash wear — 1min is a safe minimum.
+
+logger:
+  level: INFO
+  logs:
+    waveshare_epaper: INFO
+
+# WiFi + fallback
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  domain: !secret network_domain
+  min_auth_mode: WPA2
+  power_save_mode: none     # Prevents connection drops on ESP32
+  ap:
+    ssid: "\${device_name} Fallback"
+    password: !secret wifi_pass
+  # use_address: 192.168.x.x
+  # Uncomment when DNS resolution fails during OTA (e.g. after IP change)
+
+# The captive portal component in ESPHome is a fallback mechanism for when connecting to the configured WiFi fails.
+captive_portal:
+
+# Safe mode — falls back on repeated boot failures, keeps OTA available
+safe_mode:
+  disabled: False # Set to true for disabling safe_mode
+  boot_is_good_after: 10s # The amount of time after which the boot is considered successful.
+  num_attempts: 10 # The number of failed boot attempts which must occur before invoking safe mode.
+
+# The web_server component creates a simple web server on the node that can be accessed through any browser and a simple REST API.
+web_server:
+  port: 80
+  auth:
+    username: !secret esp_username
+    password: !secret esp_pass
+  include_internal: True
+  version: 3
+
+# OTA
+ota:
+  - platform: esphome
+    password: !secret esp_pass
+    allow_partition_access: true
+
+# Home Assistant API
+api:
+  encryption:
+    key: !secret encryption_key
+`;
+
 function genYAML(){
   const p=profile(), d=p.device, gl=collectGlyphs();
   let out='';
@@ -3394,25 +3486,42 @@ function genYAML(){
   const scrNames = (()=>{ const seen={}; return scrs.map(s=>{ let nm=(s.name||'').trim()||T('Scherm','Screen');
     if(seen[nm]!=null){ seen[nm]++; nm=nm+' '+seen[nm]; } else seen[nm]=1; return nm; }); })();
 
-  // refresh logic — esphome on_boot, script and time can each be toggled individually
-  if(o.refresh && o.refreshEsphome!==false){
+  // device config: optional full boilerplate (one esphome: block with on_boot merged in)
+  // or the standalone esphome: on_boot block (the "paste into your existing config" flow)
+  const useBP = p.includeBoilerplate===true;
+  const wantOnBoot = o.refresh && o.refreshEsphome!==false;
+  const onBoot = `  on_boot:\n    priority: ${o.bootPriority}\n    then:\n      - delay: ${o.bootDelay}\n      - component.update: eink_display\n      - wait_until:\n          condition:\n            lambda: 'return id(data_updated) == true;'\n          timeout: ${o.waitTimeout}\n      - lambda: 'id(initial_data_received) = true;'\n      - script.execute: update_screen\n`;
+  if(useBP){
+    out+=BOILERPLATE_HEAD;
+    if(wantOnBoot) out+=onBoot;          // merged into the single esphome: block
+    out+='\n'+BOILERPLATE_TAIL+'\n';
+  } else if(wantOnBoot){
     out+=`# ${T('--- vul aan in je bestaande esphome: blok ---','--- add to your existing esphome: block ---')}\n`;
-    out+=`esphome:\n  on_boot:\n    priority: ${o.bootPriority}\n    then:\n      - delay: ${o.bootDelay}\n      - component.update: eink_display\n      - wait_until:\n          condition:\n            lambda: 'return id(data_updated) == true;'\n          timeout: ${o.waitTimeout}\n      - lambda: 'id(initial_data_received) = true;'\n      - script.execute: update_screen\n\n`;
+    out+=`esphome:\n${onBoot}\n`;
+  }
+
+  // SPI bus (board-specific pins) — sits between esphome and globals
+  if(o.spi){
+    out+=`# ${T('SPI-pinnen voor het Waveshare ePaper-board','SPI pins for the Waveshare ePaper board')}\n`;
+    out+=`spi:\n  clk_pin: ${o.spiClk}\n  mosi_pin: ${o.spiMosi}\n\n`;
   }
 
   // globals
   if(o.globals){
+    out+=`# ${T('Globale variabelen, gedeeld over de lambdas','Global variables, shared across the lambdas')}\n`;
     out+=`globals:\n  - id: data_updated\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: initial_data_received\n    type: bool\n    restore_value: no\n    initial_value: 'false'\n  - id: recorded_display_refresh\n    type: int\n    restore_value: yes\n    initial_value: '0'\n`;
     out+='\n';
   }
 
   // script (part of the refresh logic)
   if(o.refresh && o.refreshScript!==false){
+    out+=`# ${T('Scherm-verversscript','Screen refresh script')}\n`;
     out+=`script:\n  - id: update_screen\n    then:\n      - lambda: 'id(data_updated) = false;'\n      - component.update: eink_display\n      - lambda: 'id(recorded_display_refresh) += 1;'\n      - lambda: 'id(display_last_update).publish_state(id(homeassistant_time).now().timestamp);'\n\n`;
   }
 
   // time (part of the refresh logic) — the interval driver for the display-mode switches
   if(o.refresh && o.refreshTime!==false){
+    out+=`# ${T('Realtime-klok als tijdbron (incl. "cron" voor schermverversing)','Real-time clock time source (incl. "cron" for the display refresh)')}\n`;
     out+=`time:\n  - platform: homeassistant\n    id: homeassistant_time\n    on_time:\n      - seconds: 0\n        minutes: /${o.timeInterval||15}\n        then:\n`;
     // refresh only when new sensor data arrived (skip this round otherwise), with a log on both.
     const refreshIf = i => `${i}- if:\n${i}    condition:\n${i}      lambda: 'return id(data_updated) == true;'\n${i}    then:\n${i}      - logger.log: "E-ink: new sensor data — refreshing display"\n${i}      - script.execute: update_screen\n${i}    else:\n${i}      - logger.log: "E-ink: no new sensor data — refresh skipped"\n`;
@@ -3430,16 +3539,13 @@ function genYAML(){
     out+='\n';
   }
 
-  // SPI bus (board-specific pins)
-  if(o.spi){
-    out+=`spi:\n  clk_pin: ${o.spiClk}\n  mosi_pin: ${o.spiMosi}\n\n`;
-  }
 
   // fonts — only the ones actually used by an element (an unused font, especially an
   // icon font with no glyphs, would make ESPHome fail with "unable to determine height")
   if(o.fonts){
     const used=usedFontIds();
     const emit=p.fonts.filter(f=>used.has(f.id));
+    out+=`# ${T('Fonts voor het ESPHome-display','Font drawer for ESPHome')}\n`;
     out+=`font:\n`;
     emit.forEach(f=>{
       if(f.kind==='gfonts'){
@@ -3456,6 +3562,7 @@ function genYAML(){
 
   // colors
   if(o.colors){
+    out+=`# ${T('Kleurenblok voor e-ink displays','Colour block for E-Ink displays')}\n`;
     out+=`color:\n`;
     p.colors.forEach(c=>{ out+=`  - id: ${c.id}\n    red: ${c.r}%\n    green: ${c.g}%\n    blue: ${c.b}%\n    white: ${c.w}%\n`; });
     out+='\n';
@@ -3464,10 +3571,15 @@ function genYAML(){
   // sensors (diagnostics + used numeric homeassistant) — ${friendly_name} inlined (no substitutions block)
   const used = usedSources();
   if(o.sensors){
+    out+=`# ${T('Sensoren: laatste update, schermverversingen, wifi-signaal en uptime (+ HA-bronnen)','Sensors: last update, display refreshes, WiFi signal and uptime (+ HA sources)')}\n`;
     out+=`sensor:\n`;
     out+=`  - platform: template\n    name: "Display Last Update"\n    device_class: timestamp\n    entity_category: diagnostic\n    id: display_last_update\n`;
     out+=`  - platform: template\n    name: "Recorded Display Refresh"\n    accuracy_decimals: 0\n    unit_of_measurement: "Refreshes"\n    state_class: total_increasing\n    entity_category: diagnostic\n    lambda: 'return id(recorded_display_refresh);'\n`;
     out+=`  - platform: wifi_signal\n    name: "WiFi Signal"\n    id: wifisignal\n    entity_category: diagnostic\n    update_interval: 60s\n`;
+    out+=`  - platform: uptime\n    id: sensor_uptime\n`;
+    if(o.refresh && o.refreshTime!==false){
+      out+=`  - platform: template\n    id: sensor_uptime_timestamp\n    name: "Uptime"\n    device_class: timestamp\n    accuracy_decimals: 0\n    update_interval: never\n    entity_category: diagnostic\n    lambda: |-\n      static float timestamp = (\n        id(homeassistant_time).utcnow().timestamp - id(sensor_uptime).state\n      );\n      return timestamp;\n`;
+    }
     used.filter(s=>s.kind==='number').forEach(s=>out+=haSensor(s));
     out+='\n';
   }
@@ -3476,11 +3588,19 @@ function genYAML(){
   // entity names no longer carry the profile prefix), plus the used string/time/bool HA sources.
   if(o.textSensors){
     const cppName = String(p.name||'E-ink Studio').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+    out+=`# ${T('Diagnostische tekst-sensoren (+ HA-bronnen)','Diagnostic text sensors (+ HA sources)')}\n`;
     out+=`text_sensor:\n`;
     out+=`  - platform: template\n    name: "Profile"\n    id: eink_profile\n    entity_category: diagnostic\n    lambda: |-\n      return {"${cppName}"};\n`;
-    used.filter(s=>s.kind!=='number').forEach(s=>out+=haSensor(s));
+    out+=`  - platform: wifi_info\n    ip_address:\n      name: "IP Address"\n      icon: "mdi:network-outline"\n      entity_category: diagnostic\n    ssid:\n      name: "Connected SSID"\n      icon: "mdi:wifi"\n      entity_category: diagnostic\n`;
+    out+=`  - platform: version\n    id: text_sensor_version\n    name: "ESPHome Version"\n    entity_category: diagnostic\n    hide_timestamp: true\n`;
+    const srcTs = used.filter(s=>s.kind!=='number');
+    if(srcTs.length){ out+=`# ${T('Toegevoegde bron-sensoren','Added source sensors')}\n`; srcTs.forEach(s=>out+=haSensor(s)); }
     out+='\n';
   }
+
+  // diagnostic binary sensor (device status) — always included
+  out+=`# ${T('Diagnostische binary-sensor','Diagnostic binary sensor')}\n`;
+  out+=`binary_sensor:\n  - platform: status\n    name: "Status"\n    entity_category: diagnostic\n\n`;
 
   // graph: components (one per graph element)
   const allEls=allElements(p);
@@ -3556,17 +3676,24 @@ function genYAML(){
     const hideSel = (ctrl==='buttons' || ctrl==='none');
     const selName = hideSel ? '' : `    name: "Screen"\n`;
     const selInternal = hideSel ? `    internal: true\n` : '';
+    out+=`# ${T('Scherm-keuze (dropdown) voor meerdere schermen','Multi-screen dropdown selector')}\n`;
     out+=`select:\n  - platform: template\n${selName}    id: screen_select\n${selInternal}    optimistic: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - if:\n            condition:\n              lambda: 'return id(initial_data_received);'\n            then:\n              - component.update: eink_display\n\n`;
+  }
 
-    if(ctrl==='both' || ctrl==='buttons'){
-      out+=`button:\n`;
+  // buttons: a restart button is always emitted; screen buttons follow with multi-screen
+  {
+    const ctrl = o.screenControl || 'both';
+    const wantScreenBtns = multi && (ctrl==='both' || ctrl==='buttons');
+    out+=`# ${T('Knoppen — begint met een simpele herstart-knop','Buttons — starting with a simple restart button')}\n`;
+    out+=`button:\n  - platform: restart\n    id: button_restart\n    name: "Restart"\n    entity_category: config\n`;
+    if(wantScreenBtns){
+      out+=`# ${T('Schermknoppen','Multi-screen buttons')}\n`;
       scrNames.forEach((nm)=>{
         // press → set the select, which fires on_value (redraws the display)
         out+=`  - platform: template\n    name: "${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: screen_select\n            option: "${esc(nm)}"\n`;
       });
-      out+='\n';
     }
-
+    out+='\n';
   }
 
   // --- interlocked HA "display mode" switches (generated with the refresh logic) ---
@@ -3609,9 +3736,10 @@ function genYAML(){
     }
   }
   // emit the collected template switches as one switch: block (a duplicate top-level key is invalid YAML)
-  if(switchEntries.length){ out+=`switch:\n${switchEntries.join('')}\n`; }
+  if(switchEntries.length){ out+=`# ${T('Schakelaars voor verversen, statisch en rotatie','Switches for refresh, static and rotation logic')}\nswitch:\n${switchEntries.join('')}\n`; }
 
   // display + lambda
+  out+=`# ${T('Display-component voor de grafische weergave','Display component for the graphical rendering engine')}\n`;
   out+=`display:\n  - platform: waveshare_epaper\n    id: eink_display\n    model: ${d.model}\n    rotation: ${d.rotation}°\n`;
   if(o.displayPins){
     if(o.dataRateOn) out+=`    data_rate: ${o.dataRate}\n`;
@@ -3734,6 +3862,7 @@ function haSensor(s){
 
 function renderCode(){
   { const cb=$('#code-b64'); if(cb) cb.checked = profile().includeSnapshot!==false; }   // reflect the current profile's setting
+  { const cb=$('#code-boilerplate'); if(cb) cb.checked = profile().includeBoilerplate===true; }
   const code = genYAML().replace(/\s+$/,'\n');   // trim trailing blank space
   const h = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   // one <span class="cl"> per line so a CSS ::before counter can show line numbers
@@ -5308,6 +5437,7 @@ function wire(){
       const up=()=>{ window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up); };
       window.addEventListener('mousemove',move); window.addEventListener('mouseup',up); }); }
   const cb64=$('#code-b64'); if(cb64) cb64.onchange=()=>{ profile().includeSnapshot=cb64.checked; persist(); renderCode(); };
+  const cbBp=$('#code-boilerplate'); if(cbBp) cbBp.onchange=()=>{ profile().includeBoilerplate=cbBp.checked; persist(); renderCode(); };
   const scr=$('#screen-select'); if(scr) scr.onchange=()=>switchScreen(scr.value);
   { const b=$('#scr-add'); if(b) b.onclick=addScreen; }
   { const b=$('#scr-dup'); if(b) b.onclick=duplicateScreen; }

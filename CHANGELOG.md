@@ -4,6 +4,17 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.78 — Generated YAML: default-config block, section comments, diagnostics
+
+- New **"Standaard config / Default config"** checkbox in the YAML drawer: prepends a
+  full device boilerplate (substitutions, esphome, esp32, logger, wifi, captive_portal,
+  safe_mode, web_server, ota, api) and merges the refresh `on_boot` into that single
+  `esphome:` block. Off = the previous standalone `esphome: on_boot` block. Live-updates.
+- The **SPI block** now sits between `esphome:` and `globals:`.
+- **Section `# comments`** added before each generated block.
+- Always-included diagnostics: **uptime** sensors, **wifi_info** (IP/SSID), **version**
+  text sensor, a **status binary_sensor**, and a **Restart** button.
+
 ## 3.9.77 — Keyboard shortcuts keep working after switching screens
 
 - Switching screens via the dropdown left focus on the `<select>`, so Ctrl+C / Ctrl+V /

@@ -160,6 +160,7 @@
     'Elementen tijdens slepen vastklikken op het raster': 'Snap elements to the grid while dragging',
     'Elementen tijdens slepen vastklikken op de hulplijnen': 'Snap elements to the guides while dragging',
     'Huidige pagina / scherm': 'Current page / screen',
+    'Standaard config': 'Default config',
     'Naam': 'Name',
     'Grootte': 'Size',
     'Gewijzigd': 'Modified',
