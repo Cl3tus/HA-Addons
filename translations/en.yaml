@@ -8,3 +8,23 @@ configuration:
     name: Theme
     description: >-
       Colour theme. "Auto" follows your Home Assistant light/dark setting.
+  live_on_start:
+    name: Live data on start
+    description: >-
+      Automatically fetch live Home Assistant values when the editor opens
+      (read-only). Turn off if you prefer to enable live data manually.
+  live_interval:
+    name: Live refresh interval (minutes)
+    description: >-
+      Default auto-refresh interval for live data, in minutes (0 = off). You can
+      still change it per session in the top bar.
+  hide_unavailable:
+    name: Hide unavailable entities
+    description: >-
+      Hide entities whose state is "unavailable" or "unknown" in the
+      "From Home Assistant" picker.
+  entity_domains:
+    name: Entity domains filter
+    description: >-
+      Only show these entity domains in the "From Home Assistant" picker
+      (e.g. sensor, binary_sensor, weather). Leave empty to show all.

@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.71 — Add-on options: live data + entity filter
+
+- New **add-on Configuration** options: **Live data on start**, **Live refresh interval
+  (minutes)**, **Hide unavailable entities**, and an **Entity domains filter** for the
+  "From Home Assistant" picker. Read in server.py → /api/info and applied in the editor.
+- Fixed the live guide px label (kept a direct Konva.Text reference).
+
 ## 3.9.70 — Toolbar order/tooltips + live guide px
 
 - Swapped Files/Fonts order; Generate-YAML button is the same height as the others

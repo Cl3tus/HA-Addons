@@ -8,3 +8,23 @@ configuration:
     name: Thema
     description: >-
       Kleurthema. "Auto" volgt de licht/donker-instelling van Home Assistant.
+  live_on_start:
+    name: Live data bij opstarten
+    description: >-
+      Haal automatisch live Home Assistant-waarden op zodra de editor opent
+      (alleen-lezen). Zet uit als je live data liever handmatig aanzet.
+  live_interval:
+    name: Live-vernieuwinterval (minuten)
+    description: >-
+      Standaard auto-vernieuwinterval voor live data, in minuten (0 = uit). Je kunt
+      het per sessie nog wijzigen in de bovenbalk.
+  hide_unavailable:
+    name: Verberg niet-beschikbare entiteiten
+    description: >-
+      Verberg entiteiten met status "unavailable" of "unknown" in de
+      "Uit Home Assistant"-kiezer.
+  entity_domains:
+    name: Entiteit-domeinfilter
+    description: >-
+      Toon alleen deze entiteit-domeinen in de "Uit Home Assistant"-kiezer
+      (bijv. sensor, binary_sensor, weather). Laat leeg om alles te tonen.

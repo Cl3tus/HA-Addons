@@ -58,6 +58,11 @@ def _norm_theme(v):
 
 LANGUAGE   = _norm_lang(_opts.get("language", "auto"))   # auto | nl | en
 THEME      = _norm_theme(_opts.get("theme", "auto"))     # auto | light | dark
+LIVE_ON_START    = bool(_opts.get("live_on_start", True))
+try:    LIVE_INTERVAL = max(0, int(_opts.get("live_interval", 1)))
+except Exception: LIVE_INTERVAL = 1
+ENTITY_DOMAINS   = [str(d).strip().lower() for d in (_opts.get("entity_domains") or []) if str(d).strip()]
+HIDE_UNAVAILABLE = bool(_opts.get("hide_unavailable", False))
 SAMBA_SLUG = os.environ.get("SAMBA_SLUG", "")
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -403,6 +408,10 @@ async def api_info(request: web.Request) -> web.Response:
         "samba_slug": SAMBA_SLUG,
         "language": LANGUAGE,
         "theme": THEME,
+        "live_on_start": LIVE_ON_START,
+        "live_interval": LIVE_INTERVAL,
+        "entity_domains": ENTITY_DOMAINS,
+        "hide_unavailable": HIDE_UNAVAILABLE,
     })
 
 

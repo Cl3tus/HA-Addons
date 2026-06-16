@@ -1088,7 +1088,7 @@ function persistGuides(){ persist(); }
 
 /* ephemeral blue guide drawn live on the canvas WHILE dragging a guide from the
    ruler (or repositioning an existing one). Committed to profileGuides() on mouseup. */
-let _dragGuide=null, _dragGuideLabel=null;
+let _dragGuide=null, _dragGuideLabel=null, _dragGuideText=null;
 function showDragGuide(axis, pos){
   if(!guideLayer) return;
   const p=profile(); const W=p.device.w, H=p.device.h;
@@ -1104,17 +1104,18 @@ function showDragGuide(axis, pos){
   if(!_dragGuideLabel){
     _dragGuideLabel=new Konva.Label({listening:false});
     _dragGuideLabel.add(new Konva.Tag({fill:guideCol(), cornerRadius:2}));
-    _dragGuideLabel.add(new Konva.Text({text:'', fontSize:10, fontFamily:'monospace', fill:'#fff', padding:3}));
+    _dragGuideText=new Konva.Text({text:'', fontSize:10, fontFamily:'monospace', fill:'#fff', padding:3});
+    _dragGuideLabel.add(_dragGuideText);
     guideLayer.add(_dragGuideLabel);
   }
-  _dragGuideLabel.getText().text(pos+' px');
+  _dragGuideText.text(pos+' px');
   if(axis==='v') _dragGuideLabel.position({x:Math.min(pos+3, W-30), y:3});
   else           _dragGuideLabel.position({x:3, y:Math.min(pos+3, H-16)});
   guideLayer.batchDraw();
 }
 function clearDragGuide(){
   if(_dragGuide){ _dragGuide.destroy(); _dragGuide=null; }
-  if(_dragGuideLabel){ _dragGuideLabel.destroy(); _dragGuideLabel=null; }
+  if(_dragGuideLabel){ _dragGuideLabel.destroy(); _dragGuideLabel=null; _dragGuideText=null; }
   if(guideLayer) guideLayer.batchDraw();
 }
 
@@ -3923,7 +3924,10 @@ async function openEntityPicker(){
     try{ HA_STATES=await fetchHaStates(); HA_LIVE=true; updateLiveBadge(); }
     catch(e){ toast(T('Live data niet beschikbaar — staat de add-on in Home Assistant?','Live data unavailable — is the add-on running in Home Assistant?'),true); return; }
   }
-  const entries=Object.keys(HA_STATES).sort().map(eid=>({eid, ...HA_STATES[eid]}));
+  const _doms=window.ADDON_ENTITY_DOMAINS||[], _hideU=!!window.ADDON_HIDE_UNAVAILABLE;
+  let entries=Object.keys(HA_STATES).sort().map(eid=>({eid, ...HA_STATES[eid]}));
+  if(_doms.length) entries=entries.filter(e=>_doms.includes(e.eid.split('.')[0]));
+  if(_hideU) entries=entries.filter(e=>e.state!=='unavailable' && e.state!=='unknown');
   const existing=new Set(profile().sources.map(s=>s.entityId));
 
   openModal(T('Entiteit kiezen uit Home Assistant','Pick an entity from Home Assistant'),
@@ -5648,7 +5652,13 @@ async function boot(){
     // Apply add-on language/theme options BEFORE any toast fires
     if(info.language){ window.ADDON_LANGUAGE=info.language; if(window.haRefreshLang) window.haRefreshLang(); }
     if(info.theme){ window.ADDON_THEME=info.theme; if(window.haTheme) window.haTheme.apply(window.haTheme.detect()); }
-    if(info.live_data){ refreshLive(); }
+    // entity-picker filter (set before the picker can be opened)
+    window.ADDON_ENTITY_DOMAINS = Array.isArray(info.entity_domains) ? info.entity_domains : [];
+    window.ADDON_HIDE_UNAVAILABLE = !!info.hide_unavailable;
+    // default live-refresh interval from the add-on options (unless the user picked one)
+    if(info.live_interval!=null && !localStorage.getItem('einkLiveIntervalMin')) _setLiveIntervalValue(String(info.live_interval));
+    // auto-enable live data on start unless disabled in the add-on options
+    if(info.live_data && info.live_on_start!==false){ refreshLive(); }
   }).catch(()=>{});
 }
 
