@@ -489,8 +489,10 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   flex-shrink: 0;
 }
 /* guide drag-preview lines — shown in the whitespace between ruler and canvas only */
+/* the dark dotted preview line in the ruler gap is hidden — the blue guide line that
+   slides across the canvas (drawn on the Konva layer) is the only drag indicator */
 #guide-preview-h, #guide-preview-v {
-  position: fixed; pointer-events: none; z-index: 200;
+  position: fixed; pointer-events: none; z-index: 200; display: none;
 }
 #guide-preview-h {
   height: 0;
