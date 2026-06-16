@@ -4,234 +4,38 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
-## 3.9.75 — Guide drag: ruler-gap on move + X/Y px label on top
+## 3.9.44 – 3.9.75 — Visual overhaul: icons, top bar, editor UX & add-on options
 
-- Moving an existing guide now shows the ruler-gap preview line too (like a new guide).
-- The blue px label shows "X:"/"Y:" and is drawn on a dedicated top layer so it sits
-  above all canvas content.
+A long run of UI-polish releases, folded together:
 
-## 3.9.74 — Server-side entity filter + domain dropdown; revert ruler change
+**Icons & colour**
+- Toolbar, menu and panel icons are now colourful **emoji** plus tinted **MDI** glyphs;
+  emoji that showed as empty squares were swapped for MDI. The **« ‹ › »** screen-nav,
+  undo/redo and every **+** button follow HA's **primary colour**.
+- The **theme** toggle is an SVG yin-yang and the **language** toggle uses hand-drawn
+  SVG flags (Union Jack / Dutch tricolour), so they render the same on every OS.
+- Delete controls use the classic **recycle-bin PNG**; the layers / sources / fonts
+  deletes are a red cross. **Generate YAML** got a `</>` badge, plus the HA-logo, zip
+  and fit-to-page icons.
 
-- Restored the ruler-gap guide preview; removed the X/Y px tooltip on the rulers.
-- The entity filter now runs **server-side** in /api/states, so the entity count in the
-  picker (and the live-data toast) reflects the configured domains / hidden-unavailable.
-- The **Entity domains filter** option is now a clickable dropdown of common HA domains
-  instead of a free-text field.
+**Top bar**
+- Rebalanced into a boxed **brand cell** (left) · **profile** picker + Save/Open · a
+  horizontally **scrollable action strip** (right-aligned, with clickable edge arrows and
+  gradient fades) · **theme / language** (right). A matching **Inspector** header bar was
+  added on the right, panel titles are centred, and the profile dropdown lines up with
+  the screen selector below it.
 
-## 3.9.73 — Cleaner guide drag (blue canvas line only)
+**Editor UX**
+- Idle toolbar buttons **grey out** based on history / clipboard / selection (undo, redo,
+  paste, copy, cut, duplicate, delete, align and layer-order).
+- **Ctrl + mouse wheel** (and trackpad pinch) zooms toward the cursor.
+- Dragging a guide shows a live **X: / Y: px** label on top; **F2** renames the selected
+  element; and tooltips were added across the toolbar and status bar.
 
-- Hid the dark dotted preview line in the ruler gap while dragging a guide; the blue
-  guide line that slides across the canvas (with its px label) is now the only indicator.
-
-## 3.9.72 — Live guide px label also when moving an existing guide
-
-- Moving an existing guide calls drawRuler() → drawGuides(), which cleared the layer
-  and wiped the px label each frame. Now the label is recreated when detached and
-  drawn after the redraw, so it follows both new and existing guides.
-
-## 3.9.71 — Add-on options: live data + entity filter
-
-- New **add-on Configuration** options: **Live data on start**, **Live refresh interval
-  (minutes)**, **Hide unavailable entities**, and an **Entity domains filter** for the
-  "From Home Assistant" picker. Read in server.py → /api/info and applied in the editor.
-- Fixed the live guide px label (kept a direct Konva.Text reference).
-
-## 3.9.70 — Toolbar order/tooltips + live guide px
-
-- Swapped Files/Fonts order; Generate-YAML button is the same height as the others
-  (icon scaled visually). Save/Open tooltips say "profile"; the canvas delete tooltip
-  is "Delete element (Del)".
-- Added tooltips on the status-bar toggles (grid, ruler, snap grid/ruler, page) and on
-  the Fonts modal's "Download Fonts (.zip)".
-- File manager: right-side buttons reordered to refresh › theme › language.
-- Dragging a guide now shows a **live px label** that moves with it.
-
-## 3.9.69 — Sources next to Live
-
-- Moved Sources to sit just left of Live, with a separator before it.
-
-## 3.9.68 — Save/Open by the profile; right-aligned actions; aligned dropdowns
-
-- Save + Open moved next to the profile picker on the left.
-- The import…generate action strip is right-aligned (still scrollable to the start).
-- The profile dropdown now lines up vertically with the canvas toolbar's screen
-  selector ("Hoofdscherm").
-
-## 3.9.67 — Profile picker back on the left (next to the brand)
-
-- The profile picker now sits just right of the brand box (its own cell, no label),
-  with separators before the action strip and before the theme/language cluster.
-
-## 3.9.66 — Rebalanced top bar (profile right, scrollable action strip)
-
-- The profile picker (no more "Profiel" label) moves to the right with theme + language;
-  the brand box stays left and the floating separator is gone.
-- The middle action strip now scrolls with the same edge arrows + fades as the canvas
-  toolbar (shared via `.fade-l`/`.fade-r` + a reusable `wireScroller`).
-
-## 3.9.65 — Bigger dead zone under the toolbar scroll arrows
-
-- Enlarged the no-click zone around each scroll arrow so a button further under the
-  arrow still can't be mis-clicked.
-
-## 3.9.64 — Toolbar buttons under the scroll arrow aren't clickable
-
-- A toolbar button sitting (partly) under a scroll arrow no longer triggers on click;
-  the arrow's enlarged hit-area catches it and scrolls instead, preventing mis-clicks.
-
-## 3.9.63 — Branded top-left cell + primary-colour scroll arrows
-
-- The "E-ink Studio / Lambda Generator" brand now sits in its own boxed cell that lines
-  up with the left panel (240px), with centred content and a smaller version number.
-- The canvas-toolbar scroll arrows (‹ ›) follow HA's primary colour.
-
-## 3.9.62 — Centred panel headers + toolbar scroll arrows
-
-- The "Add elements" and "Inspector" panel titles are centred.
-- The canvas toolbar's scrollbar is replaced by **clickable edge arrows** with a
-  gradient fade; each side appears only when the toolbar overflows there.
-
-## 3.9.61 — Inspector header bar + scrollable canvas toolbar
-
-- The right panel now has an **"Inspector" header bar** (matching the left "Add
-  elements" bar and the canvas toolbar height); the inspector body scrolls below it.
-- The canvas toolbar **scrolls horizontally** when the window is too narrow, instead
-  of spilling over the inspector.
-
-## 3.9.60 — Equal-sized action buttons in the sources + fonts tables
-
-- The two action buttons (apply/detect + delete in sources; edit + delete in the
-  fonts modal) are now identical fixed-size squares (.icobtn), regardless of glyph,
-  and the gap between them is tighter.
-
-## 3.9.59 — Align layers eye with the delete cross
-
-- Nudged the layers visibility eye up 1px so it lines up with the red delete cross.
-
-## 3.9.58 — Delete-icon tweaks + Fonts-modal row fixes
-
-- **Sources**: delete is a red ❌ again; the "apply what HA detects" chip gets the
-  button background and matches the delete button height.
-- **Fonts modal**: delete is a red ❌, the edit pen is smaller and the buttons line up;
-  the "Choose file" picker only shows when the font isn't already in the fonts/ folder.
-- **Layers**: delete is now a red mdi-close-thick.
-- The **Generate YAML** `</>` badge looks bigger (scaled) without enlarging the button.
-
-## 3.9.57 — Fix disabled-state on canvas selection + pen size
-
-- The greyed-out toolbar buttons now update on **every** selection change, including
-  clicking an element directly on the canvas (updateToolbarState moved into
-  renderInspector, which all selection paths call).
-- Fonts-modal edit pen is a bit smaller so it matches the delete button.
-
-## 3.9.56 — Disabled-state toolbar buttons + icon sizing
-
-- Canvas toolbar buttons now **grey out when there's nothing to do**: undo/redo follow
-  their history, paste follows the clipboard, and copy/cut/duplicate/delete + the
-  alignment and layer-order buttons disable when no element is selected.
-- "Apply what HA detects" chip and the Fonts-modal **edit (pen)** button are sized to
-  match the delete button; **Sources** uses mdi-database; **Download Fonts (.zip)** uses
-  a zip PNG; the zoom **fit** button is an mdi-fit-to-page icon in HA primary.
-
-## 3.9.55 — Ctrl+wheel zoom + more icon tweaks
-
-- **Ctrl + mouse wheel** (and trackpad pinch) now zooms the canvas toward the cursor.
-- File manager "back to editor" uses a bold left arrow in HA primary; the Fonts modal
-  edit (✏️) / delete (recycle-bin) icons; **Download Fonts (.zip)** gets a zip icon;
-  the per-row "apply what HA detects" chip uses the same 🔍 as Detect types.
-- Top bar **Sources** (mdi-database-outline) and **Fonts** icons now follow HA's
-  primary colour; the **Generate YAML** `</>` badge is a touch larger.
-
-## 3.9.54 — Unified "+" buttons (mdi-plus-thick in HA primary)
-
-- Every add/plus button now uses **mdi-plus-thick** in HA's primary colour: new
-  profile, add screen, the trace/source/font "+" add buttons, and zoom-in. Zoom-out
-  matches with mdi-minus-thick so the pair stays consistent.
-
-## 3.9.53 — More icon polish (un-pixelate bin, HA-logo, sources + file menu)
-
-- The recycle-bin delete icon is **smooth again** (un-pixelated).
-- **Undo/redo** icons now follow HA's primary colour, like the screen nav.
-- **File manager**: the far-right refresh button is a square ♻️ that matches the
-  theme/flag buttons; the **right-click menu** uses emoji icons (and the recycle-bin
-  for delete).
-- **Sources (sensor mapping)**: the *Detect types* button (🔍), the per-row delete
-  (recycle-bin) and the *From Home Assistant* button (the HA logo) got icons.
-
-## 3.9.52 — Primary-colour screen nav + red hidden-eye
-
-- The screen-navigation icons (« ‹ › ») now follow **HA's primary colour** (`--guide`).
-- In the layers panel the **hidden** state (eye-off) is now **red** instead of grey;
-  the visible eye stays blue.
-
-## 3.9.51 — Replace tofu emoji with MDI icons; blue eye; icon tweaks
-
-- The emoji that showed as empty squares on some systems are now crisp **MDI icons**:
-  screen navigation (« ‹ › »), undo/redo (editor + file editor), Fonts, and the
-  file-manager "back to editor" arrow.
-- **Layers**: the visibility toggle is now a **blue MDI eye** (eye-off when hidden),
-  and the drag-to-reorder handle is a ☰ menu icon.
-- **Copy** uses 📑 and **Paste** uses 📋; **Duplicate** moved to 🗂️ (matching the
-  screen-duplicate icon) so it stays distinct from copy.
-- The recycle-bin delete icon now renders **pixelated** (crisp pixel-art look).
-
-## 3.9.50 — Classic recycle-bin PNG on the delete buttons
-
-- The delete/trash buttons now use the classic Windows-style **recycle-bin PNG**
-  (`www/img/recyclebin.png`, transparent) in place of the drawn SVG, everywhere a
-  delete control appears.
-
-## 3.9.49 — SVG recycle-bin, square refresh, code badge
-
-- **Delete buttons everywhere** now use a hand-drawn **recycle-bin SVG** (grey bucket
-  + green arrows, transparent background) instead of the wastebasket emoji — canvas
-  toolbar, screen delete, multi-select bar, layers row, context menu and file manager.
-- The **Refresh** button is now a square icon button.
-- The **Generate YAML** button uses an SVG `</>` code badge instead of plain text.
-
-## 3.9.48 — Compacter top bar (fits the longer Dutch labels)
-
-- Tighter spacing throughout the top bar (smaller gaps, button padding and profile
-  picker) so the right-hand buttons — up to **Generate YAML** — stay on screen in
-  Dutch instead of overflowing to the right.
-
-## 3.9.47 — Top-bar sizing + nicer flags + recycle icon
-
-- **Proper Union Jack** (counterchanged diagonals) and a correctly-proportioned Dutch
-  flag, drawn larger so they match the other buttons.
-- **All top-bar buttons share one height** now (icon-only ones no longer look smaller),
-  and **Live + Refresh** are an equal-sized pair. The **Refresh** button uses a ♻️
-  recycle icon.
-- The **brand title** (E-ink Studio / Lambda Generator / version) no longer gets
-  squeezed or shifted when switching to Dutch — it and the profile picker keep their
-  size while the toolbar takes the slack.
-
-## 3.9.46 — Crisp SVG flags + yin-yang (render the same on every OS)
-
-- The **language toggle** now uses **hand-drawn SVG flags** (Union Jack / Dutch
-  tricolour) instead of flag emoji — those showed as plain "GB"/"NL" letters on
-  Windows. The **theme toggle** uses an **SVG yin-yang** with a subtle rim so it
-  reads on both light and dark, replacing the flat ☯ emoji.
-
-## 3.9.45 — Emoji polish: theme/language, paste, modal crosses, context menu
-
-- **Theme toggle** now shows a ☯️ yin-yang; **language toggle** shows a flag (🇬🇧 / 🇳🇱).
-- **Paste** uses 📥 instead of the pushpin; **Sources** is now 🛢️; the **new-profile (➕)**
-  and **profile-settings (⚙️)** buttons got emoji too.
-- **Modal/drawer close buttons** are now square instead of rectangular.
-- **Right-click menu** items are aligned in clean icon + label columns, and **Rename**
-  has an **F2** shortcut (works from the canvas and the layers panel).
-
-## 3.9.44 — Colourful emoji toolbar icons
-
-- The toolbar buttons now use **colourful emoji** instead of flat monochrome glyphs:
-  top bar (import/sources/fonts/files/save/open/refresh), screen navigation (⏮️ ◀️ ▶️ ⏭️),
-  screen add/duplicate/rename/delete, undo/redo, duplicate, copy/cut/paste, delete,
-  and the file-manager toolbar + text editor.
-- **Alignment and layer-order** buttons (which have no good emoji) switched to **tinted
-  MDI icons** — alignment in blue, layer order in purple — so the groups read at a glance.
-- Modal/drawer **close crosses** are now a red ❌.
-- The left element palette and the layers panel are intentionally left unchanged.
+**Add-on options**
+- New Configuration options: **Live data on start**, **Live refresh interval**, **Hide
+  unavailable entities** and an **Entity domains filter** — the filter runs server-side,
+  so the entity count reflects it.
 
 ## 3.9.43 — Guides: ruler-only dragging + per-screen
 
