@@ -4,6 +4,10 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.69 — Sources next to Live
+
+- Moved Sources to sit just left of Live, with a separator before it.
+
 ## 3.9.68 — Save/Open by the profile; right-aligned actions; aligned dropdowns
 
 - Save + Open moved next to the profile picker on the left.
