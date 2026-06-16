@@ -138,6 +138,13 @@ body.chrome-hidden #topbar { display: none; }
 
 .profile-pick { display: flex; align-items: center; gap: 6px; flex: none; }
 .profile-pick label { color: var(--txt-dim); font-size: 11px; }
+/* middle action strip scrolls; brand (left) + settings cluster (right) stay fixed */
+#topbar-actions { position: relative; flex: 1 1 auto; min-width: 0; align-self: stretch;
+  display: flex; align-items: center; overflow: hidden; }
+#topbar-scroll { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0;
+  height: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+#topbar-scroll::-webkit-scrollbar { display: none; }
+.topbar-right { display: flex; align-items: center; gap: 6px; flex: none; }
 
 /* ---------- Buttons ---------- */
 .btn {
@@ -368,10 +375,12 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   display: none; align-items: center; pointer-events: none;
 }
 .ctb-fade.show { display: flex; }
-#ctb-fade-l { left: 0;  justify-content: flex-start; padding-left: 5px;
+.ctb-fade.fade-l { left: 0;  justify-content: flex-start; padding-left: 5px;
   background: linear-gradient(to right, var(--panel) 38%, transparent); }
-#ctb-fade-r { right: 0; justify-content: flex-end;   padding-right: 5px;
+.ctb-fade.fade-r { right: 0; justify-content: flex-end;   padding-right: 5px;
   background: linear-gradient(to left,  var(--panel) 38%, transparent); }
+/* topbar variant: full bar height (its container is exactly the bar height) */
+.tb-fade { top: 0; bottom: 0; height: auto; }
 .ctb-arrow {
   pointer-events: auto; cursor: pointer; position: relative;
   width: 24px; height: 24px; border-radius: 50%;
@@ -382,10 +391,10 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 /* invisible hit-area around the arrow: a toolbar button sitting (partly) under the
    arrow catches this instead, so the obscured button can't be clicked — clicking
    there scrolls the toolbar rather than triggering the hidden button */
-#ctb-fade-l .ctb-arrow::after,
-#ctb-fade-r .ctb-arrow::after { content: ""; position: absolute; top: -8px; bottom: -8px; }
-#ctb-fade-l .ctb-arrow::after { left: -5px;  right: -43px; }   /* extend the dead zone inward */
-#ctb-fade-r .ctb-arrow::after { left: -43px; right: -5px;  }
+.fade-l .ctb-arrow::after,
+.fade-r .ctb-arrow::after { content: ""; position: absolute; top: -8px; bottom: -8px; }
+.fade-l .ctb-arrow::after { left: -5px;  right: -43px; }   /* extend the dead zone inward */
+.fade-r .ctb-arrow::after { left: -43px; right: -5px;  }
 .ctb-arrow:hover { background: var(--line); border-color: var(--accent); }
 .ctb-arrow:active { transform: translateY(1px); }
 /* keep button groups intact so they overflow into the scroll instead of shrinking */

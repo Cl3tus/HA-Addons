@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.66 — Rebalanced top bar (profile right, scrollable action strip)
+
+- The profile picker (no more "Profiel" label) moves to the right with theme + language;
+  the brand box stays left and the floating separator is gone.
+- The middle action strip now scrolls with the same edge arrows + fades as the canvas
+  toolbar (shared via `.fade-l`/`.fade-r` + a reusable `wireScroller`).
+
 ## 3.9.65 — Bigger dead zone under the toolbar scroll arrows
 
 - Enlarged the no-click zone around each scroll arrow so a button further under the

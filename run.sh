@@ -5,7 +5,7 @@
 bashio::log.info "E-ink Studio start op poort 8099 (ingress)..."
 
 export DATA_DIR="/data"
-export ADDON_VERSION="3.9.65"
+export ADDON_VERSION="3.9.66"
 
 # addon_config:rw monteert de add-on config-map op /config.
 # Op de SAMBA-share is dit zichtbaar als addon_configs\3d980088_eink_studio.
