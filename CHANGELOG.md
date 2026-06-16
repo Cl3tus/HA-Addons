@@ -4,6 +4,11 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.65 — Bigger dead zone under the toolbar scroll arrows
+
+- Enlarged the no-click zone around each scroll arrow so a button further under the
+  arrow still can't be mis-clicked.
+
 ## 3.9.64 — Toolbar buttons under the scroll arrow aren't clickable
 
 - A toolbar button sitting (partly) under a scroll arrow no longer triggers on click;

@@ -382,7 +382,10 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 /* invisible hit-area around the arrow: a toolbar button sitting (partly) under the
    arrow catches this instead, so the obscured button can't be clicked — clicking
    there scrolls the toolbar rather than triggering the hidden button */
-.ctb-arrow::after { content: ""; position: absolute; top: -8px; bottom: -8px; left: -13px; right: -13px; }
+#ctb-fade-l .ctb-arrow::after,
+#ctb-fade-r .ctb-arrow::after { content: ""; position: absolute; top: -8px; bottom: -8px; }
+#ctb-fade-l .ctb-arrow::after { left: -5px;  right: -43px; }   /* extend the dead zone inward */
+#ctb-fade-r .ctb-arrow::after { left: -43px; right: -5px;  }
 .ctb-arrow:hover { background: var(--line); border-color: var(--accent); }
 .ctb-arrow:active { transform: translateY(1px); }
 /* keep button groups intact so they overflow into the scroll instead of shrinking */
