@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.68 — Save/Open by the profile; right-aligned actions; aligned dropdowns
+
+- Save + Open moved next to the profile picker on the left.
+- The import…generate action strip is right-aligned (still scrollable to the start).
+- The profile dropdown now lines up vertically with the canvas toolbar's screen
+  selector ("Hoofdscherm").
+
 ## 3.9.67 — Profile picker back on the left (next to the brand)
 
 - The profile picker now sits just right of the brand box (its own cell, no label),

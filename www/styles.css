@@ -136,7 +136,7 @@ body.chrome-hidden #topbar { display: none; }
 .topbar-sep { width: 1px; height: 22px; background: var(--line); }
 .topbar-spacer { flex: 1; }
 
-.profile-pick { display: flex; align-items: center; gap: 6px; flex: none; }
+.profile-pick { display: flex; align-items: center; gap: 6px; flex: none; margin-left: 8px; }
 .profile-pick label { color: var(--txt-dim); font-size: 11px; }
 /* middle action strip scrolls; brand (left) + settings cluster (right) stay fixed */
 #topbar-actions { position: relative; flex: 1 1 auto; min-width: 0; align-self: stretch;
@@ -144,6 +144,9 @@ body.chrome-hidden #topbar { display: none; }
 #topbar-scroll { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0;
   height: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 #topbar-scroll::-webkit-scrollbar { display: none; }
+/* right-align the action buttons; the auto margin collapses on overflow so it stays
+   scrollable to the start */
+#topbar-scroll > :first-child { margin-left: auto; }
 .topbar-right { display: flex; align-items: center; gap: 6px; flex: none; }
 
 /* ---------- Buttons ---------- */
