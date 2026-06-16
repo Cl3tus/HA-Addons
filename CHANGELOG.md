@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.61 — Inspector header bar + scrollable canvas toolbar
+
+- The right panel now has an **"Inspector" header bar** (matching the left "Add
+  elements" bar and the canvas toolbar height); the inspector body scrolls below it.
+- The canvas toolbar **scrolls horizontally** when the window is too narrow, instead
+  of spilling over the inspector.
+
 ## 3.9.60 — Equal-sized action buttons in the sources + fonts tables
 
 - The two action buttons (apply/detect + delete in sources; edit + delete in the

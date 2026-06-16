@@ -260,7 +260,11 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   min-height: 0; min-width: 0;
 }
 #left  { grid-area: left;  border-right: 1px solid var(--line); overflow: hidden; }
-#right { grid-area: right; border-left: 1px solid var(--line); overflow-y: auto; }
+#right { grid-area: right; border-left: 1px solid var(--line); overflow: hidden; }
+/* Right panel: the "Inspector" header bar stays fixed; only the inspector body
+   scrolls (mirrors the "Add elements" header on the left). */
+#right > .section:first-child { flex: none; }
+#right > #inspector { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 /* Left panel: the "Add elements" palette stays fixed; only the layers list
    scrolls when there are more layers than fit. */
@@ -347,8 +351,14 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   height: 40px; display: flex; align-items: center; gap: 10px;
   padding: 0 14px; border-bottom: 1px solid var(--line);
   background: var(--panel); flex: none;
+  /* when the window is too narrow, scroll the toolbar instead of letting it
+     spill over the inspector */
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
 }
-#canvas-toolbar .grp { display: flex; align-items: center; gap: 6px; }
+#canvas-toolbar::-webkit-scrollbar { height: 6px; }
+#canvas-toolbar::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
+/* keep button groups intact so they overflow into the scroll instead of shrinking */
+#canvas-toolbar .grp { display: flex; align-items: center; gap: 6px; flex: none; }
 #canvas-toolbar .zoomval { font-family: var(--mono); width: 42px; text-align: center; color: var(--txt-dim); }
 
 /* ---- Canvas status bar (bottom, sticky) ---- */
