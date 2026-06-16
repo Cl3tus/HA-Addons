@@ -3386,7 +3386,7 @@ esphome:
     name: "HAName.\${friendly_name}"
     version: "\${board_type}"
 `; }
-function boilerplateTail(){ return `# ${T('Board','Board')}
+function boilerplateTail(){ return `# ${T('Bord','Board')}
 esp32:
   board: esp32dev
   framework:
@@ -3821,8 +3821,8 @@ function genYAML(){
     // wrapped over multiple "#~ " comment lines so it doesn't become one giant line in
     // ESPHome (which never wraps); the importer reassembles them. Legacy single-line still reads.
     out+=`\n# ${T('Base64 Herstel Code — plak terug via "Code importeren" om je ontwerp te herstellen (niet bewerken)','Base64 Restore Code — paste back via "Import Code" to restore the design (do not edit)')}\n`;
-    out+=`# eink-editor:v${window.APP_VERSION||'1'}\n`;
-    for(let i=0;i<snap.length;i+=120) out+=`#~ ${snap.slice(i,i+120)}\n`;
+    const _payload='eink-editor:v'+(window.APP_VERSION||'1')+':'+snap;
+    for(let i=0;i<_payload.length;i+=120) out+=`#~ ${_payload.slice(i,i+120)}\n`;
   }
   return out;
 }
@@ -3882,13 +3882,13 @@ function renderCode(){
   // line is wrapped so it folds within the visible width.
   // dim the recovery marker + its wrapped "#~ " data lines (a "stop here" cue when you
   // drag-select the YAML, since you usually don't want the base64 too)
-  const markerRe = /^#\s*eink-editor:v[\w.]+\s*$/;
   const lines = code.replace(/\n$/,'').split('\n');
   const dim = new Array(lines.length).fill(false);
-  lines.forEach((line,i)=>{
-    if(markerRe.test(line)){ dim[i]=true; if(i>0 && /^#/.test(lines[i-1])) dim[i-1]=true; }   // marker + its description line above it
-    else if(/^#~ /.test(line)) dim[i]=true;                                                    // wrapped data lines
+  let first=-1;
+  lines.forEach((line,i)=>{   // wrapped "#~ " data lines (+ any legacy "# eink-editor:vX:" line)
+    if(/^#~ /.test(line) || /^#\s*eink-editor:v[\w.]+/.test(line)){ dim[i]=true; if(first<0) first=i; }
   });
+  if(first>0 && /^#/.test(lines[first-1])) dim[first-1]=true;   // dim the description comment just above
   const html = lines.map((line,i)=>'<span class="cl'+(dim[i]?' cl-b64':'')+'">'+h(line)+'</span>').join('\n');
   const pre=$('#code-out'); pre.innerHTML = html;
 }
@@ -4723,11 +4723,17 @@ function _parseBlock(block){
    (# eink-editor:v1:…). Decode it so a round-trip restores the canvas. */
 function _readSnapshot(text){
   const t=String(text);
-  // new wrapped format: a "# eink-editor:v…" marker followed by "#~ <chunk>" lines
-  const chunks=[]; const re=/^#~[ \t]*([A-Za-z0-9+/=]+)[ \t]*$/gm; let mm;
+  let b64=null;
+  // wrapped format: "#~ …" continuation lines. Joined they may carry an inline
+  // "eink-editor:vX:" marker (current) or be pure base64 chunks (older).
+  const chunks=[]; const re=/^#~[ \t]*(.+?)[ \t]*$/gm; let mm;
   while((mm=re.exec(t))) chunks.push(mm[1]);
-  let b64 = chunks.length ? chunks.join('') : null;
-  // legacy single-line format
+  if(chunks.length){
+    const joined=chunks.join('');
+    const m1=/eink-editor:v[\w.]+:([A-Za-z0-9+/=]+)/.exec(joined);
+    b64 = m1 ? m1[1] : joined.replace(/[^A-Za-z0-9+/=]/g,'');
+  }
+  // legacy single-line "# eink-editor:vX:<base64>"
   if(!b64){ const m=/#\s*eink-editor:v[\w.]+:([A-Za-z0-9+/=]+)/.exec(t); if(m) b64=m[1]; }
   if(!b64) return null;
   try{ return JSON.parse(decodeURIComponent(escape(atob(b64)))); }catch(e){ return null; }

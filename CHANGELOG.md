@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.83 — Inline restore-code marker; "# Bord"
+
+- The restore code now carries its `eink-editor:vX:` marker inline on the first `#~ ` line
+  (no separate marker line). The importer still reads this, the previous `#~ ` format, and
+  the legacy single line.
+- Translated the boilerplate `# Board` comment to `# Bord` (NL).
+
 ## 3.9.82 — YAML drawer: click-outside closes, stops above the status bar; label tweaks
 
 - Clicking anywhere outside the open Generate-YAML drawer now closes it (clicks inside it,
