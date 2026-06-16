@@ -5325,6 +5325,20 @@ function wire(){
       wrap.scrollTop  += (f2.top +cy*zoom)-e.clientY;
     }, {passive:false});
   }
+  // canvas-toolbar overflow: clickable edge arrows + gradient fades (no scrollbar)
+  { const tb=$('#canvas-toolbar'), fl=$('#ctb-fade-l'), fr=$('#ctb-fade-r');
+    if(tb && fl && fr){
+      const upd=()=>{ const max=tb.scrollWidth-tb.clientWidth;
+        fl.classList.toggle('show', tb.scrollLeft>1);
+        fr.classList.toggle('show', tb.scrollLeft < max-1); };
+      $('#ctb-arrow-l').onclick=()=>tb.scrollBy({left:-160,behavior:'smooth'});
+      $('#ctb-arrow-r').onclick=()=>tb.scrollBy({left: 160,behavior:'smooth'});
+      tb.addEventListener('scroll', upd, {passive:true});
+      window.addEventListener('resize', upd);
+      if(window.ResizeObserver) new ResizeObserver(upd).observe(tb);
+      upd();
+    }
+  }
   // zoom input: type a value and press Enter or blur to apply
   { const zv=$('#zoom-val');
     if(zv){

@@ -288,6 +288,7 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 #left > .section:first-child > h3,
 #right > .section:first-child > h3 {
   height: 39px; padding-top: 0; padding-bottom: 0;   /* +1px border = 40px, matches the canvas toolbar */
+  justify-content: center;                            /* centre the panel title */
 }
 .section .body { padding: 0 12px 12px; }
 
@@ -351,12 +352,30 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
   height: 40px; display: flex; align-items: center; gap: 10px;
   padding: 0 14px; border-bottom: 1px solid var(--line);
   background: var(--panel); flex: none;
-  /* when the window is too narrow, scroll the toolbar instead of letting it
-     spill over the inspector */
-  overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+  /* when the window is too narrow, scroll the toolbar (via the edge arrows below)
+     instead of letting it spill over the inspector — scrollbar itself is hidden */
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
 }
-#canvas-toolbar::-webkit-scrollbar { height: 6px; }
-#canvas-toolbar::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
+#canvas-toolbar::-webkit-scrollbar { display: none; }
+/* edge fade + scroll arrow, shown only when the toolbar overflows on that side */
+.ctb-fade {
+  position: absolute; top: 0; height: 40px; width: 56px; z-index: 6;
+  display: none; align-items: center; pointer-events: none;
+}
+.ctb-fade.show { display: flex; }
+#ctb-fade-l { left: 0;  justify-content: flex-start; padding-left: 5px;
+  background: linear-gradient(to right, var(--panel) 38%, transparent); }
+#ctb-fade-r { right: 0; justify-content: flex-end;   padding-right: 5px;
+  background: linear-gradient(to left,  var(--panel) 38%, transparent); }
+.ctb-arrow {
+  pointer-events: auto; cursor: pointer;
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 1px solid var(--line-2); background: var(--panel-2); color: var(--txt);
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  font-size: 17px; box-shadow: 0 1px 5px rgba(0,0,0,.35);
+}
+.ctb-arrow:hover { background: var(--line); border-color: var(--accent); }
+.ctb-arrow:active { transform: translateY(1px); }
 /* keep button groups intact so they overflow into the scroll instead of shrinking */
 #canvas-toolbar .grp { display: flex; align-items: center; gap: 6px; flex: none; }
 #canvas-toolbar .zoomval { font-family: var(--mono); width: 42px; text-align: center; color: var(--txt-dim); }

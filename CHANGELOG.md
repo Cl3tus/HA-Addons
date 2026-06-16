@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.62 — Centred panel headers + toolbar scroll arrows
+
+- The "Add elements" and "Inspector" panel titles are centred.
+- The canvas toolbar's scrollbar is replaced by **clickable edge arrows** with a
+  gradient fade; each side appears only when the toolbar overflows there.
+
 ## 3.9.61 — Inspector header bar + scrollable canvas toolbar
 
 - The right panel now has an **"Inspector" header bar** (matching the left "Add
