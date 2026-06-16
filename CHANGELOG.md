@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.81 — Bilingual default-config comments + clearer button comment
+
+- The **Default config** boilerplate's comments are now bilingual (NL/EN), with an added
+  comment above `logger:`.
+- The `button:` comment adapts: **Restart ESP Button** when there are no screen buttons,
+  **restart and screen-switching buttons** when screen buttons are shown (Buttons or
+  Buttons + Dropdown).
+
 ## 3.9.80 — Header text per mode, wrapped restore code, wider drawer, Import Code
 
 - The header comment adapts to the **Default config** toggle (full config vs. "paste these

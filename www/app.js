@@ -3369,75 +3369,76 @@ function snapElId(el, used){
 /* optional "default device config" boilerplate (the YAML-drawer checkbox). Split so the
    refresh on_boot can be merged into the single esphome: block. ${...} are ESPHome
    substitutions (escaped here so JS keeps them literal). */
-const BOILERPLATE_HEAD = `# Substitutions — change this block per device
+function boilerplateHead(){ return `# ${T('Substituties — pas dit blok per apparaat aan','Substitutions — change this block per device')}
 substitutions:
   device_name: "device-name"
   device_id: deviceidname
   comment: "Device Naming Comment"
   friendly_name: "Device Name"
   time_timezone: "Europe/Amsterdam"
-  board_type: "ESP32"       # Shown in HA Device Info as firmware label
+  board_type: "ESP32"       # ${T('Getoond in HA Apparaatinfo als firmware-label','Shown in HA Device Info as firmware label')}
 
-# ESPHome core
+# ${T('ESPHome-kern','ESPHome core')}
 esphome:
   name: "\${device_name}"
   comment: "\${comment}"
   project:
     name: "HAName.\${friendly_name}"
     version: "\${board_type}"
-`;
-const BOILERPLATE_TAIL = `# Board
+`; }
+function boilerplateTail(){ return `# ${T('Board','Board')}
 esp32:
   board: esp32dev
   framework:
     type: esp-idf
     sdkconfig_options:
-      # Watchdog Timeout 60 seconds due to full refresh of screen that can take up to 30 seconds. (60 seconds safety)
+      # ${T('Watchdog-timeout 60s — een volledige schermverversing kan tot 30s duren (60s marge).','Watchdog timeout 60s — a full screen refresh can take up to 30s (60s safety).')}
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "60"
-      # Disable Brownout Detector for long USB cables or low amp power adapters.
+      # ${T('Brownout-detector uit voor lange USB-kabels of zwakke voedingen.','Disable the brownout detector for long USB cables or low-amp power adapters.')}
       CONFIG_ESP_BROWNOUT_DET: "n"
-      # Disable Bootloader Rollback
+      # ${T('Bootloader-rollback uitschakelen','Disable bootloader rollback')}
       # CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE: "n"
     advanced:
       minimum_chip_revision: "3.1"
       sram1_as_iram: true
-    #   Uncomment if logger warns: "Chip rev >= 3.0 detected" — reduces binary size
-    #   Value depends on your specific chip — check logger output after first flash
-    #   Uncomment if logger warns: "Bootloader supports SRAM1 as IRAM (+40KB)"
+    #   ${T('Verwijder de # als de logger waarschuwt: "Chip rev >= 3.0 detected" — verkleint de binary','Uncomment if logger warns: "Chip rev >= 3.0 detected" — reduces binary size')}
+    #   ${T('Waarde hangt af van je chip — check de logger-uitvoer na de eerste flash','Value depends on your specific chip — check logger output after first flash')}
+    #   ${T('Verwijder de # als de logger waarschuwt: "Bootloader supports SRAM1 as IRAM (+40KB)"','Uncomment if logger warns: "Bootloader supports SRAM1 as IRAM (+40KB)"')}
 
-# Flash write interval (companion to restore_from_flash)
+# ${T('Flash-schrijfinterval (hoort bij restore_from_flash)','Flash write interval (companion to restore_from_flash)')}
 # preferences:
 #   flash_write_interval: 1min
-#   Too low an interval increases flash wear — 1min is a safe minimum.
+#   ${T('Een te laag interval verhoogt flash-slijtage — 1min is een veilig minimum.','Too low an interval increases flash wear — 1min is a safe minimum.')}
 
+# ${T('De logger-component logt automatisch alle logberichten via de seriële poort.','The logger component automatically logs all log messages through the serial port.')}
 logger:
   level: INFO
   logs:
     waveshare_epaper: INFO
 
-# WiFi + fallback
+# ${T('WiFi + fallback','WiFi + fallback')}
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   domain: !secret network_domain
   min_auth_mode: WPA2
-  power_save_mode: none     # Prevents connection drops on ESP32
+  power_save_mode: none     # ${T('Voorkomt verbindingsverlies op ESP32','Prevents connection drops on ESP32')}
   ap:
     ssid: "\${device_name} Fallback"
     password: !secret wifi_pass
   # use_address: 192.168.x.x
-  # Uncomment when DNS resolution fails during OTA (e.g. after IP change)
+  # ${T('Verwijder de # als DNS-resolutie faalt tijdens OTA (bijv. na IP-wijziging)','Uncomment when DNS resolution fails during OTA (e.g. after IP change)')}
 
-# The captive portal component in ESPHome is a fallback mechanism for when connecting to the configured WiFi fails.
+# ${T('De captive-portal-component is een fallback wanneer verbinden met de ingestelde WiFi mislukt.','The captive portal component is a fallback for when connecting to the configured WiFi fails.')}
 captive_portal:
 
-# Safe mode — falls back on repeated boot failures, keeps OTA available
+# ${T('Safe mode — valt terug bij herhaalde boot-fouten, houdt OTA beschikbaar','Safe mode — falls back on repeated boot failures, keeps OTA available')}
 safe_mode:
-  disabled: False # Set to true for disabling safe_mode
-  boot_is_good_after: 10s # The amount of time after which the boot is considered successful.
-  num_attempts: 10 # The number of failed boot attempts which must occur before invoking safe mode.
+  disabled: False # ${T('Zet op true om safe_mode uit te schakelen','Set to true to disable safe_mode')}
+  boot_is_good_after: 10s # ${T('De tijd waarna de boot als geslaagd geldt.','The amount of time after which the boot is considered successful.')}
+  num_attempts: 10 # ${T('Aantal mislukte boot-pogingen voordat safe mode wordt geactiveerd.','The number of failed boot attempts before invoking safe mode.')}
 
-# The web_server component creates a simple web server on the node that can be accessed through any browser and a simple REST API.
+# ${T('De web_server-component maakt een simpele webserver op de node, bereikbaar via elke browser en een REST API.','The web_server component creates a simple web server on the node, reachable via any browser and a simple REST API.')}
 web_server:
   port: 80
   auth:
@@ -3452,11 +3453,11 @@ ota:
     password: !secret esp_pass
     allow_partition_access: true
 
-# Home Assistant API
+# ${T('Home Assistant API','Home Assistant API')}
 api:
   encryption:
     key: !secret encryption_key
-`;
+`; }
 
 function genYAML(){
   const p=profile(), d=p.device, gl=collectGlyphs();
@@ -3496,9 +3497,9 @@ function genYAML(){
   const wantOnBoot = o.refresh && o.refreshEsphome!==false;
   const onBoot = `  on_boot:\n    priority: ${o.bootPriority}\n    then:\n      - delay: ${o.bootDelay}\n      - component.update: eink_display\n      - wait_until:\n          condition:\n            lambda: 'return id(data_updated) == true;'\n          timeout: ${o.waitTimeout}\n      - lambda: 'id(initial_data_received) = true;'\n      - script.execute: update_screen\n`;
   if(useBP){
-    out+=BOILERPLATE_HEAD;
+    out+=boilerplateHead();
     if(wantOnBoot) out+=onBoot;          // merged into the single esphome: block
-    out+='\n'+BOILERPLATE_TAIL+'\n';
+    out+='\n'+boilerplateTail()+'\n';
   } else if(wantOnBoot){
     out+=`# ${T('--- vul aan in je bestaande esphome: blok ---','--- add to your existing esphome: block ---')}\n`;
     out+=`esphome:\n${onBoot}\n`;
@@ -3689,7 +3690,9 @@ function genYAML(){
   {
     const ctrl = o.screenControl || 'both';
     const wantScreenBtns = multi && (ctrl==='both' || ctrl==='buttons');
-    out+=`# ${T('Knoppen — begint met een simpele herstart-knop','Buttons — starting with a simple restart button')}\n`;
+    out+= wantScreenBtns
+      ? `# ${T('Knoppen — herstart- en schermwissel-knoppen','Buttons — restart and screen-switching buttons')}\n`
+      : `# ${T('Restart ESP Knop','Restart ESP Button')}\n`;
     out+=`button:\n  - platform: restart\n    id: button_restart\n    name: "Restart"\n    entity_category: config\n`;
     if(wantScreenBtns){
       out+=`# ${T('Schermknoppen','Multi-screen buttons')}\n`;
