@@ -322,7 +322,7 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 .layer:hover .lmove { opacity: 1; }
 .layer .ltype { width: 16px; color: var(--txt-faint); flex: none; }
 .layer .lname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.layer .lvis { color: var(--txt-faint); cursor: pointer; }
+.layer .lvis { color: var(--txt-faint); cursor: pointer; position: relative; top: -1px; }
 .layer .ldel { color: var(--txt-faint); cursor: pointer; flex: none; opacity: .55; font-size: 12px; }
 .layer .ldel:hover { opacity: 1; filter: grayscale(0); }
 .layer:hover .ldel { opacity: .8; }
