@@ -161,6 +161,8 @@
     'Elementen tijdens slepen vastklikken op de hulplijnen': 'Snap elements to the guides while dragging',
     'Huidige pagina / scherm': 'Current page / screen',
     'Standaard config': 'Default config',
+    'Code importeren': 'Import Code',
+    'Code importeren (YAML en/of base64-herstelcode)': 'Import code (YAML and/or Base64 restore code)',
     'Naam': 'Name',
     'Grootte': 'Size',
     'Gewijzigd': 'Modified',

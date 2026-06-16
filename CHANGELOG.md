@@ -4,6 +4,16 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.80 — Header text per mode, wrapped restore code, wider drawer, Import Code
+
+- The header comment adapts to the **Default config** toggle (full config vs. "paste these
+  blocks"), with Generated / Profile on separate lines.
+- The **Base64 restore code** is wrapped over multiple `#~ ` comment lines so it no longer
+  becomes one giant line in ESPHome; the importer reassembles it (legacy single-line still
+  reads). The YAML drawer is **250px wider**.
+- The **Import YAML** button is now **Import Code** — it imports YAML, the Base64 restore
+  code, or both at once (the modal says so).
+
 ## 3.9.79 — Source sensors grouped; per-profile default-config; renamed toggle
 
 - Source-bound entities are now grouped under an **"# Added source sensors"** comment in
