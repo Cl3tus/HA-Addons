@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.58 — Delete-icon tweaks + Fonts-modal row fixes
+
+- **Sources**: delete is a red ❌ again; the "apply what HA detects" chip gets the
+  button background and matches the delete button height.
+- **Fonts modal**: delete is a red ❌, the edit pen is smaller and the buttons line up;
+  the "Choose file" picker only shows when the font isn't already in the fonts/ folder.
+- **Layers**: delete is now a red mdi-close-thick.
+- The **Generate YAML** `</>` badge looks bigger (scaled) without enlarging the button.
+
 ## 3.9.57 — Fix disabled-state on canvas selection + pen size
 
 - The greyed-out toolbar buttons now update on **every** selection change, including

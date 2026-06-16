@@ -185,8 +185,9 @@ body.chrome-hidden #topbar { display: none; }
 /* recycle-bin glyph used on every delete/trash control */
 .bin { height: 17px; width: auto; display: inline-block; vertical-align: middle; }
 .ctxmenu .ic .bin { height: 15px; }
-/* </> code badge on the Generate-YAML button */
-.btn .codeic { width: 20px; height: 20px; display: block; }
+/* </> code badge on the Generate-YAML button — scaled up visually (transform doesn't
+   affect layout, so the button keeps its size) */
+.btn .codeic { width: 20px; height: 20px; display: block; transform: scale(1.25); }
 /* zip icon on the Download-Fonts button (smooth, transparent PNG) */
 .btn .zipic { height: 18px; width: auto; display: block; }
 /* tinted MDI icons for the structural groups that have no good emoji
@@ -214,7 +215,7 @@ select option { background: var(--panel); color: var(--txt); }
 input::placeholder, textarea::placeholder { color: var(--txt-faint); }
 input[type=file] { color: var(--txt-dim); }
 /* localized file picker (hides the browser's English "Choose File / No file chosen") */
-.file-ctl { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; max-width: 100%; }
+.file-ctl { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; max-width: 100%; vertical-align: middle; }
 .file-hidden { position: absolute !important; width: 1px; height: 1px; opacity: 0; overflow: hidden; padding: 0; margin: 0; border: 0; }
 /* match the height of an adjacent text input (padding/border/font equal) */
 .file-pick { display: inline-block; padding: 3px 10px 4px; border: 1px solid var(--line-2); border-radius: 5px; background: var(--bg-2); color: var(--txt-dim); white-space: nowrap; line-height: 1.5; }
@@ -600,7 +601,7 @@ body.code-open #code-out, body.code-open input, body.code-open textarea { user-s
 .tag { display: inline-block; padding: 1px 6px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); font-size: 10px; color: var(--txt-dim); }
 /* small "snap to HA" icon used in the Sources table — a plain inline-block (not a flex
    .btn) so table-layout measures it and it never overflows into the next column */
-.snap-btn { display: inline-block; cursor: pointer; margin-left: 8px; padding: 4px 8px; border: 1px solid var(--line-2); border-radius: 6px; color: var(--txt-dim); font-size: 16px; line-height: 1; user-select: none; vertical-align: middle; }
+.snap-btn { display: inline-block; cursor: pointer; margin-left: 8px; padding: 5px 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); color: var(--txt-dim); font-size: 16px; line-height: 1; user-select: none; vertical-align: middle; }
 .snap-btn:hover { background: var(--line); color: var(--txt); }
 
 textarea.import-area { width: 100%; height: 260px; font-family: var(--mono); font-size: 11px; }

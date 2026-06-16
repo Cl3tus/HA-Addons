@@ -2027,7 +2027,7 @@ function renderLayers(){
     row.innerHTML=`<span class="lmove mdi mdi-menu" title="${T('Sleep om te verplaatsen','Drag to reorder')}"></span>
       <span class="ltype">${typeGlyph(el)}</span>
       <span class="lname" title="${T('Dubbelklik om te hernoemen','Double-click to rename')}">${el.name||el.type}</span>
-      <span class="ldel" title="${T('Verwijderen','Delete')}">${BIN}</span>
+      <span class="ldel" title="${T('Verwijderen','Delete')}"><span class="mdi mdi-close-thick" style="color:var(--red)"></span></span>
       <span class="lvis" title="${T('Zichtbaarheid','Visibility')}">${el.visible===false?'<span class="mdi mdi-eye-off" style="color:var(--red)"></span>':'<span class="mdi mdi-eye" style="color:#3a86ff"></span>'}</span>`;
     // drag-to-reorder via the handle
     const handle=row.querySelector('.lmove'); handle.draggable=true;
@@ -3860,7 +3860,7 @@ function openSources(){
     </select></td>
     <td>${haTypeCell}</td>
     <td style="text-align:center">${snapBtn}</td>
-    <td><button class="btn ghost sm danger" data-del="${i}">${BIN}</button></td></tr>`;}).join('');
+    <td><button class="btn ghost sm danger" data-del="${i}"><span class="emo" style="font-size:16px">❌</span></button></td></tr>`;}).join('');
 
   const help = `<div class="src-box" style="margin-bottom:12px">
     <b>${T('Live data uit Home Assistant','Live data from Home Assistant')}</b>
@@ -4038,9 +4038,9 @@ async function openFonts(){
     <td style="white-space:nowrap">${used.has(f.id)
       ? `<span class="tag" style="color:var(--ok)">${T('in gebruik','in use')}</span>`
       : `<span class="tag" style="color:var(--txt-faint)" title="${T('Geen element gebruikt dit font; het komt niet in de YAML.','No element uses this font; it is left out of the YAML.')}">${T('ongebruikt','unused')}</span>`}</td>
-    <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')?fileBtn('rowfont-'+i,'.ttf,.otf,.woff,.pcf,.bdf',{compact:true,extra:`data-font="${i}"`}):''}</td>
-    <td style="white-space:nowrap"><button class="btn ghost sm" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}"><span class="emo" style="font-size:15px">✏️</span></button>
-        <button class="btn ghost sm danger" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}">${BIN}</button></td>
+    <td>${f.kind==='local'&&!/materialdesignicons/i.test(f.file||'')&&!onServer(f)&&!fontHasBytes(f)?fileBtn('rowfont-'+i,'.ttf,.otf,.woff,.pcf,.bdf',{compact:true,extra:`data-font="${i}"`}):''}</td>
+    <td style="white-space:nowrap;vertical-align:middle"><button class="btn ghost sm" style="vertical-align:middle" data-editfont="${i}" title="${/materialdesignicons/i.test(f.file||'')?T('Bewerken (id, grootte)','Edit (id, size)'):T('Font bewerken (id, grootte, gewicht…)','Edit font (id, size, weight…)')}"><span class="emo" style="font-size:14px">✏️</span></button>
+        <button class="btn ghost sm danger" style="vertical-align:middle" data-delfont="${i}" title="${T('Font verwijderen','Delete font')}"><span class="emo" style="font-size:16px">❌</span></button></td>
   </tr>`;
   const ordered=profile().fonts.map((f,i)=>({f,i})).sort((a,b)=>fontCat(a.f)-fontCat(b.f) || a.i-b.i);
   let frows='', lastCat=-1;
