@@ -4,6 +4,11 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.64 — Toolbar buttons under the scroll arrow aren't clickable
+
+- A toolbar button sitting (partly) under a scroll arrow no longer triggers on click;
+  the arrow's enlarged hit-area catches it and scrolls instead, preventing mis-clicks.
+
 ## 3.9.63 — Branded top-left cell + primary-colour scroll arrows
 
 - The "E-ink Studio / Lambda Generator" brand now sits in its own boxed cell that lines

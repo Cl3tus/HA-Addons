@@ -373,12 +373,16 @@ label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter
 #ctb-fade-r { right: 0; justify-content: flex-end;   padding-right: 5px;
   background: linear-gradient(to left,  var(--panel) 38%, transparent); }
 .ctb-arrow {
-  pointer-events: auto; cursor: pointer;
+  pointer-events: auto; cursor: pointer; position: relative;
   width: 24px; height: 24px; border-radius: 50%;
   border: 1px solid var(--line-2); background: var(--panel-2); color: var(--guide);
   display: flex; align-items: center; justify-content: center; padding: 0;
   font-size: 17px; box-shadow: 0 1px 5px rgba(0,0,0,.35);
 }
+/* invisible hit-area around the arrow: a toolbar button sitting (partly) under the
+   arrow catches this instead, so the obscured button can't be clicked — clicking
+   there scrolls the toolbar rather than triggering the hidden button */
+.ctb-arrow::after { content: ""; position: absolute; top: -8px; bottom: -8px; left: -13px; right: -13px; }
 .ctb-arrow:hover { background: var(--line); border-color: var(--accent); }
 .ctb-arrow:active { transform: translateY(1px); }
 /* keep button groups intact so they overflow into the scroll instead of shrinking */
