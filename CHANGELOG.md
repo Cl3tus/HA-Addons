@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.87 — Contrasting bullseye colour
+
+- The locked snap-anchor bullseye now uses a contrasting red colour with a white halo
+  underlay (instead of the accent colour), so it stands out clearly on any background
+  and against the accent-coloured candidate dots.
+
 ## 3.9.86 — Bullseye reticle on the locked snap anchor
 
 - The active (locked) snap anchor is now drawn as a target/bullseye reticle —

@@ -1149,7 +1149,7 @@ function drawSnapDots(box, col, row){
   const xs={l:box.left, c:box.cx, r:box.right}, ys={t:box.top, c:box.cy, b:box.bot};
   ['l','c','r'].forEach(cx=>['t','c','b'].forEach(ry=>{
     const active = (col && row && cx===col && ry===row);
-    if(active){ addBullseye(L, xs[cx], ys[ry], z, ac); }
+    if(active){ addBullseye(L, xs[cx], ys[ry], z); }
     else L.add(new Konva.Circle({ x:xs[cx], y:ys[ry], radius:2.4/z,
       fill:'#fff', stroke:ac, strokeWidth:1.1/z, opacity:0.7,
       listening:false, perfectDrawEnabled:false }));
@@ -1158,16 +1158,24 @@ function drawSnapDots(box, col, row){
 }
 // the locked snap anchor is drawn as a target/bullseye reticle: crosshair ticks + two
 // concentric rings + a centre dot. Sized in screen px via /z so it stays zoom-stable.
-function addBullseye(L, x, y, z, ac){
-  const sw=1.6/z, out=13/z, gap=4.5/z, rOut=9.5/z, rIn=5.5/z, dot=2/z;
-  const ln=(pts)=>new Konva.Line({points:pts, stroke:ac, strokeWidth:sw,
-    lineCap:'round', listening:false, perfectDrawEnabled:false});
-  L.add(ln([x-out,y, x-gap,y])); L.add(ln([x+gap,y, x+out,y]));   // crosshair: left/right
-  L.add(ln([x,y-out, x,y-gap])); L.add(ln([x,y+gap, x,y+out]));   // crosshair: top/bottom
-  const ring=(r)=>new Konva.Circle({x, y, radius:r, stroke:ac, strokeWidth:sw,
-    listening:false, perfectDrawEnabled:false});
-  L.add(ring(rOut)); L.add(ring(rIn));                            // two concentric rings
-  L.add(new Konva.Circle({x, y, radius:dot, fill:ac, listening:false, perfectDrawEnabled:false}));
+// It uses a CONTRASTING colour (not the accent the candidate dots use) plus a white
+// halo underlay, so the locked anchor pops on any background and against the dots.
+const BULLSEYE_COL='#e8003c';   // vivid red target colour
+function addBullseye(L, x, y, z){
+  const out=13/z, gap=4.5/z, rOut=9.5/z, rIn=5.5/z, dot=2/z;
+  const paint=(col,sw)=>{
+    const ln=(pts)=>new Konva.Line({points:pts, stroke:col, strokeWidth:sw,
+      lineCap:'round', listening:false, perfectDrawEnabled:false});
+    L.add(ln([x-out,y, x-gap,y])); L.add(ln([x+gap,y, x+out,y]));   // crosshair: left/right
+    L.add(ln([x,y-out, x,y-gap])); L.add(ln([x,y+gap, x,y+out]));   // crosshair: top/bottom
+    const ring=(r)=>new Konva.Circle({x, y, radius:r, stroke:col, strokeWidth:sw,
+      listening:false, perfectDrawEnabled:false});
+    L.add(ring(rOut)); L.add(ring(rIn));                            // two concentric rings
+  };
+  paint('#fff', 3.4/z);                 // white halo underlay
+  paint(BULLSEYE_COL, 1.6/z);           // contrasting target on top
+  L.add(new Konva.Circle({x, y, radius:dot+1.2/z, fill:'#fff', listening:false, perfectDrawEnabled:false}));
+  L.add(new Konva.Circle({x, y, radius:dot, fill:BULLSEYE_COL, listening:false, perfectDrawEnabled:false}));
 }
 
 function drawGuides(){
