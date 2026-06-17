@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.84 — Snap to element center on rulers/guides
+
+- Dragging now snaps an element's center (horizontal center-x and vertical center-y)
+  to rulers/guides, in addition to the existing left/right and top/bottom edges. Both
+  axes still snap independently, so every cross point is reachable — including landing
+  an element's center on the intersection of two guides.
+- Alignment anchors and the grid snap are unchanged; Shift still bypasses snapping.
+
 ## 3.9.83 — Inline restore-code marker; "# Bord"
 
 - The restore code now carries its `eink-editor:vX:` marker inline on the first `#~ ` line

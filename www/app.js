@@ -1500,8 +1500,9 @@ function buildNode(el){
     // selection outline uses), projected to the desired position. This makes the
     // snap land exactly where the pixels start, not on the looser font-metric box.
     // Both axes are evaluated independently, so an element can snap to a vertical
-    // guide (left/right edge) AND a horizontal guide (top/bottom edge) at the same
-    // time — i.e. snap into the cross where two guides meet.
+    // guide (left edge / center-x / right edge) AND a horizontal guide (top edge /
+    // center-y / bottom edge) at the same time — i.e. snap into the cross where two
+    // guides meet, including by the element's center.
     if(snapGuide && rulerOn()){
       const THRESH=8, guides=profileGuides();
       // use the snap box cached at dragstart (edges relative to node position); fall
@@ -1512,16 +1513,22 @@ function buildNode(el){
       // place the box at the DESIRED position pos (its edges = pos + cached offset).
       const bLeft=pos.x+sb.ox, bRight=pos.x+sb.ox+sb.w;
       const bTop=pos.y+sb.oy,  bBot=pos.y+sb.oy+sb.h;
-      // per axis: pick the single closest edge within threshold (avoids fighting snaps)
+      // also the box centers — a third snap candidate per axis (left/center/right,
+      // top/center/bottom). Because both axes snap independently, this covers all
+      // nine cross points (e.g. center-x + top, center-x + center-y, …).
+      const bCenterX=pos.x+sb.ox+sb.w/2, bCenterY=pos.y+sb.oy+sb.h/2;
+      // per axis: pick the single closest edge/center within threshold (avoids fighting snaps)
       let bestVx=null, bestVdist=THRESH, bestHy=null, bestHdist=THRESH;
       guides.forEach(gd=>{
         if(gd.axis==='v'){
-          const dl=Math.abs(bLeft-gd.pos), dr=Math.abs(bRight-gd.pos);
+          const dl=Math.abs(bLeft-gd.pos), dc=Math.abs(bCenterX-gd.pos), dr=Math.abs(bRight-gd.pos);
           if(dl<bestVdist){ bestVdist=dl; bestVx=gd.pos-bLeft; }
+          if(dc<bestVdist){ bestVdist=dc; bestVx=gd.pos-bCenterX; }
           if(dr<bestVdist){ bestVdist=dr; bestVx=gd.pos-bRight; }
         } else {
-          const dt=Math.abs(bTop-gd.pos), db=Math.abs(bBot-gd.pos);
+          const dt=Math.abs(bTop-gd.pos), dc=Math.abs(bCenterY-gd.pos), db=Math.abs(bBot-gd.pos);
           if(dt<bestHdist){ bestHdist=dt; bestHy=gd.pos-bTop; }
+          if(dc<bestHdist){ bestHdist=dc; bestHy=gd.pos-bCenterY; }
           if(db<bestHdist){ bestHdist=db; bestHy=gd.pos-bBot; }
         }
       });
