@@ -1200,9 +1200,7 @@ function showRulerMenu(clientX, clientY, axis){
   const menu=document.createElement('div'); menu.id='ruler-menu';
   const guides=profileGuides();
   const count=guides.filter(g=>g.axis===axis).length;
-  const label = axis==='v'
-    ? T('Verwijder gidsen','Remove guides')
-    : T('Verwijder gidsen','Remove guides');
+  const label = '🚫 ' + T('Verwijder gidsen','Remove guides');
   const onClick=()=>{
     const arr=profileGuides(); const keep=arr.filter(g=>g.axis!==axis);
     arr.length=0; keep.forEach(g=>arr.push(g)); persistGuides(); drawGuides(); drawRuler();

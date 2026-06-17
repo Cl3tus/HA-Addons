@@ -4,6 +4,11 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.88 — 🚫 icon on the ruler "Remove guides" menu
+
+- The right-click "Remove guides" item on both rulers now shows a red 🚫 (no-entry)
+  icon, so its destructive action reads at a glance.
+
 ## 3.9.87 — Contrasting bullseye colour
 
 - The locked snap-anchor bullseye now uses a contrasting red colour with a white halo
