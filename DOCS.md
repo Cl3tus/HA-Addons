@@ -95,12 +95,16 @@ Turn on **Ruler** in the status bar to get rulers along the top and left edges.
 - **Drag out of a ruler** to drop a **guide line** (top ruler → vertical guide, left
   ruler → horizontal guide). A blue line appears on the canvas while you drag.
 - Drag a guide's **marker** in the ruler to reposition it; **right-click** a marker
-  to remove that guide, or right-click an empty ruler for *Remove guides*.
+  to remove that guide, or right-click an empty ruler for *🚫 Remove guides*.
 - Guides are **per profile** and saved with the design.
-- With **Snap ruler** on, an element snaps its **visible-ink edges** to the guides —
-  exactly where its pixels start, not the looser font box. Both axes snap
-  independently, so you can lock onto a vertical *and* a horizontal guide at once
-  (snap into the cross where two guides meet). Hold **Shift** to bypass.
+- With **Snap ruler** on, an element snaps its **visible-ink edges _or its centre_**
+  to the guides — exactly where its pixels start, not the looser font box. Both axes
+  snap independently (left / centre / right and top / centre / bottom), so you can lock
+  onto a vertical *and* a horizontal guide at once — snapping any of the nine box
+  anchors into the cross where two guides meet. Hold **Shift** to bypass.
+- **Live snap indicators**: while you drag, the element's nine box anchors (corners,
+  edge mid-points, centre) show as small dots, and the anchor currently locked to a
+  guide is drawn as a red **bullseye** so you can see exactly where it snaps.
 - **Snap grid** and **Snap ruler** are mutually exclusive — enabling one disables the
   other. The guide lines sit *behind* your elements so they never cover your design.
 

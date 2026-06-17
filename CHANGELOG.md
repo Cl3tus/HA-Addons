@@ -4,38 +4,21 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
-## 3.9.88 — 🚫 icon on the ruler "Remove guides" menu
+## 3.9.89 — Guide snapping: element centres + live snap indicators
 
-- The right-click "Remove guides" item on both rulers now shows a red 🚫 (no-entry)
-  icon, so its destructive action reads at a glance.
-
-## 3.9.87 — Contrasting bullseye colour
-
-- The locked snap-anchor bullseye now uses a contrasting red colour with a white halo
-  underlay (instead of the accent colour), so it stands out clearly on any background
-  and against the accent-coloured candidate dots.
-
-## 3.9.86 — Bullseye reticle on the locked snap anchor
-
-- The active (locked) snap anchor is now drawn as a target/bullseye reticle —
-  crosshair ticks + two concentric rings + a centre dot — instead of a plain enlarged
-  dot, so the snap point reads clearly. The other 8 anchors stay as small dots; all
-  scale with zoom.
-
-## 3.9.85 — Live snap-anchor dots while dragging
-
-- While dragging with guide snap on, the element's 9 box anchors (corners, edge
-  midpoints, centre) are now shown as small dots, and the anchor that's actually
-  locked to a guide is enlarged + filled — so you can see exactly where it snaps.
-  The dots scale with zoom (constant on-screen size) and clear on drop.
-
-## 3.9.84 — Snap to element center on rulers/guides
-
-- Dragging now snaps an element's center (horizontal center-x and vertical center-y)
-  to rulers/guides, in addition to the existing left/right and top/bottom edges. Both
-  axes still snap independently, so every cross point is reachable — including landing
-  an element's center on the intersection of two guides.
-- Alignment anchors and the grid snap are unchanged; Shift still bypasses snapping.
+- **Snap to centres** — dragging now snaps an element's **centre** (centre-x and
+  centre-y) to rulers/guides, on top of the existing left/right and top/bottom edges.
+  Each axis offers three snap points and the two axes snap independently, so every one
+  of the **nine box anchors** is reachable — including landing the centre on the
+  intersection of two guides.
+- **Live snap indicators** — while dragging with Snap ruler on, the element's nine box
+  anchors (corners, edge mid-points, centre) appear as small dots, and the anchor that's
+  actually locked to a guide is drawn as a red **bullseye** reticle (crosshair + rings +
+  centre dot, with a white halo) so you can see exactly where it snaps. The markers
+  scale with zoom and clear on drop.
+- The ruler right-click **Remove guides** item now carries a red 🚫 icon.
+- Alignment anchors and grid snap are unchanged; **Shift** still bypasses snapping.
+- Docs/wiki/READMEs updated for the above.
 
 ## 3.9.83 — Inline restore-code marker; "# Bord"
 
