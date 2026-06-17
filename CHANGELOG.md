@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.85 — Live snap-anchor dots while dragging
+
+- While dragging with guide snap on, the element's 9 box anchors (corners, edge
+  midpoints, centre) are now shown as small dots, and the anchor that's actually
+  locked to a guide is enlarged + filled — so you can see exactly where it snaps.
+  The dots scale with zoom (constant on-screen size) and clear on drop.
+
 ## 3.9.84 — Snap to element center on rulers/guides
 
 - Dragging now snaps an element's center (horizontal center-x and vertical center-y)

@@ -1125,6 +1125,37 @@ function clearDragGuide(){
   if(_dragTopLayer) _dragTopLayer.batchDraw();
 }
 
+/* snap-anchor dots — the 9 box anchors (4 corners, 4 edge-mids, centre) drawn live on
+   a dedicated TOP layer while dragging with guide-snap on, so you can see the snap
+   points. The single anchor currently locked to a guide is enlarged + filled. Cleared
+   on dragend (and whenever snapping is bypassed/off). Sizes divide by `zoom` so the
+   dots keep a constant on-screen size at any zoom level. */
+let _snapDotLayer=null;
+function snapDotLayer(){
+  if(!stage) return null;
+  if(!_snapDotLayer || _snapDotLayer.getStage()!==stage){
+    _snapDotLayer=new Konva.Layer({listening:false}); stage.add(_snapDotLayer);
+  }
+  return _snapDotLayer;
+}
+function clearSnapDots(){
+  if(_snapDotLayer){ _snapDotLayer.destroyChildren(); _snapDotLayer.batchDraw(); }
+}
+// box: {left,right,cx,top,bot,cy}; col∈{l,c,r}/row∈{t,c,b} = the active (enlarged) anchor, or null
+function drawSnapDots(box, col, row){
+  const L=snapDotLayer(); if(!L) return;
+  L.destroyChildren();
+  const z=Math.max(zoom||1, .0001), ac=accentCol();
+  const xs={l:box.left, c:box.cx, r:box.right}, ys={t:box.top, c:box.cy, b:box.bot};
+  ['l','c','r'].forEach(cx=>['t','c','b'].forEach(ry=>{
+    const active = (col && row && cx===col && ry===row);
+    L.add(new Konva.Circle({ x:xs[cx], y:ys[ry], radius:(active?4.5:2.4)/z,
+      fill: active?ac:'#fff', stroke:ac, strokeWidth:(active?1.6:1.1)/z,
+      opacity: active?1:0.7, listening:false, perfectDrawEnabled:false }));
+  }));
+  L.batchDraw();
+}
+
 function drawGuides(){
   if(!guideLayer) return;
   guideLayer.destroyChildren();
@@ -1484,10 +1515,10 @@ function buildNode(el){
     const b=selBounds(el, node);
     node._sbx=b.x-node.x(); node._sby=b.y-node.y(); });
   node.dragBoundFunc(function(pos){
-    if(shiftDown) return pos;
+    if(shiftDown){ clearSnapDots(); return pos; }
     const snapGrid =$('#tg-snap')        && $('#tg-snap').checked;
     const snapGuide=$('#tg-snap-guides') && $('#tg-snap-guides').checked;
-    if(!snapGrid && !snapGuide) return pos;
+    if(!snapGrid && !snapGuide){ clearSnapDots(); return pos; }
     const ox=node._sbx||0, oy=node._sby||0;
     let rx=pos.x, ry=pos.y;
     // grid snap
@@ -1517,24 +1548,34 @@ function buildNode(el){
       // top/center/bottom). Because both axes snap independently, this covers all
       // nine cross points (e.g. center-x + top, center-x + center-y, …).
       const bCenterX=pos.x+sb.ox+sb.w/2, bCenterY=pos.y+sb.oy+sb.h/2;
-      // per axis: pick the single closest edge/center within threshold (avoids fighting snaps)
-      let bestVx=null, bestVdist=THRESH, bestHy=null, bestHdist=THRESH;
+      // per axis: pick the single closest edge/center within threshold (avoids fighting snaps).
+      // bestVe/bestHe remember WHICH anchor won ('l'/'c'/'r', 't'/'c'/'b') so we can light it up.
+      let bestVx=null, bestVdist=THRESH, bestVe=null, bestHy=null, bestHdist=THRESH, bestHe=null;
       guides.forEach(gd=>{
         if(gd.axis==='v'){
           const dl=Math.abs(bLeft-gd.pos), dc=Math.abs(bCenterX-gd.pos), dr=Math.abs(bRight-gd.pos);
-          if(dl<bestVdist){ bestVdist=dl; bestVx=gd.pos-bLeft; }
-          if(dc<bestVdist){ bestVdist=dc; bestVx=gd.pos-bCenterX; }
-          if(dr<bestVdist){ bestVdist=dr; bestVx=gd.pos-bRight; }
+          if(dl<bestVdist){ bestVdist=dl; bestVx=gd.pos-bLeft;    bestVe='l'; }
+          if(dc<bestVdist){ bestVdist=dc; bestVx=gd.pos-bCenterX; bestVe='c'; }
+          if(dr<bestVdist){ bestVdist=dr; bestVx=gd.pos-bRight;   bestVe='r'; }
         } else {
           const dt=Math.abs(bTop-gd.pos), dc=Math.abs(bCenterY-gd.pos), db=Math.abs(bBot-gd.pos);
-          if(dt<bestHdist){ bestHdist=dt; bestHy=gd.pos-bTop; }
-          if(dc<bestHdist){ bestHdist=dc; bestHy=gd.pos-bCenterY; }
-          if(db<bestHdist){ bestHdist=db; bestHy=gd.pos-bBot; }
+          if(dt<bestHdist){ bestHdist=dt; bestHy=gd.pos-bTop;    bestHe='t'; }
+          if(dc<bestHdist){ bestHdist=dc; bestHy=gd.pos-bCenterY; bestHe='c'; }
+          if(db<bestHdist){ bestHdist=db; bestHy=gd.pos-bBot;    bestHe='b'; }
         }
       });
       if(bestVx!==null) rx=pos.x+bestVx;   // snap X to nearest vertical guide
       if(bestHy!==null) ry=pos.y+bestHy;   // snap Y to nearest horizontal guide (independent → cross)
-    }
+      // live snap-anchor dots: draw the 9 box anchors at the FINAL snapped position and
+      // enlarge the one that's locked (the engaged axis picks its edge, the free axis the
+      // centre → a single highlighted anchor; both axes locked → the exact cross point).
+      if(guides.length){
+        let col=null, row=null;
+        if(bestVx!==null || bestHy!==null){ col=bestVx!==null?bestVe:'c'; row=bestHy!==null?bestHe:'c'; }
+        drawSnapDots({ left:rx+sb.ox, right:rx+sb.ox+sb.w, cx:rx+sb.ox+sb.w/2,
+                       top:ry+sb.oy,  bot:ry+sb.oy+sb.h,  cy:ry+sb.oy+sb.h/2 }, col, row);
+      } else clearSnapDots();
+    } else { clearSnapDots(); }
     return { x:rx, y:ry };
   });
   node.on('mousedown touchstart', (ev)=>{
@@ -1615,6 +1656,7 @@ function buildNode(el){
       }
     }
     node._snapBox=null;
+    clearSnapDots();
     afterChange();
   });
   return node;
