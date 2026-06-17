@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.86 — Bullseye reticle on the locked snap anchor
+
+- The active (locked) snap anchor is now drawn as a target/bullseye reticle —
+  crosshair ticks + two concentric rings + a centre dot — instead of a plain enlarged
+  dot, so the snap point reads clearly. The other 8 anchors stay as small dots; all
+  scale with zoom.
+
 ## 3.9.85 — Live snap-anchor dots while dragging
 
 - While dragging with guide snap on, the element's 9 box anchors (corners, edge
