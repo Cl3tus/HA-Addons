@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.90 — Remove unused `time_timezone` substitution
+
+- **Cleanup** — dropped the orphaned `time_timezone` substitution from the generated
+  YAML boilerplate. It was never referenced by the `time:` block, so removing it has no
+  effect on output. Aligns with ESPHome's note that Home Assistant no longer overrides
+  an explicitly configured time zone.
+
 ## 3.9.89 — Guide snapping: element centres + live snap indicators
 
 - **Snap to centres** — dragging now snaps an element's **centre** (centre-x and

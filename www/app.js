@@ -3444,7 +3444,6 @@ substitutions:
   device_id: deviceidname
   comment: "Device Naming Comment"
   friendly_name: "Device Name"
-  time_timezone: "Europe/Amsterdam"
   board_type: "ESP32"       # ${T('Getoond in HA Apparaatinfo als firmware-label','Shown in HA Device Info as firmware label')}
 
 # ${T('ESPHome-kern','ESPHome core')}
