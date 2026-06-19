@@ -4021,16 +4021,30 @@ async function openIconPicker(cb, defaultQuery){
    MODALS
    ============================================================ */
 let _modalClose=null;   // optional callback when the modal is dismissed (✕ / backdrop / any close)
+let _modalGuard=null;   // optional ()=>bool : truthy = modal has unsaved edits, confirm before closing
 function openModal(title, body, footerBtns, onClose){
   $('#modal').classList.remove('wide');   // each modal starts at the default width; widen per-modal after opening
   $('#modal-title').textContent=title; $('#modal-body').innerHTML=body;
   const f=$('#modal-footer'); f.innerHTML='';
   (footerBtns||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'ghost'); if(b.html) el.innerHTML=b.html; else el.textContent=b.label; el.onclick=b.onClick; if(b.style) el.style.cssText=b.style; if(b.id) el.id=b.id; if(b.title) el.title=b.title; f.appendChild(el); });
   _modalClose = onClose||null;
+  _modalGuard = null;              // each modal starts clean; its setup code sets a guard if it has unsaved state
   addSteppers($('#modal-body'));   // ▲/▼ steppers for any .spin field in modals (font size/weight)
   $('#modal-back').classList.add('open');
 }
-function closeModal(){ const f=_modalClose; _modalClose=null; if(f){ try{ f(); }catch(e){} } $('#modal-back').classList.remove('open'); }
+function closeModal(force){
+  // a modal with unsaved edits (e.g. an un-Saved font change) confirms before discarding
+  if(!force && typeof _modalGuard==='function'){
+    let dirty=false; try{ dirty=_modalGuard(); }catch(e){}
+    if(dirty){
+      showAppConfirm(
+        T('Je hebt niet-opgeslagen wijzigingen. Sluiten en verwerpen?','You have unsaved changes. Close and discard them?'),
+        ()=>{ _modalGuard=null; closeModal(true); });   // OK → discard and close
+      return;                                            // Cancel → stay open
+    }
+  }
+  _modalGuard=null;
+  const f=_modalClose; _modalClose=null; if(f){ try{ f(); }catch(e){} } $('#modal-back').classList.remove('open'); }
 $('#modal-x').onclick=closeModal;
 let _modalDownOnBack=false;
 $('#modal-back').addEventListener('mousedown', e=>{ _modalDownOnBack = (e.target===$('#modal-back')); });
@@ -4214,6 +4228,14 @@ var _fontsSnapshot=null;   // fonts state when the editor opened (for Cancel / �
 function _revertFontsIfUnsaved(){
   if(_fontsSnapshot){ profile().fonts=_fontsSnapshot; _fontsSnapshot=null; persist(); afterChange(); renderInspector(); }
 }
+/* back out of the single-font editor to the font list, warning first if its fields
+   carry edits that weren't committed with the editor's own Save button. */
+function _leaveFontEditor(){
+  if(typeof _modalGuard==='function' && _modalGuard()){
+    showAppConfirm(T('Je hebt niet-opgeslagen wijzigingen. Sluiten en verwerpen?','You have unsaved changes. Close and discard them?'),
+      ()=>{ _modalGuard=null; openFonts(); });
+  } else { _modalGuard=null; openFonts(); }
+}
 /* Download every font in the server fonts/ folder as a single .zip, so the user
    can drop it into ESPHome's own config/fonts/ by hand. We never write into the
    ESPHome config ourselves — that would need a broad rw mount into another
@@ -4336,14 +4358,14 @@ async function openFonts(){
      </div>
      <div class="hint" style="margin:10px 0 8px">${T('De Material Design Icons-font is meegebundeld','Material Design Icons font is bundled')} (v${MDI_VERSION}). ${T('Kleuren komen automatisch uit het displaytype (model).','Colours come automatically from the display type (model).')} ${T('Wijzigingen gelden pas na Opslaan.','Changes apply only after Save.')}</div>`,
     [{label:T('Download Fonts (.zip)','Download Fonts (.zip)'),html:'<img class="zipic" src="img/zip.png" alt="" aria-hidden="true"> '+T('Download Fonts (.zip)','Download Fonts (.zip)'),title:T('Download alle fonts uit de fonts/-map als één .zip en pak ze uit in ESPHome\'s config/fonts/','Download all fonts from the fonts/ folder as one .zip and unpack into ESPHome config/fonts/'),cls:'ghost',style:'margin-right:auto',onClick:downloadFontsZip},
-     {label:T('Annuleren','Cancel'),cls:'ghost',onClick:()=>{ _revertFontsIfUnsaved(); closeModal(); }},
+     {label:T('Annuleren','Cancel'),cls:'ghost',onClick:()=>closeModal()},   // guarded: warns if unsaved, then reverts
      {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
        // warn if the "add font" form has data that hasn't been added via +
        const pendingId=($('#nf-id')&&$('#nf-id').value||'').trim();
        const pendingFamily=($('#nf-family')&&$('#nf-family').value||'').trim();
        const pendingFile=($('#nf-file')&&$('#nf-file').value||'').trim();
        const pendingUrl=($('#nf-url')&&$('#nf-url').value||'').trim();
-       const doSave=()=>{ _fontsSnapshot=null; persist(); afterChange(); closeModal(); toast(T('Fonts opgeslagen','Fonts saved')); };
+       const doSave=()=>{ _fontsSnapshot=null; _modalGuard=null; persist(); afterChange(); closeModal(); toast(T('Fonts opgeslagen','Fonts saved')); };
        if(pendingId || pendingFamily || pendingFile || pendingUrl){
          showAppConfirm(
            T('Er zijn niet-toegevoegde wijzigingen in het "Font toevoegen"-formulier. Klik op + om het font toe te voegen, of klik OK om toch op te slaan zonder dit font.',
@@ -4405,6 +4427,13 @@ async function openFonts(){
     if(f.dataUrl) await maybeUploadFont(f, (f.file||'').split('/').pop()||f.id+'.ttf');
     persist(); afterChange(); openFonts(); toast(T('Font toegevoegd','Font added'));
   };
+  // unsaved-changes guard: the "Add font" form has text not yet added via +, OR a
+  // font was added/edited/deleted but the editor's own Save hasn't committed it yet.
+  _modalGuard = ()=>{
+    const pending=['#nf-id','#nf-family','#nf-file','#nf-url'].some(s=>{ const e=$(s); return e && e.value.trim(); });
+    const changed=_fontsSnapshot && JSON.stringify(_fontsSnapshot)!==JSON.stringify(profile().fonts);
+    return pending || changed;
+  };
 }
 
 /* rename a font id everywhere it is referenced (elements, graph axes, clock icon) */
@@ -4433,7 +4462,7 @@ function editFont(i){
        </div>
        <div id="ef-preview" style="margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)"></div>
        <div class="hint" style="margin-top:6px">${T('Van de meegebundelde Material Design Icons-font kun je de id en de grootte aanpassen; de bron ligt vast.','For the bundled Material Design Icons font you can change the id and the size; the source is fixed.')}</div>`,
-      [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:openFonts},
+      [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:_leaveFontEditor},
        {label:T('Opslaan','Save'),cls:'primary',onClick:()=>{
          const newId=($('#ef-id').value||'').trim();
          if(!/^[a-z_][a-z0-9_]*$/i.test(newId)){ toast(T('Geef een geldig id (letters/cijfers/_)','Enter a valid id (letters/digits/_)')); return; }
@@ -4446,6 +4475,8 @@ function editFont(i){
     const mP=$('#ef-preview'), mS=$('#ef-size');
     if(mP && mS){ const r=()=>previewFontInline(f, mP, +mS.value);
       r(); mS.addEventListener('input',r); mS.addEventListener('change',r); }
+    _modalGuard = ()=> (($('#ef-id')&&$('#ef-id').value||'').trim()!==f.id)
+                    || ((+($('#ef-size')&&$('#ef-size').value)||0)!==(f.size||30));
     return;
   }
   const kind0 = f.kind==='gfonts'?'gfonts':(f.kind==='web'?'web':'local');
@@ -4475,7 +4506,7 @@ function editFont(i){
      <div class="hint" id="ef-web-link" style="${kind0==='web'?'':'display:none'};margin-top:4px">↗ <a href="https://fontsource.org/" target="_blank" rel="noopener">${T('Zoek een download-URL op Fontsource','Find a download URL on Fontsource')}</a></div>
      <div id="ef-preview" style="margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)"></div>
      <div class="hint" style="margin-top:6px">${T('Tip: het wisselen van bron vervangt het font; elementen blijven gekoppeld via de id.','Tip: changing the source swaps the font; elements stay linked through the id.')}</div>`,
-    [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:openFonts},
+    [{label:T('Annuleren','Cancel'),cls:'ghost',onClick:_leaveFontEditor},
      {label:T('Opslaan','Save'),cls:'primary',onClick:async()=>{
        const newId=($('#ef-id').value||'').trim();
        if(!/^[a-z_][a-z0-9_]*$/i.test(newId)){ toast(T('Geef een geldig id (letters/cijfers/_)','Enter a valid id (letters/digits/_)')); return; }
@@ -4520,6 +4551,25 @@ function editFont(i){
     if(efWeight){ efWeight.addEventListener('input',renderEfPrev); efWeight.addEventListener('change',renderEfPrev); }
     if(efItalic) efItalic.addEventListener('change',renderEfPrev);
   }
+  // unsaved-changes guard: any editor field differs from the live font, or a new file was picked
+  _modalGuard = ()=>{
+    if(($('#ef-id')&&$('#ef-id').value||'').trim()!==f.id) return true;
+    if((+($('#ef-size')&&$('#ef-size').value)||0)!==(f.size||30)) return true;
+    const curKind=f.kind==='gfonts'?'gfonts':(f.kind==='web'?'web':'local');
+    const k=kindSel?kindSel.value:curKind;
+    if(k!==curKind) return true;
+    if(k==='gfonts'){
+      if(($('#ef-family')&&$('#ef-family').value||'').trim()!==(f.family||'')) return true;
+      if((+($('#ef-weight')&&$('#ef-weight').value)||400)!==(f.weight||400)) return true;
+      if(!!($('#ef-italic')&&$('#ef-italic').checked)!==!!f.italic) return true;
+    } else if(k==='web'){
+      if(($('#ef-url')&&$('#ef-url').value||'').trim()!==(f.url||'')) return true;
+    } else {
+      if(($('#ef-file')&&$('#ef-file').value||'').trim()!==(f.file||'')) return true;
+      if(efUpload) return true;
+    }
+    return false;
+  };
 }
 
 /* fonts that share the same TTF filename share one upload — different sizes of

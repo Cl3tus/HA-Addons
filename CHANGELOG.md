@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.94 — Warn before discarding unsaved font edits
+
+Editing a font (or filling the "Add font" form) and then closing the dialog
+without pressing Save used to throw the changes away silently. Closing now pops a
+confirm — "You have unsaved changes. Close and discard them?" — on every exit
+path (✕, backdrop click, Escape, Cancel), for both the font list and the
+single-font editor. Closing with nothing changed stays silent as before.
+
 ## 3.9.93 — First render waits for ALL sensors, not just the first
 
 The `on_boot` `wait_until` used to release on `data_updated == true`, which flips
