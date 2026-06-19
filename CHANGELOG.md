@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.91 — Smarter duplicate-layer naming
+
+Duplicating a layer no longer slaps " copy" on the end. A default name (e.g.
+`Text 3`) gets the next free number for its type (`Text 4`); a custom name gets a
+` (1)`, ` (2)`, … suffix instead. Multi-select duplicate stays collision-free.
+
 ## 3.9.90 — Remove unused `time_timezone` substitution
 
 - **Cleanup** — dropped the orphaned `time_timezone` substitution from the generated

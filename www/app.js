@@ -2247,14 +2247,29 @@ function addElement(type, pos){
   }
   els().push(base); selectedId=base.id; afterChange();
 }
+function _typeLabel(t){
+  const m={text:T('Tekst','Text'),value:T('Waarde','Value'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
+           circle:T('Cirkel','Circle'),triangle:T('Driehoek','Triangle'),polygon:T('Veelhoek','Polygon'),
+           ring:'Ring',gauge:T('Meter','Gauge'),qr:'QR',wifi:'WiFi',clock:'Refresh Time',graph:T('Grafiek','Graph')};
+  return m[t]||'Element'; }
+// the default label for an existing element (value = a text element with role 'value')
+function _elLabel(e){ return (e.type==='text'&&e.role==='value') ? _typeLabel('value') : _typeLabel(e.type); }
 function elName(t){
   const isVal=t==='value';
   const n=els().filter(e=> isVal ? (e.type==='text'&&e.role==='value')
                                  : (e.type===t && !(t==='text'&&e.role==='value'))).length+1;
-  const m={text:T('Tekst','Text'),value:T('Waarde','Value'),icon:T('Icoon','Icon'),line:T('Lijn','Line'),rect:T('Rechthoek','Rectangle'),
-           circle:T('Cirkel','Circle'),triangle:T('Driehoek','Triangle'),polygon:T('Veelhoek','Polygon'),
-           ring:'Ring',gauge:T('Meter','Gauge'),qr:'QR',wifi:'WiFi',clock:'Refresh Time',graph:T('Grafiek','Graph')};
-  return (m[t]||'Element')+' '+n; }
+  return _typeLabel(t)+' '+n; }
+/* name for a duplicated element. Default name ("Text 3") → next free number for that
+   type ("Text 4"). Custom name → append " (1)", " (2)", … `used` is the live set of
+   names already taken (mutated by the caller across a multi-select duplicate). */
+function dupName(e, used){
+  const label=_elLabel(e), cur=e.name||label;
+  const esc=label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  if(new RegExp('^'+esc+'\\s+\\d+$').test(cur)){           // default "<label> <n>"
+    let n=1; while(used.has(label+' '+n)) n++; return label+' '+n;
+  }
+  const base=cur.replace(/\s*\(\d+\)$/,'');                // strip any existing "(k)"
+  let k=1; while(used.has(base+' ('+k+')')) k++; return base+' ('+k+')'; }
 
 function deleteSel(){
   const ids = selectedIds.size ? selectedIds : (selectedId?new Set([selectedId]):null);
@@ -2266,9 +2281,10 @@ function dupSel(){
   const ids = selectedIds.size ? [...selectedIds] : (selectedId?[selectedId]:[]);
   if(!ids.length) return;
   pushUndo(); const arr=els(); const newIds=[];
+  const used=new Set(arr.map(x=>x.name).filter(Boolean));
   ids.forEach(id=>{ const e=arr.find(x=>x.id===id); if(!e) return;
     const cp=JSON.parse(JSON.stringify(e)); cp.id=uid(); cp.x+=14; cp.y+=14;
-    if(cp.x2!=null){cp.x2+=14;cp.y2+=14;} cp.name=(e.name||e.type)+' '+T('kopie','copy');
+    if(cp.x2!=null){cp.x2+=14;cp.y2+=14;} cp.name=dupName(e,used); used.add(cp.name);
     arr.push(cp); newIds.push(cp.id); });
   selectedIds=new Set(newIds); selectedId=newIds[newIds.length-1]||null; afterChange();
 }
