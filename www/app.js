@@ -3030,7 +3030,7 @@ function drawStmt(el, indent){
   if(el.type==='graph') return graphDrawCode(el, I);
   if(el.type==='wifi') return wifiCode(el, I, color, anchor);
   if(el.type==='clock') return clockCode(el, I, color, anchor);
-  const font=fontById(el.fontId)||{id:'font_klein'};
+  const font=fontById(el.fontId)||fontById(defaultTextFont())||{id:'font_klein'};
   if(el.type==='icon') return `${I}it.printf(${el.x}, ${el.y}, id(${font.id}), ${color}, TextAlign::${anchor}, "\\U${pad8(el.iconHex||'')}");`;
   // text — custom format and weekday/month NAME transforms need a helper block
   if(el.transform==='custom' && el.source && el.source.kind==='sensor' && el.source.sourceId)
@@ -3095,7 +3095,7 @@ function graphDrawCode(el, I){
     out+=`\n${I}it.legend(${lx}, ${ly}, id(${graphId(el)}));`;
   }
   if(!ax.show) return out;
-  const font=(fontById(ax.fontId)||{id:'font_klein'}).id;
+  const font=(fontById(ax.fontId)||{id:defaultTextFont()}).id;
   const col='color_text';
   const x=el.x, y=el.y, w=el.w, h=el.h;
   const lines=[];
@@ -3118,7 +3118,7 @@ function graphDrawCode(el, I){
   return out + (lines.length? '\n'+lines.map(l=>I+l).join('\n') : '');
 }
 function wifiCode(el, I, color, anchor){
-  const font=(fontById(el.fontId)||{id:'font_mdi_small'}).id;
+  const font=(fontById(el.fontId)||profile().fonts.find(f=>/materialdesignicons/i.test(f.file||''))||{id:'font_mdi_small'}).id;
   const levels=(el.wifi&&el.wifi.levels)||[];
   const I2=I+'  ';
   let out=`${I}// ${T('WiFi-icoon','WiFi icon')} (${el.name||'wifi'})\n`;
@@ -3173,7 +3173,7 @@ function clockOffsets(el){
   return {offX, offY, autoX, autoY};
 }
 function clockCode(el, I, color, anchor){
-  const c=el.clock||{}; const font=(fontById(el.fontId)||{id:'font_small_book'}).id;
+  const c=el.clock||{}; const font=(fontById(el.fontId)||{id:defaultTextFont()}).id;
   // keep horizontal part of the anchor, force vertical CENTER so icon+text share a midline
   const hpart = /LEFT$/.test(anchor)?'LEFT':(/RIGHT$/.test(anchor)?'RIGHT':'CENTER');
   const valign = 'CENTER_'+hpart; // CENTER_LEFT / CENTER / CENTER_RIGHT

@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.92 — Fix phantom font-id in generated YAML
+
+A refresh-time/clock layer whose font had been deleted or renamed emitted
+`id(font_small_book)` — a font that was never declared, so the ESPHome build
+failed on an undefined ID. All hard-coded font fallbacks (clock, text/icon, graph
+axis, WiFi) now resolve to a font that is actually emitted, so generated YAML
+always compiles.
+
 ## 3.9.91 — Smarter duplicate-layer naming
 
 Duplicating a layer no longer slaps " copy" on the end. A default name (e.g.
