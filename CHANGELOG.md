@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.93 — First render waits for ALL sensors, not just the first
+
+The `on_boot` `wait_until` used to release on `data_updated == true`, which flips
+on the *first* sensor to report — so the first real render showed one value and
+`---` for everything else, with the rest only appearing on the 2nd refresh. The
+condition now waits until every used HA sensor `has_state()`, so the opening
+screen is complete. The boot `wait` timeout still caps the wait if a sensor never
+reports (it then renders whatever arrived).
+
 ## 3.9.92 — Fix phantom font-id in generated YAML
 
 A refresh-time/clock layer whose font had been deleted or renamed emitted

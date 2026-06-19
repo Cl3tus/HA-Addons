@@ -3579,7 +3579,16 @@ function genYAML(){
   // device config: optional full boilerplate (one esphome: block with on_boot merged in)
   // or the standalone esphome: on_boot block (the "paste into your existing config" flow)
   const wantOnBoot = o.refresh && o.refreshEsphome!==false;
-  const onBoot = `  on_boot:\n    priority: ${o.bootPriority}\n    then:\n      - delay: ${o.bootDelay}\n      - component.update: eink_display\n      - wait_until:\n          condition:\n            lambda: 'return id(data_updated) == true;'\n          timeout: ${o.waitTimeout}\n      - lambda: 'id(initial_data_received) = true;'\n      - script.execute: update_screen\n`;
+  // Hold the first real render until EVERY used HA sensor has a value — not just the
+  // first one to report. `data_updated` flips true on the first on_value, so waiting on
+  // it alone renders a half-empty screen (the rest only fill in on the 2nd refresh).
+  // has_state() per source closes that gap; the timeout still caps the wait if one
+  // sensor never reports (it then renders whatever arrived). No sources → old behaviour.
+  const bootWaitSrc = usedSources().filter(s=>s.id);
+  const bootWaitCond = bootWaitSrc.length
+    ? bootWaitSrc.map(s=>`id(${s.id}).has_state()`).join(' && ')
+    : 'id(data_updated) == true';
+  const onBoot = `  on_boot:\n    priority: ${o.bootPriority}\n    then:\n      - delay: ${o.bootDelay}\n      - component.update: eink_display\n      - wait_until:\n          condition:\n            lambda: 'return ${bootWaitCond};'\n          timeout: ${o.waitTimeout}\n      - lambda: 'id(initial_data_received) = true;'\n      - script.execute: update_screen\n`;
   if(useBP){
     out+=boilerplateHead();
     if(wantOnBoot) out+=onBoot;          // merged into the single esphome: block
