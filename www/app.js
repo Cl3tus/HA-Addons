@@ -3696,7 +3696,7 @@ function genYAML(){
     const cppName = String(p.name||'E-ink Studio').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
     out+=`# ${T('Diagnostische tekst-sensoren (+ HA-bronnen)','Diagnostic text sensors (+ HA sources)')}\n`;
     out+=`text_sensor:\n`;
-    out+=`  - platform: template\n    name: "Profile"\n    id: eink_profile\n    entity_category: diagnostic\n    lambda: |-\n      return {"${cppName}"};\n`;
+    out+=`  - platform: template\n    name: "Profile"\n    id: eink_profile\n    icon: "mdi:card-account-details"\n    entity_category: diagnostic\n    lambda: |-\n      return {"${cppName}"};\n`;
     out+=`  - platform: wifi_info\n    ip_address:\n      name: "IP Address"\n      icon: "mdi:network-outline"\n      entity_category: diagnostic\n    ssid:\n      name: "Connected SSID"\n      icon: "mdi:wifi"\n      entity_category: diagnostic\n`;
     out+=`  - platform: version\n    id: text_sensor_version\n    name: "ESPHome Version"\n    entity_category: diagnostic\n    hide_timestamp: true\n`;
     const srcTs = used.filter(s=>s.kind!=='number');

@@ -4,6 +4,12 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.98 — Icon on the Profile text sensor
+
+The diagnostic "Profile" `text_sensor` in the generated boilerplate now carries
+`icon: "mdi:card-account-details"`, so it shows a profile-card icon in Home
+Assistant like the other diagnostic sensors already do.
+
 ## 3.9.97 — Version in log, upload into selected folder, richer logging
 
 - **App version in the log** — the startup banner now reads
