@@ -22,10 +22,21 @@ import re
 import shutil
 import zipfile
 import asyncio
+import logging
 from pathlib import Path
 from urllib.parse import quote
 
 from aiohttp import web, ClientSession, ClientTimeout
+
+# ---------------------------------------------------------------- logging
+# Match the bashio log style used by run.sh ("[HH:MM:SS] LEVEL: msg") so the
+# add-on log reads consistently. Everything goes to stdout, which HA captures.
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s] %(levelname)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
+log = logging.getLogger("eink")
 
 DATA_DIR     = Path(os.environ.get("DATA_DIR", "/data"))
 # STORAGE_DIR is where projects/fonts are kept.  run.sh points this at
@@ -45,7 +56,8 @@ SUPERVISOR_STATES_URL = "http://supervisor/core/api/states"
 _options_file = DATA_DIR / "options.json"
 try:
     _opts = json.loads(_options_file.read_text("utf-8")) if _options_file.exists() else {}
-except Exception:
+except Exception as e:  # noqa: BLE001
+    log.warning("options.json onleesbaar (%s) — val terug op standaardinstellingen", e)
     _opts = {}
 def _norm_lang(v):
     v = str(v or "auto").strip().lower()
@@ -79,8 +91,9 @@ try:
     _mdi_dst = FONTS_DIR / "materialdesignicons-webfont.ttf"
     if _mdi_src.exists() and not _mdi_dst.exists():
         shutil.copy2(str(_mdi_src), str(_mdi_dst))
-except Exception:
-    pass
+        log.info("MDI-font geseed naar fonts/%s", _mdi_dst.name)
+except Exception as e:  # noqa: BLE001
+    log.warning("MDI-font seeden mislukt: %s", e)
 
 # Migrate existing data from /data to STORAGE_DIR (runs once)
 if STORAGE_DIR != DATA_DIR:
@@ -92,8 +105,10 @@ if STORAGE_DIR != DATA_DIR:
                 if _new.exists():
                     shutil.rmtree(_new)
                 shutil.copytree(str(_old), str(_new))
-            except Exception:
-                pass
+                log.info("data gemigreerd: %s -> %s (%d bestanden)",
+                         _old, _new, sum(1 for _ in _new.rglob("*") if _.is_file()))
+            except Exception as e:  # noqa: BLE001
+                log.warning("migratie %s -> %s mislukt: %s", _old, _new, e)
 
 
 def _safe(name: str) -> bool:
@@ -108,6 +123,7 @@ def _resolve_fs(path: str) -> "Path | None":
         resolved.relative_to(FILES_ROOT.resolve())
         return resolved
     except Exception:
+        log.warning("pad-traversal geweigerd: %r", path)
         return None
 
 
@@ -115,6 +131,7 @@ def _resolve_fs(path: str) -> "Path | None":
 async def api_states(request: web.Request) -> web.Response:
     """Read-only proxy to HA states (all entities; the UI filters)."""
     if not SUPERVISOR_TOKEN:
+        log.warning("live data opgevraagd maar SUPERVISOR_TOKEN ontbreekt (503)")
         return web.json_response(
             {"error": "no_supervisor_token",
              "detail": "SUPERVISOR_TOKEN ontbreekt; live data niet beschikbaar."},
@@ -125,10 +142,12 @@ async def api_states(request: web.Request) -> web.Response:
         async with ClientSession(timeout=ClientTimeout(total=15)) as s:
             async with s.get(SUPERVISOR_STATES_URL, headers=headers) as r:
                 if r.status != 200:
+                    log.warning("HA states-API gaf status %s (502)", r.status)
                     return web.json_response(
                         {"error": "ha_error", "status": r.status}, status=502)
                 data = await r.json()
     except Exception as e:  # noqa: BLE001
+        log.warning("HA states ophalen mislukt: %s (502)", e)
         return web.json_response({"error": "fetch_failed", "detail": str(e)}, status=502)
 
     slim = []
@@ -172,8 +191,10 @@ async def project_put(request: web.Request) -> web.Response:
     if not _safe(name):
         return web.json_response({"error": "bad_name"}, status=400)
     body = await request.json()
-    (PROJECTS_DIR / f"{name}.json").write_text(
-        json.dumps(body, ensure_ascii=False, indent=2), "utf-8")
+    f = PROJECTS_DIR / f"{name}.json"
+    existed = f.exists()
+    f.write_text(json.dumps(body, ensure_ascii=False, indent=2), "utf-8")
+    log.info("project %s: %s", "bijgewerkt" if existed else "aangemaakt", name)
     return web.json_response({"ok": True})
 
 
@@ -184,6 +205,7 @@ async def project_delete(request: web.Request) -> web.Response:
     f = PROJECTS_DIR / f"{name}.json"
     if f.exists():
         f.unlink()
+        log.info("project verwijderd: %s", name)
     return web.json_response({"ok": True})
 
 
@@ -228,10 +250,13 @@ async def font_put(request: web.Request) -> web.Response:
     try:
         raw = base64.b64decode(m.group(1))
     except Exception:  # noqa: BLE001
+        log.warning("font upload geweigerd (ongeldige base64): %s", name)
         return web.json_response({"error": "bad_base64"}, status=400)
     if len(raw) > 8 * 1024 * 1024:
+        log.warning("font upload geweigerd (te groot: %d KB): %s", len(raw) // 1024, name)
         return web.json_response({"error": "too_large"}, status=413)
     (FONTS_DIR / name).write_bytes(raw)
+    log.info("font geupload: %s (%d KB)", name, len(raw) // 1024)
     return web.json_response({"ok": True})
 
 
@@ -266,8 +291,10 @@ async def profile_put(request: web.Request) -> web.Response:
     if not _safe(name):
         return web.json_response({"error": "bad_name"}, status=400)
     body = await request.json()
-    (PROFILES_DIR / f"{name}.json").write_text(
-        json.dumps(body, ensure_ascii=False, indent=2), "utf-8")
+    f = PROFILES_DIR / f"{name}.json"
+    existed = f.exists()
+    f.write_text(json.dumps(body, ensure_ascii=False, indent=2), "utf-8")
+    log.info("profiel %s: %s", "bijgewerkt" if existed else "aangemaakt", name)
     return web.json_response({"ok": True})
 
 
@@ -278,6 +305,7 @@ async def profile_delete(request: web.Request) -> web.Response:
     f = PROFILES_DIR / f"{name}.json"
     if f.exists():
         f.unlink()
+        log.info("profiel verwijderd: %s", name)
     return web.json_response({"ok": True})
 
 
@@ -311,6 +339,7 @@ async def fs_mkdir(request: web.Request) -> web.Response:
     if target is None or target == FILES_ROOT.resolve():
         return web.json_response({"error": "bad_path"}, status=400)
     target.mkdir(parents=True, exist_ok=True)
+    log.info("map aangemaakt: %s", body.get("path", ""))
     return web.json_response({"ok": True})
 
 
@@ -322,8 +351,10 @@ async def fs_delete(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
     if target.is_dir():
         shutil.rmtree(target)
+        log.info("map verwijderd: %s", request.rel_url.query.get("path", ""))
     else:
         target.unlink()
+        log.info("bestand verwijderd: %s", request.rel_url.query.get("path", ""))
     return web.json_response({"ok": True})
 
 
@@ -344,6 +375,7 @@ async def fs_move(request: web.Request) -> web.Response:
         pass
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(src), str(dst))
+    log.info("verplaatst: %s -> %s", body.get("src", ""), body.get("dst", ""))
     return web.json_response({"ok": True})
 
 
@@ -358,6 +390,7 @@ async def fs_upload(request: web.Request) -> web.Response:
             fname = Path(part.filename or "upload").name
             data  = await part.read()
             if len(data) > 32 * 1024 * 1024:
+                log.warning("upload geweigerd (te groot: %d KB): %s", len(data) // 1024, fname)
                 return web.json_response({"error": "too_large"}, status=413)
             dest = _resolve_fs((target_path.rstrip("/") + "/" + fname).lstrip("/"))
             if dest is None:
@@ -365,6 +398,8 @@ async def fs_upload(request: web.Request) -> web.Response:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(data)
             uploaded.append(fname)
+    if uploaded:
+        log.info("geupload naar %s/: %s", target_path.strip("/"), ", ".join(uploaded))
     return web.json_response({"ok": True, "uploaded": uploaded})
 
 
@@ -403,6 +438,7 @@ async def fs_write(request: web.Request) -> web.Response:
         return web.json_response({"error": "bad_content"}, status=400)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, "utf-8")
+    log.info("bestand opgeslagen: %s (%d tekens)", body.get("path", ""), len(content))
     return web.json_response({"ok": True})
 
 
@@ -422,14 +458,54 @@ async def api_info(request: web.Request) -> web.Response:
     })
 
 
+# ---------------------------------------------------------------- editor log
+# The editor itself runs in the browser, so the server can't see editor-side
+# events (YAML generation, glyph mismatches, font edits). The frontend POSTs the
+# noteworthy ones here so they land in the add-on log next to the server events.
+_LOG_LEVELS = {"info": logging.INFO, "warning": logging.WARNING, "error": logging.ERROR}
+
+
+async def api_log(request: web.Request) -> web.Response:
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        return web.json_response({"error": "bad_json"}, status=400)
+    level = _LOG_LEVELS.get(str(body.get("level", "info")).lower(), logging.INFO)
+    msg = str(body.get("msg", "")).replace("\n", " ").strip()[:500]
+    if msg:
+        log.log(level, "editor: %s", msg)
+    return web.json_response({"ok": True})
+
+
 # ---------------------------------------------------------------- static
 async def index(request: web.Request) -> web.StreamResponse:
     return web.FileResponse(WWW_DIR / "index.html")
 
 
+def _log_startup() -> None:
+    """One-shot dump of the resolved config + storage state at boot."""
+    log.info(
+        "config — taal=%s thema=%s live=%s/%ss domains=%s verberg_onbeschikbaar=%s",
+        LANGUAGE, THEME, "aan" if LIVE_ON_START else "uit", LIVE_INTERVAL,
+        ENTITY_DOMAINS or "alle", HIDE_UNAVAILABLE,
+    )
+    log.info(
+        "opslag — %s (samba=%s) | live-data=%s",
+        STORAGE_DIR, SAMBA_SLUG or "geen",
+        "ja (token aanwezig)" if SUPERVISOR_TOKEN else "nee (geen token)",
+    )
+    log.info(
+        "gevonden — %d projecten, %d fonts, %d profielen",
+        len(list(PROJECTS_DIR.glob("*.json"))),
+        len([p for p in FONTS_DIR.glob("*") if p.is_file()]),
+        len(list(PROFILES_DIR.glob("*.json"))),
+    )
+
+
 def build_app() -> web.Application:
     app = web.Application(client_max_size=64 * 1024 * 1024)
     app.router.add_get("/api/info", api_info)
+    app.router.add_post("/api/log", api_log)
     app.router.add_get("/api/states", api_states)
     app.router.add_get("/api/projects", projects_list)
     app.router.add_get("/api/projects/{name}", project_get)
@@ -457,4 +533,8 @@ def build_app() -> web.Application:
 
 
 if __name__ == "__main__":
-    web.run_app(build_app(), host="0.0.0.0", port=PORT)
+    _log_startup()
+    # access_log=None: skip aiohttp's per-request log line (one per asset/poll
+    # would drown the add-on log); we log the meaningful mutations explicitly.
+    web.run_app(build_app(), host="0.0.0.0", port=PORT,
+                print=None, access_log=None)

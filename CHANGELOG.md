@@ -4,6 +4,29 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.95 — Richer add-on logging
+
+The add-on log used to show almost nothing past the start banner. It now reports
+what actually happens, in the same `[HH:MM:SS] LEVEL: msg` style:
+
+- **Startup config dump** — resolved language, theme, live on/interval, entity
+  domain filter and hide-unavailable, plus the storage path, whether a Supervisor
+  token (live data) is present, and counts of projects / fonts / profiles found.
+- **No more silent failures** — an unreadable `options.json`, a failed MDI-font
+  seed, and the one-time `/data` → `/config` migration now log instead of passing
+  silently.
+- **Live-data problems** — a missing Supervisor token, an HA states API error, or
+  a fetch timeout are logged as warnings (previously only returned to the browser).
+- **Mutations** — saving/deleting a project or profile, font uploads (with size)
+  and their rejections, and file-explorer create/delete/move/upload/write are
+  logged with their name/path.
+- **Security** — a rejected path-traversal attempt is now logged.
+- **Editor events** — the browser posts noteworthy actions to a new `/api/log`
+  endpoint, so generating YAML (with any pre-flight validation problems) shows up
+  in the add-on log too.
+
+Per-request access-log noise is suppressed so the meaningful lines stand out.
+
 ## 3.9.94 — Warn before discarding unsaved font edits
 
 Editing a font (or filling the "Add font" form) and then closing the dialog

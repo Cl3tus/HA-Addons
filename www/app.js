@@ -158,6 +158,13 @@ function seedProfile(name='My display'){
   function s(id,entityId,kind,sample){ return {id,entityId,kind,sample}; }
 }
 
+/* Fire-and-forget: surface a noteworthy editor event in the add-on log (the
+   server can't see browser-side actions otherwise). No-op outside the add-on. */
+function serverLog(level, msg){
+  try{ fetch('api/log',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({level, msg})}); }catch(e){}
+}
+
 /* ---------------- state ---------------- */
 var state = { profiles:[], current:null }; // var zodat window.state toegankelijk is voor theme.js
 let undoStack = [], redoStack = [];
@@ -5593,8 +5600,15 @@ function wire(){
     const openDrawer=()=>{ renderCode(); saveGeneratedYaml(true); d.classList.add('open'); setTimeout(_fitB64,220);
       document.body.classList.add('code-open'); };
     const issues=validateDesign();
-    if(issues.length){ showValidationPopup(issues, openDrawer); }   // OK = generate anyway
-    else openDrawer();
+    if(issues.length){
+      serverLog('warning', `YAML gegenereerd voor "${pname()}" met ${issues.length} validatie-probleem(en): `
+        + issues.slice(0,5).map(i=>`${i.label}: ${i.problem}`).join('; ')
+        + (issues.length>5 ? ` (+${issues.length-5} meer)` : ''));
+      showValidationPopup(issues, openDrawer);   // OK = generate anyway
+    } else {
+      serverLog('info', `YAML gegenereerd voor "${pname()}" (geen validatie-problemen)`);
+      openDrawer();
+    }
   };
   $('#code-close').onclick=()=>{ $('#code-drawer').classList.remove('open'); document.body.classList.remove('code-open'); };
   // a click anywhere outside the open YAML drawer closes it (but not clicks inside the
