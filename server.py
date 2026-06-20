@@ -76,6 +76,7 @@ except Exception: LIVE_INTERVAL = 1
 ENTITY_DOMAINS   = [str(d).strip().lower() for d in (_opts.get("entity_domains") or []) if str(d).strip()]
 HIDE_UNAVAILABLE = bool(_opts.get("hide_unavailable", False))
 SAMBA_SLUG = os.environ.get("SAMBA_SLUG", "")
+VERSION    = os.environ.get("ADDON_VERSION", "?")
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 
@@ -115,6 +116,18 @@ def _safe(name: str) -> bool:
     return bool(name) and bool(SAFE_NAME.match(name)) and ".." not in name
 
 
+def _design_summary(body: dict) -> str:
+    """One-line gist of a saved design (profile/project) for the log."""
+    try:
+        screens = body.get("screens") or []
+        elements = sum(len(s.get("elements") or []) for s in screens)
+        return (f"naam='{body.get('name', '?')}' schermen={len(screens)} "
+                f"elementen={elements} fonts={len(body.get('fonts') or [])} "
+                f"bronnen={len(body.get('sources') or [])}")
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _resolve_fs(path: str) -> "Path | None":
     """Resolve a user-supplied path under FILES_ROOT, blocking traversal."""
     try:
@@ -128,10 +141,24 @@ def _resolve_fs(path: str) -> "Path | None":
 
 
 # ---------------------------------------------------------------- HA states
+# The frontend polls /api/states every live_interval seconds, so logging each
+# call would flood. _live_log only emits when the state actually changes
+# (ok <-> no_token <-> error), giving one line per transition.
+_live_status = None
+
+
+def _live_log(status: str, msg: str, level: int = logging.INFO) -> None:
+    global _live_status
+    if status != _live_status:
+        _live_status = status
+        log.log(level, msg)
+
+
 async def api_states(request: web.Request) -> web.Response:
     """Read-only proxy to HA states (all entities; the UI filters)."""
     if not SUPERVISOR_TOKEN:
-        log.warning("live data opgevraagd maar SUPERVISOR_TOKEN ontbreekt (503)")
+        _live_log("no_token", "live data: SUPERVISOR_TOKEN ontbreekt — niet beschikbaar (503)",
+                  logging.WARNING)
         return web.json_response(
             {"error": "no_supervisor_token",
              "detail": "SUPERVISOR_TOKEN ontbreekt; live data niet beschikbaar."},
@@ -142,12 +169,13 @@ async def api_states(request: web.Request) -> web.Response:
         async with ClientSession(timeout=ClientTimeout(total=15)) as s:
             async with s.get(SUPERVISOR_STATES_URL, headers=headers) as r:
                 if r.status != 200:
-                    log.warning("HA states-API gaf status %s (502)", r.status)
+                    _live_log("error", f"live data: HA states-API gaf status {r.status} (502)",
+                              logging.WARNING)
                     return web.json_response(
                         {"error": "ha_error", "status": r.status}, status=502)
                 data = await r.json()
     except Exception as e:  # noqa: BLE001
-        log.warning("HA states ophalen mislukt: %s (502)", e)
+        _live_log("error", f"live data: ophalen mislukt: {e} (502)", logging.WARNING)
         return web.json_response({"error": "fetch_failed", "detail": str(e)}, status=502)
 
     slim = []
@@ -167,6 +195,7 @@ async def api_states(request: web.Request) -> web.Response:
             "name": attrs.get("friendly_name"),
             "device_class": attrs.get("device_class"),
         })
+    _live_log("ok", f"live data actief: {len(slim)} entiteiten beschikbaar")
     return web.json_response(slim)
 
 
@@ -199,7 +228,8 @@ async def project_put(request: web.Request) -> web.Response:
     changed = (not existed) or f.read_text("utf-8") != new_text
     f.write_text(new_text, "utf-8")
     if changed:
-        log.info("project %s: %s", "bijgewerkt" if existed else "aangemaakt", name)
+        log.info("project %s: %s — %s",
+                 "bijgewerkt" if existed else "aangemaakt", name, _design_summary(body))
     return web.json_response({"ok": True})
 
 
@@ -303,7 +333,8 @@ async def profile_put(request: web.Request) -> web.Response:
     changed = (not existed) or f.read_text("utf-8") != new_text
     f.write_text(new_text, "utf-8")
     if changed:
-        log.info("profiel %s: %s", "bijgewerkt" if existed else "aangemaakt", name)
+        log.info("profiel %s: %s — %s",
+                 "bijgewerkt" if existed else "aangemaakt", name, _design_summary(body))
     return web.json_response({"ok": True})
 
 
@@ -493,6 +524,7 @@ async def index(request: web.Request) -> web.StreamResponse:
 
 def _log_startup() -> None:
     """One-shot dump of the resolved config + storage state at boot."""
+    log.info("E-ink Studio v%s — server start op poort %d", VERSION, PORT)
     log.info(
         "config — taal=%s thema=%s live=%s/%ss domains=%s verberg_onbeschikbaar=%s",
         LANGUAGE, THEME, "aan" if LIVE_ON_START else "uit", LIVE_INTERVAL,

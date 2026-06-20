@@ -4,6 +4,22 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.97 — Version in log, upload into selected folder, richer logging
+
+- **App version in the log** — the startup banner now reads
+  `E-ink Studio vX.Y.Z — server start op poort 8099`.
+- **File manager: upload into the selected folder** — selecting exactly one
+  folder and then uploading now drops the files inside it (and navigates there),
+  instead of always landing in the current folder.
+- **Richer save logging** — a profile/project save now logs its gist (name,
+  screens, elements, fonts, sources) instead of just the slug.
+- **Live data is now visible** — instead of flooding (the UI polls every second),
+  live data logs only on a state change: one line when it becomes active
+  (`live data actief: N entiteiten`) and one when it breaks (missing token / API
+  error / timeout).
+- **More editor events** — copying or downloading the YAML now shows up in the log
+  too (alongside the existing "generated" line).
+
 ## 3.9.96 — Quieter profile/project logging
 
 The studio re-saves every profile (and project) on each sync, so 3.9.95 logged a

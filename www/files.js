@@ -595,14 +595,29 @@ async function doMkdir() {
   }
 }
 
+/* Upload target: if exactly one folder is selected, drop the files inside it;
+   otherwise use the folder you're currently browsing. */
+function uploadTarget() {
+  if (selected.size === 1) {
+    const [p] = [...selected];
+    const e = rowIndex.get(p);
+    if (e && e.type === 'dir') return p;
+  }
+  return currentPath;
+}
+
 async function doUpload(files) {
   if (!files.length) return;
+  const target = uploadTarget();
   toast(_t('Bezig met uploaden…', 'Uploading…'));
-  const uploaded = await apiUpload(currentPath, files);
-  if (uploaded.length) toast(uploaded.length === 1
-    ? _t(`"${uploaded[0]}" geüpload`, `"${uploaded[0]}" uploaded`)
-    : _t(`${uploaded.length} bestanden geüpload`, `${uploaded.length} files uploaded`));
-  await navigate(currentPath);
+  const uploaded = await apiUpload(target, files);
+  if (uploaded.length) {
+    const where = target ? ` → ${target}/` : '';
+    toast(uploaded.length === 1
+      ? _t(`"${uploaded[0]}" geüpload${where}`, `"${uploaded[0]}" uploaded${where}`)
+      : _t(`${uploaded.length} bestanden geüpload${where}`, `${uploaded.length} files uploaded${where}`));
+  }
+  await navigate(target);
 }
 
 // ---------------------------------------------------------------- Dialog

@@ -5635,8 +5635,8 @@ function wire(){
   { const b=$('#scr-prev');  if(b) b.onclick=()=>navScreen('prev');  }
   { const b=$('#scr-next');  if(b) b.onclick=()=>navScreen('next');  }
   { const b=$('#scr-last');  if(b) b.onclick=()=>navScreen('last');  }
-  $('#code-copy').onclick=()=>{ navigator.clipboard.writeText(genYAML()).then(()=>toast(T('Naar klembord gekopieerd','Copied to clipboard'))); };
-  $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); saveGeneratedYaml(false); toast(T('YAML gedownload','YAML downloaded')); };
+  $('#code-copy').onclick=()=>{ navigator.clipboard.writeText(genYAML()).then(()=>{ serverLog('info', `YAML van "${pname()}" naar klembord gekopieerd`); toast(T('Naar klembord gekopieerd','Copied to clipboard')); }); };
+  $('#code-download').onclick=()=>{ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); saveGeneratedYaml(false); serverLog('info', `YAML van "${pname()}" gedownload`); toast(T('YAML gedownload','YAML downloaded')); };
   { const cs=$('#code-save'); if(cs) cs.onclick=()=>{ if(!SERVER_STORAGE){ download(new Blob([genYAML()],{type:'text/yaml'}), pname()+'.yaml'); toast(T('Geen add-on opslag — gedownload','No add-on storage — downloaded')); return; } saveGeneratedYaml(false); }; }
   { const co=$('#code-open'); if(co) co.onclick=openGeneratedYaml; }
 
