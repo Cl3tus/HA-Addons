@@ -192,9 +192,14 @@ async def project_put(request: web.Request) -> web.Response:
         return web.json_response({"error": "bad_name"}, status=400)
     body = await request.json()
     f = PROJECTS_DIR / f"{name}.json"
+    new_text = json.dumps(body, ensure_ascii=False, indent=2)
     existed = f.exists()
-    f.write_text(json.dumps(body, ensure_ascii=False, indent=2), "utf-8")
-    log.info("project %s: %s", "bijgewerkt" if existed else "aangemaakt", name)
+    # Only log when the content actually changed. The frontend re-PUTs every
+    # project/profile on each sync; logging unchanged writes would flood the log.
+    changed = (not existed) or f.read_text("utf-8") != new_text
+    f.write_text(new_text, "utf-8")
+    if changed:
+        log.info("project %s: %s", "bijgewerkt" if existed else "aangemaakt", name)
     return web.json_response({"ok": True})
 
 
@@ -292,9 +297,13 @@ async def profile_put(request: web.Request) -> web.Response:
         return web.json_response({"error": "bad_name"}, status=400)
     body = await request.json()
     f = PROFILES_DIR / f"{name}.json"
+    new_text = json.dumps(body, ensure_ascii=False, indent=2)
     existed = f.exists()
-    f.write_text(json.dumps(body, ensure_ascii=False, indent=2), "utf-8")
-    log.info("profiel %s: %s", "bijgewerkt" if existed else "aangemaakt", name)
+    # Only log a real change — see project_put: every profile is re-PUT on sync.
+    changed = (not existed) or f.read_text("utf-8") != new_text
+    f.write_text(new_text, "utf-8")
+    if changed:
+        log.info("profiel %s: %s", "bijgewerkt" if existed else "aangemaakt", name)
     return web.json_response({"ok": True})
 
 

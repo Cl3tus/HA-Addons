@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.96 — Quieter profile/project logging
+
+The studio re-saves every profile (and project) on each sync, so 3.9.95 logged a
+"profiel bijgewerkt" line for each one on every change — mostly noise. The server
+now compares the incoming JSON to what's on disk and only logs when it actually
+changed. In practice that means just the profile you edited (the active one)
+shows up; the unchanged rest stay silent.
+
 ## 3.9.95 — Richer add-on logging
 
 The add-on log used to show almost nothing past the start banner. It now reports
