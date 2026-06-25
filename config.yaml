@@ -1,5 +1,5 @@
 name: E-ink Studio
-version: "3.9.100"
+version: "3.9.101"
 slug: eink_studio
 description: Visual editor for ESPHome e-ink displays — design your layout and generate the lambda + YAML.
 url: https://github.com/Cl3tus/HA-Eink-Studio-App
@@ -34,63 +34,72 @@ options:
   live_on_start: true
   live_interval: 1
   hide_unavailable: false
-  # Default: every domain enabled. Uncheck the ones you don't want in the picker.
+  # Default: every domain enabled (alphabetical). Uncheck what you don't want.
   entity_domains:
-    - sensor
-    - binary_sensor
-    - weather
-    - climate
-    - sun
-    - person
-    - device_tracker
-    - light
-    - switch
-    - number
-    - input_number
-    - input_boolean
-    - input_text
-    - input_select
-    - input_datetime
-    - input_button
-    - media_player
-    - cover
-    - fan
-    - lock
-    - vacuum
-    - update
-    - button
-    - camera
-    - select
-    - text
-    - date
-    - time
-    - datetime
-    - scene
-    - script
-    - automation
-    - group
-    - zone
-    - counter
-    - timer
-    - schedule
-    - calendar
-    - remote
-    - humidifier
-    - water_heater
-    - siren
-    - valve
-    - lawn_mower
+    - ai_task
+    - air_quality
     - alarm_control_panel
-    - image
-    - todo
-    - event
-    - notify
     - assist_satellite
+    - automation
+    - binary_sensor
+    - button
+    - calendar
+    - camera
+    - climate
+    - conversation
+    - counter
+    - cover
+    - date
+    - datetime
+    - device_tracker
+    - event
+    - fan
+    - geo_location
+    - group
+    - humidifier
+    - image
+    - image_processing
+    - input_boolean
+    - input_button
+    - input_datetime
+    - input_number
+    - input_select
+    - input_text
+    - lawn_mower
+    - light
+    - lock
+    - media_player
+    - notify
+    - number
+    - person
+    - remote
+    - scene
+    - schedule
+    - script
+    - select
+    - sensor
+    - siren
+    - stt
+    - sun
+    - switch
+    - tag
+    - text
+    - time
+    - timer
+    - todo
+    - tts
+    - update
+    - vacuum
+    - valve
+    - wake_word
+    - water_heater
+    - weather
+    - zone
 schema:
   language: list(Auto|Nederlands|English)
   theme: list(Auto|Light|Dark)
   live_on_start: bool
-  live_interval: int(0,1440)
+  live_interval: list(0|1|2|5|10|15|30)
   hide_unavailable: bool
   entity_domains:
-    - list(sensor|binary_sensor|weather|climate|sun|person|device_tracker|light|switch|number|input_number|input_boolean|input_text|input_select|input_datetime|input_button|media_player|cover|fan|lock|vacuum|update|button|camera|select|text|date|time|datetime|scene|script|automation|group|zone|counter|timer|schedule|calendar|remote|humidifier|water_heater|siren|valve|lawn_mower|alarm_control_panel|image|todo|event|notify|assist_satellite)
+    - list(ai_task|air_quality|alarm_control_panel|assist_satellite|automation|binary_sensor|button|calendar|camera|climate|conversation|counter|cover|date|datetime|device_tracker|event|fan|geo_location|group|humidifier|image|image_processing|input_boolean|input_button|input_datetime|input_number|input_select|input_text|lawn_mower|light|lock|media_player|notify|number|person|remote|scene|schedule|script|select|sensor|siren|stt|sun|switch|tag|text|time|timer|todo|tts|update|vacuum|valve|wake_word|water_heater|weather|zone)

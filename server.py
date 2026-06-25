@@ -241,8 +241,22 @@ async def api_states(request: web.Request) -> web.Response:
     doms = Counter(s["entity_id"].split(".")[0] for s in slim if s["entity_id"])
     breakdown = ", ".join(f"{d}={n}" for d, n in doms.most_common())
     filt = f" (filter: {len(ENTITY_DOMAINS)} domeinen)" if ENTITY_DOMAINS else " (geen filter)"
-    _live_log("ok", f"live data actief: {len(slim)} entiteiten over "
-                    f"{len(doms)} domeinen{filt} — {breakdown}")
+    msg = (f"live data actief: {len(slim)} entiteiten over "
+           f"{len(doms)} domeinen{filt} — {breakdown}")
+    # If the domain filter is on, also report which domains it drops, so you can
+    # see exactly what's being hidden (the entities missing from the picker).
+    if ENTITY_DOMAINS:
+        excl = Counter()
+        for st in data:
+            eid = st.get("entity_id") or ""
+            dom = eid.split(".")[0] if eid else ""
+            if dom and dom not in ENTITY_DOMAINS:
+                excl[dom] += 1
+        if excl:
+            dropped = sum(excl.values())
+            msg += (f" | filter sluit {dropped} entiteiten uit: "
+                    + ", ".join(f"{d}={n}" for d, n in excl.most_common()))
+    _live_log("ok", msg)
     return web.json_response(slim)
 
 

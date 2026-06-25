@@ -4,6 +4,22 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.101 — Full domain list, log shows what the filter drops
+
+- **Entity-domains filter is now the full HA entity-component list, alphabetical,
+  all enabled.** Added the remaining core domains (conversation, stt, tts,
+  wake_word, ai_task, air_quality, geo_location, image_processing, tag) on top of
+  the earlier set. ("Infrared" and "Radio frequency" from the HA docs aren't
+  entity domains — they're integration categories with no entity slug — so they
+  can't be filtered.) An empty list still means "show literally everything".
+- **Live-data log shows excluded domains.** When the filter is on, the connect
+  line now also reports what it drops, e.g.
+  `… | filter sluit 18 entiteiten uit: tts=1, conversation=1, …`, so you can see
+  exactly which entities are missing from the picker.
+- **Live refresh interval is now a dropdown** in the add-on configuration with the
+  same presets as the editor (0 = off, 1, 2, 5, 10, 15, 30 minutes).
+- **The right-hand panel is now "Elements inspector"** (was "Inspector").
+
 ## 3.9.100 — Better logging + all entity domains on by default
 
 Logging:

@@ -31,6 +31,7 @@
 
     /* --- index.html left panel --- */
     'Elementen toevoegen': 'Add elements',
+    'Elementen inspector': 'Elements inspector',
     'Tekst / waarde': 'Text / value',
     'Tekst': 'Text',
     'Waarde': 'Value',
