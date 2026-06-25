@@ -22,6 +22,7 @@ import re
 import shutil
 import zipfile
 import asyncio
+import time
 import logging
 from collections import Counter
 from pathlib import Path
@@ -93,8 +94,13 @@ try:    LIVE_INTERVAL = max(0, int(_opts.get("live_interval", 1)))
 except Exception: LIVE_INTERVAL = 1
 ENTITY_DOMAINS   = [str(d).strip().lower() for d in (_opts.get("entity_domains") or []) if str(d).strip()]
 HIDE_UNAVAILABLE = bool(_opts.get("hide_unavailable", False))
+DEBUG_MODE = bool(_opts.get("debug", False))
 SAMBA_SLUG = os.environ.get("SAMBA_SLUG", "")
 VERSION    = os.environ.get("ADDON_VERSION", "?")
+
+# Debug mode: drop the whole logger to DEBUG so every request + extra detail shows.
+if DEBUG_MODE:
+    logging.getLogger().setLevel(logging.DEBUG)
 
 SAFE_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
 
@@ -612,6 +618,8 @@ async def index(request: web.Request) -> web.StreamResponse:
 def _log_startup() -> None:
     """One-shot dump of the resolved config + storage state at boot."""
     log.info("E-ink Studio v%s — server start op poort %d", VERSION, PORT)
+    if DEBUG_MODE:
+        log.debug("debug-modus AAN — alle HTTP-requests en extra detail worden gelogd")
     log.info(
         "config — taal=%s thema=%s live=%s/%ss domains=%s verberg_onbeschikbaar=%s",
         LANGUAGE, THEME, "aan" if LIVE_ON_START else "uit", LIVE_INTERVAL,
@@ -630,8 +638,29 @@ def _log_startup() -> None:
     )
 
 
+@web.middleware
+async def _log_requests(request: web.Request, handler):
+    """Debug-only: log every HTTP request (method, path, status, timing)."""
+    t0 = time.monotonic()
+    status = "?"
+    try:
+        resp = await handler(request)
+        status = resp.status
+        return resp
+    except web.HTTPException as e:
+        status = e.status
+        raise
+    except Exception:  # noqa: BLE001
+        status = 500
+        raise
+    finally:
+        log.debug("%s %s -> %s (%.0f ms)",
+                  request.method, request.rel_url, status, (time.monotonic() - t0) * 1000)
+
+
 def build_app() -> web.Application:
-    app = web.Application(client_max_size=64 * 1024 * 1024)
+    mws = [_log_requests] if DEBUG_MODE else []
+    app = web.Application(client_max_size=64 * 1024 * 1024, middlewares=mws)
     app.router.add_get("/api/info", api_info)
     app.router.add_post("/api/log", api_log)
     app.router.add_get("/api/states", api_states)

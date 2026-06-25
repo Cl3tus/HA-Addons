@@ -23,6 +23,11 @@ configuration:
     description: >-
       Hide entities whose state is "unavailable" or "unknown" in the
       "From Home Assistant" picker.
+  debug:
+    name: Debug logging
+    description: >-
+      Log everything: every HTTP request (method, path, status, timing) and extra
+      detail. Verbose — turn on only when troubleshooting, off for normal use.
   entity_domains:
     name: Entity domains filter
     description: >-

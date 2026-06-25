@@ -23,6 +23,11 @@ configuration:
     description: >-
       Verberg entiteiten met status "unavailable" of "unknown" in de
       "Uit Home Assistant"-kiezer.
+  debug:
+    name: Debug-logging
+    description: >-
+      Log alles: elk HTTP-verzoek (methode, pad, status, tijdsduur) en extra
+      detail. Uitgebreid — zet alleen aan bij problemen oplossen, anders uit.
   entity_domains:
     name: Entiteit-domeinfilter
     description: >-

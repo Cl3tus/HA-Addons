@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.105 — Debug logging mode
+
+New **Debug logging** option in the add-on configuration (off by default). When on,
+the whole log drops to DEBUG level and a request middleware logs **every HTTP
+request** — method, path, status and timing (e.g. `DEBUG: GET /api/states -> 200
+(12 ms)`) — on top of all the normal events. Verbose by design; turn it on only
+while troubleshooting, then back off.
+
 ## 3.9.104 — Log colours refined + date on startup lines
 
 - The timestamp and level (`[date] INFO:` / `WARNING:`) are now **white**; only the
