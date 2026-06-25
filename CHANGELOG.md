@@ -4,6 +4,33 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.100 — Better logging + all entity domains on by default
+
+Logging:
+
+- **Date in every line** — the log timestamp is now `YYYY-MM-DD HH:MM:SS`.
+- **Fonts** — editing an existing font logs "font aangepast" instead of the wrong
+  "geupload"; a genuinely new font logs "toegevoegd".
+- **Profile saves say what changed** — instead of a bare "profiel bijgewerkt", the
+  log now shows the diff (e.g. `elementen 5→6, fonts 2→3, bron+ temp_buiten`), or
+  "inhoud gewijzigd (layout/tekst)" when only positions/text moved. A newly
+  created profile also lists its defined sources (`id=entity[kind]`).
+- **Live data detail** — when live data connects it logs the entity count, the
+  number of domains and a per-domain breakdown (`sensor=1203, binary_sensor=812,
+  …`), so you can see exactly what's coming in.
+- **Profile settings** — toggling checkboxes / changing fields in the profile
+  settings dialog logs precisely which settings changed before the save.
+
+Config:
+
+- **All entity domains enabled by default** — the entity-domains filter now ships
+  with every domain checked (and the list was expanded with many missing ones:
+  select, text, date/time/datetime, scene, script, automation, group, zone,
+  counter, timer, schedule, calendar, remote, humidifier, water_heater, siren,
+  valve, lawn_mower, alarm_control_panel, image, todo, event, notify,
+  assist_satellite). Uncheck what you don't want. Leaving the list **empty** still
+  means "show literally everything", including any exotic domain not in the list.
+
 ## 3.9.99 — Refresh Screen button + stickier YAML drawer
 
 - The generated YAML now always includes a manual **Refresh Screen** template

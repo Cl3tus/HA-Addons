@@ -23,18 +23,20 @@ import shutil
 import zipfile
 import asyncio
 import logging
+from collections import Counter
 from pathlib import Path
 from urllib.parse import quote
 
 from aiohttp import web, ClientSession, ClientTimeout
 
 # ---------------------------------------------------------------- logging
-# Match the bashio log style used by run.sh ("[HH:MM:SS] LEVEL: msg") so the
-# add-on log reads consistently. Everything goes to stdout, which HA captures.
+# bashio-style line ("[date time] LEVEL: msg") so the add-on log reads
+# consistently. Includes the date so multi-day logs stay readable. Everything
+# goes to stdout, which HA captures.
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] %(levelname)s: %(message)s",
-    datefmt="%H:%M:%S",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 log = logging.getLogger("eink")
 
@@ -116,16 +118,57 @@ def _safe(name: str) -> bool:
     return bool(name) and bool(SAFE_NAME.match(name)) and ".." not in name
 
 
+def _design_stats(body: dict) -> dict:
+    """Countable gist of a design — used for the summary + change diff."""
+    screens = body.get("screens") or []
+    return {
+        "schermen": len(screens),
+        "elementen": sum(len(s.get("elements") or []) for s in screens),
+        "fonts": len(body.get("fonts") or []),
+        "bronnen": len(body.get("sources") or []),
+    }
+
+
 def _design_summary(body: dict) -> str:
     """One-line gist of a saved design (profile/project) for the log."""
     try:
-        screens = body.get("screens") or []
-        elements = sum(len(s.get("elements") or []) for s in screens)
-        return (f"naam='{body.get('name', '?')}' schermen={len(screens)} "
-                f"elementen={elements} fonts={len(body.get('fonts') or [])} "
-                f"bronnen={len(body.get('sources') or [])}")
+        st = _design_stats(body)
+        return (f"naam='{body.get('name', '?')}' schermen={st['schermen']} "
+                f"elementen={st['elementen']} fonts={st['fonts']} "
+                f"bronnen={st['bronnen']}")
     except Exception:  # noqa: BLE001
         return ""
+
+
+def _sources_str(body: dict) -> str:
+    """List the defined sources: id=entity[kind], e.g. temp=sensor.buiten[number]."""
+    out = []
+    for s in (body.get("sources") or []):
+        sid = s.get("id") or "?"
+        ent = s.get("entityId") or ""
+        kind = s.get("kind") or ""
+        out.append(sid + (f"={ent}" if ent else "") + (f"[{kind}]" if kind else ""))
+    return ", ".join(out)
+
+
+def _stats_diff(old: dict, new: dict) -> str:
+    """Describe what changed between two saved designs (for the 'bijgewerkt' log)."""
+    parts = []
+    if old.get("name") != new.get("name"):
+        parts.append(f"naam '{old.get('name')}'→'{new.get('name')}'")
+    os_, ns = _design_stats(old), _design_stats(new)
+    for k in ("schermen", "elementen", "fonts", "bronnen"):
+        if os_[k] != ns[k]:
+            parts.append(f"{k} {os_[k]}→{ns[k]}")
+    old_ids = {s.get("id") for s in (old.get("sources") or [])}
+    new_ids = {s.get("id") for s in (new.get("sources") or [])}
+    added = sorted(i for i in (new_ids - old_ids) if i)
+    removed = sorted(i for i in (old_ids - new_ids) if i)
+    if added:
+        parts.append("bron+ " + ",".join(added))
+    if removed:
+        parts.append("bron- " + ",".join(removed))
+    return ", ".join(parts)
 
 
 def _resolve_fs(path: str) -> "Path | None":
@@ -195,7 +238,11 @@ async def api_states(request: web.Request) -> web.Response:
             "name": attrs.get("friendly_name"),
             "device_class": attrs.get("device_class"),
         })
-    _live_log("ok", f"live data actief: {len(slim)} entiteiten beschikbaar")
+    doms = Counter(s["entity_id"].split(".")[0] for s in slim if s["entity_id"])
+    breakdown = ", ".join(f"{d}={n}" for d, n in doms.most_common())
+    filt = f" (filter: {len(ENTITY_DOMAINS)} domeinen)" if ENTITY_DOMAINS else " (geen filter)"
+    _live_log("ok", f"live data actief: {len(slim)} entiteiten over "
+                    f"{len(doms)} domeinen{filt} — {breakdown}")
     return web.json_response(slim)
 
 
@@ -290,8 +337,11 @@ async def font_put(request: web.Request) -> web.Response:
     if len(raw) > 8 * 1024 * 1024:
         log.warning("font upload geweigerd (te groot: %d KB): %s", len(raw) // 1024, name)
         return web.json_response({"error": "too_large"}, status=413)
-    (FONTS_DIR / name).write_bytes(raw)
-    log.info("font geupload: %s (%d KB)", name, len(raw) // 1024)
+    dest = FONTS_DIR / name
+    existed = dest.exists()
+    dest.write_bytes(raw)
+    log.info("font %s: %s (%d KB)",
+             "aangepast" if existed else "toegevoegd", name, len(raw) // 1024)
     return web.json_response({"ok": True})
 
 
@@ -328,13 +378,20 @@ async def profile_put(request: web.Request) -> web.Response:
     body = await request.json()
     f = PROFILES_DIR / f"{name}.json"
     new_text = json.dumps(body, ensure_ascii=False, indent=2)
-    existed = f.exists()
-    # Only log a real change — see project_put: every profile is re-PUT on sync.
-    changed = (not existed) or f.read_text("utf-8") != new_text
+    # Only log a real change — every profile is re-PUT on sync (see project_put).
+    old_text = f.read_text("utf-8") if f.exists() else None
     f.write_text(new_text, "utf-8")
-    if changed:
-        log.info("profiel %s: %s — %s",
-                 "bijgewerkt" if existed else "aangemaakt", name, _design_summary(body))
+    if old_text is None:
+        log.info("profiel aangemaakt: %s — %s", name, _design_summary(body))
+        src = _sources_str(body)
+        if src:
+            log.info("  bronnen: %s", src)
+    elif old_text != new_text:
+        try:
+            diff = _stats_diff(json.loads(old_text), body)
+        except Exception:  # noqa: BLE001
+            diff = ""
+        log.info("profiel bijgewerkt: %s — %s", name, diff or "inhoud gewijzigd (layout/tekst)")
     return web.json_response({"ok": True})
 
 

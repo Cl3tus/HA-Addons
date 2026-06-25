@@ -4710,6 +4710,13 @@ function openProfileSettings(){
      {label:T('Sluiten','Close'),cls:'ghost',style:'margin-left:auto',onClick:closeModal},
      {label:T('Opslaan','Save'),cls:'primary',id:'ps-save'}]);
   const saveProfile=()=>{
+      // snapshot the settings before mutating, so we can log exactly what changed
+      const _snap=()=>Object.assign({
+        naam:p.name, model:d.model, rotatie:d.rotation, breedte:d.w, hoogte:d.h,
+        achtergrond:d.bg, negatief:p.negative, wachtscherm:p.waitEnabled,
+        'multi-scherm':p.multiScreen
+      }, p.output||{});
+      const _before=_snap();
       p.name=$('#ps-name').value;
       d.model=$('#ps-model').value; d.rotation=+$('#ps-rot').value; d.w=+$('#ps-w').value; d.h=+$('#ps-h').value;
       d.bg=$('#ps-bg').value;
@@ -4743,6 +4750,14 @@ function openProfileSettings(){
       // adapt the colour palette to the model's colour capability (only when it changes)
       const newType=modelInfo(d.model).c;
       if(newType!==paletteType(p.colors)) p.colors=colorSetFor(newType);
+      // log which settings actually changed (checkboxes/fields) before saving
+      { const after=_snap(), chg=[];
+        for(const k of new Set([...Object.keys(_before),...Object.keys(after)])){
+          const a=_before[k], b=after[k];
+          if(JSON.stringify(a)!==JSON.stringify(b)) chg.push(`${k}: ${a} → ${b}`);
+        }
+        if(chg.length) serverLog('info', `profiel-instellingen "${p.name}" gewijzigd — ${chg.join(', ')}`);
+      }
       persist(); initStage(); renderProfiles(); afterChange();
       // keep the dialog open — just refresh the name field and the switch dropdown
       { const nm=$('#ps-name'); if(nm) nm.value=p.name;

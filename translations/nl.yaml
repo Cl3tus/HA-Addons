@@ -26,5 +26,5 @@ configuration:
   entity_domains:
     name: Entiteit-domeinfilter
     description: >-
-      Toon alleen deze entiteit-domeinen in de "Uit Home Assistant"-kiezer
-      (bijv. sensor, binary_sensor, weather). Laat leeg om alles te tonen.
+      Welke entiteit-domeinen in de "Uit Home Assistant"-kiezer verschijnen.
+      Standaard staan alle domeinen aan — vink uit wat je niet nodig hebt.

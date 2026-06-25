@@ -26,5 +26,5 @@ configuration:
   entity_domains:
     name: Entity domains filter
     description: >-
-      Only show these entity domains in the "From Home Assistant" picker
-      (e.g. sensor, binary_sensor, weather). Leave empty to show all.
+      Which entity domains appear in the "From Home Assistant" picker. All
+      domains are enabled by default — uncheck the ones you don't need.

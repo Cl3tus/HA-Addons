@@ -1,5 +1,5 @@
 name: E-ink Studio
-version: "3.9.99"
+version: "3.9.100"
 slug: eink_studio
 description: Visual editor for ESPHome e-ink displays — design your layout and generate the lambda + YAML.
 url: https://github.com/Cl3tus/HA-Eink-Studio-App
@@ -34,7 +34,58 @@ options:
   live_on_start: true
   live_interval: 1
   hide_unavailable: false
-  entity_domains: []
+  # Default: every domain enabled. Uncheck the ones you don't want in the picker.
+  entity_domains:
+    - sensor
+    - binary_sensor
+    - weather
+    - climate
+    - sun
+    - person
+    - device_tracker
+    - light
+    - switch
+    - number
+    - input_number
+    - input_boolean
+    - input_text
+    - input_select
+    - input_datetime
+    - input_button
+    - media_player
+    - cover
+    - fan
+    - lock
+    - vacuum
+    - update
+    - button
+    - camera
+    - select
+    - text
+    - date
+    - time
+    - datetime
+    - scene
+    - script
+    - automation
+    - group
+    - zone
+    - counter
+    - timer
+    - schedule
+    - calendar
+    - remote
+    - humidifier
+    - water_heater
+    - siren
+    - valve
+    - lawn_mower
+    - alarm_control_panel
+    - image
+    - todo
+    - event
+    - notify
+    - assist_satellite
 schema:
   language: list(Auto|Nederlands|English)
   theme: list(Auto|Light|Dark)
@@ -42,4 +93,4 @@ schema:
   live_interval: int(0,1440)
   hide_unavailable: bool
   entity_domains:
-    - list(sensor|binary_sensor|weather|climate|sun|person|device_tracker|light|switch|number|input_number|input_boolean|input_text|input_select|media_player|cover|fan|lock|vacuum|update|button|camera)
+    - list(sensor|binary_sensor|weather|climate|sun|person|device_tracker|light|switch|number|input_number|input_boolean|input_text|input_select|input_datetime|input_button|media_player|cover|fan|lock|vacuum|update|button|camera|select|text|date|time|datetime|scene|script|automation|group|zone|counter|timer|schedule|calendar|remote|humidifier|water_heater|siren|valve|lawn_mower|alarm_control_panel|image|todo|event|notify|assist_satellite)
