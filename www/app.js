@@ -3794,6 +3794,13 @@ function genYAML(){
       ? `# ${T('Knoppen — herstart- en schermwissel-knoppen','Buttons — restart and screen-switching buttons')}\n`
       : `# ${T('Restart ESP Knop','Restart ESP Button')}\n`;
     out+=`button:\n  - platform: restart\n    id: button_restart\n    name: "Restart"\n    entity_category: config\n`;
+    // always offer a manual "Refresh Screen" button. Call update_screen when that script
+    // exists; otherwise redraw the display directly so we never reference a missing script.
+    const hasUpdateScript = o.refresh && o.refreshScript!==false;
+    const refreshAct = hasUpdateScript
+      ? `      - script.execute: update_screen\n`
+      : `      - component.update: eink_display\n`;
+    out+=`  - platform: template\n    name: "Refresh Screen"\n    entity_category: config\n    on_press:\n${refreshAct}`;
     if(wantScreenBtns){
       out+=`# ${T('Schermknoppen','Multi-screen buttons')}\n`;
       scrNames.forEach((nm)=>{
@@ -5612,10 +5619,16 @@ function wire(){
   };
   $('#code-close').onclick=()=>{ $('#code-drawer').classList.remove('open'); document.body.classList.remove('code-open'); };
   // a click anywhere outside the open YAML drawer closes it (but not clicks inside the
-  // drawer, on the Generate button, or in a popup opened from it)
+  // drawer, on the Generate button, or in a popup opened from it).
+  // Track where the press STARTED: dragging a text selection out of the drawer and
+  // releasing outside must NOT close it (the click target would be <body>).
+  const _excl='#code-drawer, #btn-code, .modal-back, #app-confirm, #app-prompt, #ctxmenu, #ruler-menu';
+  let _pressInside=false;
+  document.addEventListener('mousedown', e=>{ _pressInside = !!(e.target.closest && e.target.closest(_excl)); }, true);
   document.addEventListener('click', e=>{
     const d=$('#code-drawer'); if(!d || !d.classList.contains('open')) return;
-    if(e.target.closest('#code-drawer, #btn-code, .modal-back, #app-confirm, #app-prompt, #ctxmenu, #ruler-menu')) return;
+    if(_pressInside) return;                       // press began inside drawer/excluded → keep open
+    if(e.target.closest(_excl)) return;
     d.classList.remove('open'); document.body.classList.remove('code-open');
   });
   { const rz=$('#code-resizer'), drawer=$('#code-drawer');

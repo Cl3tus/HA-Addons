@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.99 — Refresh Screen button + stickier YAML drawer
+
+- The generated YAML now always includes a manual **Refresh Screen** template
+  button (next to Restart). It runs `update_screen` when the refresh script is
+  present, or falls back to a direct `component.update: eink_display` otherwise,
+  so it never references a missing script.
+- The YAML drawer no longer closes when you start a text selection inside it and
+  release the mouse outside the drawer — only a real outside *click* closes it.
+
 ## 3.9.98 — Icon on the Profile text sensor
 
 The diagnostic "Profile" `text_sensor` in the generated boilerplate now carries
