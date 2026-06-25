@@ -4192,17 +4192,43 @@ async function openEntityPicker(){
   if(_hideU) entries=entries.filter(e=>e.state!=='unavailable' && e.state!=='unknown');
   const existing=new Set(profile().sources.map(s=>s.entityId));
 
+  // counts per domain → the filter chips
+  const domCounts={};
+  entries.forEach(e=>{ const d=e.eid.split('.')[0]; domCounts[d]=(domCounts[d]||0)+1; });
+  const domList=Object.keys(domCounts).sort();
+  let curDom=null;   // null = all domains
+
   openModal(T('Entiteit kiezen uit Home Assistant','Pick an entity from Home Assistant'),
-    `<input id="ent-search" class="icon-search" type="search" placeholder="${T('Zoek op naam of entity_id…','Search by name or entity_id…')}" autocomplete="off">
-     <div class="hint">${entries.length} ${T('entiteiten','entities')} · ${T('klik om toe te voegen','click to add')}</div>
-     <div id="ent-list" style="max-height:48vh;overflow:auto;margin-top:8px"></div>`,
+    `<input id="ent-search" class="icon-search" type="search" placeholder="${T('Zoek op naam of entity_id… (alle domeinen)','Search by name or entity_id… (all domains)')}" autocomplete="off">
+     <div id="ent-doms" style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 2px;max-height:92px;overflow:auto"></div>
+     <div class="hint" id="ent-count" style="margin-top:4px"></div>
+     <div id="ent-list" style="max-height:42vh;overflow:auto;margin-top:6px"></div>`,
     [{label:T('Terug','Back'),cls:'ghost',onClick:openSources}]);
 
-  const list=$('#ent-list'), search=$('#ent-search');
-  function render(q){
-    q=(q||'').toLowerCase().trim();
-    const hit=entries.filter(e=> !q || e.eid.toLowerCase().includes(q) || (e.name||'').toLowerCase().includes(q)).slice(0,300);
-    list.innerHTML = hit.length ? hit.map(e=>`
+  const list=$('#ent-list'), search=$('#ent-search'), doms=$('#ent-doms'), countEl=$('#ent-count');
+
+  const chip=(label,val,n,active)=>
+    `<button class="btn sm ${active?'primary':'ghost'}" data-dom="${attr(val==null?'':val)}" style="padding:2px 8px;font-size:11px">${attr(label)}${n!=null?` <span style="opacity:.6">${n}</span>`:''}</button>`;
+  function renderChips(){
+    doms.innerHTML = chip(T('Alle','All'), null, entries.length, curDom==null)
+      + domList.map(d=>chip(d, d, domCounts[d], curDom===d)).join('');
+    doms.querySelectorAll('[data-dom]').forEach(b=>b.onclick=()=>{
+      curDom = b.dataset.dom || null;
+      search.value='';            // clicking a domain narrows to it; clear any query
+      renderChips(); render();
+    });
+  }
+  function render(){
+    const q=(search.value||'').toLowerCase().trim();
+    // search always spans every entity; the domain chip only narrows when not searching
+    const pool = (!q && curDom) ? entries.filter(e=>e.eid.split('.')[0]===curDom) : entries;
+    const hit=pool.filter(e=> !q || e.eid.toLowerCase().includes(q) || (e.name||'').toLowerCase().includes(q));
+    const shown=hit.slice(0,300);
+    const scope = q ? T('zoekresultaat','search') : (curDom ? curDom : T('alle domeinen','all domains'));
+    countEl.textContent = `${scope} · ${hit.length} ${T('entiteiten','entities')}`
+      + (hit.length>shown.length ? ` (${T('eerste','first')} ${shown.length})` : '')
+      + ` · ${T('klik om toe te voegen','click to add')}`;
+    list.innerHTML = shown.length ? shown.map(e=>`
       <div class="row" data-eid="${attr(e.eid)}" style="align-items:center;cursor:pointer;padding:6px 8px;border-bottom:1px solid var(--line)">
         <div style="flex:1;min-width:0">
           <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.name?attr(e.name):'<span class="mono">'+attr(e.eid)+'</span>'}</div>
@@ -4214,8 +4240,8 @@ async function openEntityPicker(){
       : `<div class="hint" style="padding:20px;text-align:center">${T('Geen resultaten','No results')}</div>`;
     list.querySelectorAll('[data-eid]').forEach(row=>row.onclick=()=>addSourceFromEntity(row.dataset.eid));
   }
-  search.oninput=()=>render(search.value);
-  render(''); search.focus();
+  search.oninput=()=>render();
+  renderChips(); render(); search.focus();
 }
 
 function addSourceFromEntity(eid){

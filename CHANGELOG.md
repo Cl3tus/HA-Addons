@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.103 — Entity picker: domain filter chips
+
+The "Pick an entity from Home Assistant" dialog now shows a row of **domain filter
+chips** (each with its entity count, plus an "All" chip). Click a domain to narrow
+the list to just those entities. **Search always spans every domain and entity** —
+typing in the search box ignores the selected chip, so you can find anything at any
+time. The count line shows the current scope (domain / search / all).
+
 ## 3.9.102 — Coloured log lines
 
 The server log lines are now ANSI-coloured per level, matching the green bashio
