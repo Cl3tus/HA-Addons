@@ -35,6 +35,7 @@ from aiohttp import web, ClientSession, ClientTimeout
 # ANSI-coloured per level (INFO green like bashio, WARNING yellow, ERROR red);
 # the HA log viewer renders the codes. Everything goes to stdout, which HA captures.
 class _ColorFormatter(logging.Formatter):
+    # Timestamp + level stay white; only the message is coloured per level.
     COLORS = {
         logging.DEBUG: "\033[90m",      # grey
         logging.INFO: "\033[32m",       # green (matches bashio)
@@ -45,14 +46,13 @@ class _ColorFormatter(logging.Formatter):
     RESET = "\033[0m"
 
     def format(self, record: logging.LogRecord) -> str:
-        line = super().format(record)
-        color = self.COLORS.get(record.levelno)
-        return f"{color}{line}{self.RESET}" if color else line
+        ts = self.formatTime(record, self.datefmt)
+        color = self.COLORS.get(record.levelno, "")
+        return f"[{ts}] {record.levelname}: {color}{record.getMessage()}{self.RESET}"
 
 
 _handler = logging.StreamHandler()
-_handler.setFormatter(_ColorFormatter("[%(asctime)s] %(levelname)s: %(message)s",
-                                      "%Y-%m-%d %H:%M:%S"))
+_handler.setFormatter(_ColorFormatter(datefmt="%Y-%m-%d %H:%M:%S"))
 logging.basicConfig(level=logging.INFO, handlers=[_handler])
 log = logging.getLogger("eink")
 

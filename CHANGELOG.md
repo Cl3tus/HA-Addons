@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.104 — Log colours refined + date on startup lines
+
+- The timestamp and level (`[date] INFO:` / `WARNING:`) are now **white**; only the
+  message itself carries the per-level colour.
+- The two bashio startup lines (port + SAMBA storage) now include the **full date**
+  too — they're logged directly so they match the `YYYY-MM-DD HH:MM:SS` format of
+  the rest of the log (bashio's own timestamp can't carry the date).
+
 ## 3.9.103 — Entity picker: domain filter chips
 
 The "Pick an entity from Home Assistant" dialog now shows a row of **domain filter
