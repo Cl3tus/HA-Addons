@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.102 — Coloured log lines
+
+The server log lines are now ANSI-coloured per level, matching the green bashio
+startup lines: **INFO green, WARNING yellow, ERROR red** (DEBUG grey). The Home
+Assistant log viewer renders the colours, so warnings and errors stand out at a
+glance.
+
 ## 3.9.101 — Full domain list, log shows what the filter drops
 
 - **Entity-domains filter is now the full HA entity-component list, alphabetical,

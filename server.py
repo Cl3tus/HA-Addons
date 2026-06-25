@@ -31,13 +31,29 @@ from aiohttp import web, ClientSession, ClientTimeout
 
 # ---------------------------------------------------------------- logging
 # bashio-style line ("[date time] LEVEL: msg") so the add-on log reads
-# consistently. Includes the date so multi-day logs stay readable. Everything
-# goes to stdout, which HA captures.
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+# consistently. Includes the date so multi-day logs stay readable. Lines are
+# ANSI-coloured per level (INFO green like bashio, WARNING yellow, ERROR red);
+# the HA log viewer renders the codes. Everything goes to stdout, which HA captures.
+class _ColorFormatter(logging.Formatter):
+    COLORS = {
+        logging.DEBUG: "\033[90m",      # grey
+        logging.INFO: "\033[32m",       # green (matches bashio)
+        logging.WARNING: "\033[33m",    # yellow
+        logging.ERROR: "\033[31m",      # red
+        logging.CRITICAL: "\033[1;31m", # bold red
+    }
+    RESET = "\033[0m"
+
+    def format(self, record: logging.LogRecord) -> str:
+        line = super().format(record)
+        color = self.COLORS.get(record.levelno)
+        return f"{color}{line}{self.RESET}" if color else line
+
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(_ColorFormatter("[%(asctime)s] %(levelname)s: %(message)s",
+                                      "%Y-%m-%d %H:%M:%S"))
+logging.basicConfig(level=logging.INFO, handlers=[_handler])
 log = logging.getLogger("eink")
 
 DATA_DIR     = Path(os.environ.get("DATA_DIR", "/data"))
