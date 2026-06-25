@@ -87,14 +87,22 @@ def _norm_theme(v):
     v = str(v or "auto").strip().lower()
     return v if v in ("light", "dark") else "auto"
 
-LANGUAGE   = _norm_lang(_opts.get("language", "auto"))   # auto | nl | en
-THEME      = _norm_theme(_opts.get("theme", "auto"))     # auto | light | dark
-LIVE_ON_START    = bool(_opts.get("live_on_start", True))
-try:    LIVE_INTERVAL = max(0, int(_opts.get("live_interval", 1)))
+# Options are now grouped (interface / live_data / logging). Read from the group,
+# falling back to a flat key so a config saved by an older version still works.
+def _opt(group, key, default):
+    g = _opts.get(group)
+    if isinstance(g, dict) and key in g:
+        return g[key]
+    return _opts.get(key, default)
+
+LANGUAGE   = _norm_lang(_opt("interface", "language", "auto"))   # auto | nl | en
+THEME      = _norm_theme(_opt("interface", "theme", "auto"))     # auto | light | dark
+LIVE_ON_START    = bool(_opt("live_data", "live_on_start", True))
+try:    LIVE_INTERVAL = max(0, int(_opt("live_data", "live_interval", 1)))
 except Exception: LIVE_INTERVAL = 1
-ENTITY_DOMAINS   = [str(d).strip().lower() for d in (_opts.get("entity_domains") or []) if str(d).strip()]
-HIDE_UNAVAILABLE = bool(_opts.get("hide_unavailable", False))
-DEBUG_MODE = bool(_opts.get("debug", False))
+ENTITY_DOMAINS   = [str(d).strip().lower() for d in (_opt("live_data", "entity_domains", []) or []) if str(d).strip()]
+HIDE_UNAVAILABLE = bool(_opt("live_data", "hide_unavailable", False))
+DEBUG_MODE = bool(_opt("logging", "debug", False))
 SAMBA_SLUG = os.environ.get("SAMBA_SLUG", "")
 VERSION    = os.environ.get("ADDON_VERSION", "?")
 

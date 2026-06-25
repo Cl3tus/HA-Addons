@@ -4,6 +4,21 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.106 — Configuration grouped into sections
+
+The add-on **Configuration** tab is now split into labelled sections (HA renders
+nested option groups under headers):
+
+- **Interface** — Language, Theme
+- **Live data** — Live data on start, Live refresh interval, Hide unavailable
+  entities, Entity domains filter
+- **Logging** — Debug logging (now at the very bottom)
+
+Section titles and all field labels/descriptions stay translated (NL/EN). Because
+the options are now nested, Home Assistant resets the saved options to their
+defaults once after this update — the defaults are the same as before (all
+domains on, live on, debug off), so just re-tick anything you'd customised.
+
 ## 3.9.105 — Debug logging mode
 
 New **Debug logging** option in the add-on configuration (off by default). When on,
