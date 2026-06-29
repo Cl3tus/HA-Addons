@@ -4,7 +4,7 @@
 
 # E-ink Studio
 
-[![GitHub release](https://img.shields.io/badge/version-3.9.106-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App)
+[![GitHub release](https://img.shields.io/badge/version-3.9.107-blue)](https://github.com/Cl3tus/HA-Eink-Studio-App)
 [![Project Stage](https://img.shields.io/badge/project%20stage-experimental-yellow.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App)
 [![Maintained](https://img.shields.io/badge/maintained-yes-brightgreen.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Cl3tus/HA-Eink-Studio-App/blob/main/LICENSE)

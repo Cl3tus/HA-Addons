@@ -4,6 +4,20 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.107 — Quieter, more meaningful profile logging
+
+Editing a design autosaves on every drag, so the log was drowning in
+`profiel bijgewerkt … inhoud gewijzigd (layout/tekst)` lines with no useful
+detail. Now:
+
+- **Only structural changes log at INFO** — elements added/removed, fonts
+  added/removed, sources added/removed, a rename. These are the recognisable
+  events you actually want to see.
+- **Pure layout/text tweaks (moving/editing) drop to DEBUG**, so they only appear
+  when Debug logging is on. The normal log stays readable.
+- The startup config line no longer dumps the full 59-domain list — it shows
+  `domeinfilter=alle` (or `N geselecteerd`) and the debug on/off state.
+
 ## 3.9.106 — Configuration grouped into sections
 
 The add-on **Configuration** tab is now split into labelled sections (HA renders

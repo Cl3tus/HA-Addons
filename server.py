@@ -435,7 +435,13 @@ async def profile_put(request: web.Request) -> web.Response:
             diff = _stats_diff(json.loads(old_text), body)
         except Exception:  # noqa: BLE001
             diff = ""
-        log.info("profiel bijgewerkt: %s — %s", name, diff or "inhoud gewijzigd (layout/tekst)")
+        # Structural changes (elements/fonts/sources/name) are the interesting ones
+        # → INFO. Pure layout/text tweaks fire on every drag and would flood the
+        # log, so they only show in debug mode.
+        if diff:
+            log.info("profiel bijgewerkt: %s — %s", name, diff)
+        else:
+            log.debug("profiel bijgewerkt: %s — alleen layout/tekst", name)
     return web.json_response({"ok": True})
 
 
@@ -629,9 +635,10 @@ def _log_startup() -> None:
     if DEBUG_MODE:
         log.debug("debug-modus AAN — alle HTTP-requests en extra detail worden gelogd")
     log.info(
-        "config — taal=%s thema=%s live=%s/%ss domains=%s verberg_onbeschikbaar=%s",
+        "config — taal=%s thema=%s live=%s/%ss domeinfilter=%s verberg_onbeschikbaar=%s debug=%s",
         LANGUAGE, THEME, "aan" if LIVE_ON_START else "uit", LIVE_INTERVAL,
-        ENTITY_DOMAINS or "alle", HIDE_UNAVAILABLE,
+        f"{len(ENTITY_DOMAINS)} geselecteerd" if ENTITY_DOMAINS else "alle",
+        HIDE_UNAVAILABLE, "aan" if DEBUG_MODE else "uit",
     )
     log.info(
         "opslag — %s (samba=%s) | live-data=%s",
