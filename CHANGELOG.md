@@ -4,6 +4,20 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.108 — Rename colours
+
+New **Colours** button in the top bar opens a small editor where you can rename any
+colour id (`color_bg`, `color_text`, `red`, …). The rename flows through
+everything: every element, condition branch and graph trace that used the colour,
+plus the generated ESPHome YAML (which references the id) — all update
+automatically. Names must be valid ESPHome ids (a-z, 0-9, _, not starting with a
+digit) and unique.
+
+The first two colours stay the structural **background** and **ink** colours
+(resolved by position now, not by name), so negative mode and the defaults keep
+working even after you rename them. Note: changing the display **model** still
+resets the palette to that model's colour set, which clears custom names.
+
 ## 3.9.107 — Quieter, more meaningful profile logging
 
 Editing a design autosaves on every drag, so the log was drowning in

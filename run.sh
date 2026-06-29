@@ -12,7 +12,7 @@ log_line() {   # $1=LEVEL  $2=ANSI colour  $3=message
 log_line INFO '\033[32m' "E-ink Studio start op poort 8099 (ingress)..."
 
 export DATA_DIR="/data"
-export ADDON_VERSION="3.9.107"
+export ADDON_VERSION="3.9.108"
 
 # addon_config:rw monteert de add-on config-map op /config.
 # Op de SAMBA-share is dit zichtbaar als addon_configs\3d980088_eink_studio.

@@ -116,7 +116,7 @@ function makeWaitText(p){
   const d=(p&&p.device)||{w:480,h:800};
   const fid=(p&&p.fonts&&p.fonts[0]&&p.fonts[0].id)||'font_small';
   return { id:uid(), type:'text', name:T('Tekst','Text')+' 1', visible:true,
-    x:Math.round(d.w/2), y:Math.round(d.h/2), colorId:'color_text', anchor:'CENTER', fontId:fid,
+    x:Math.round(d.w/2), y:Math.round(d.h/2), colorId:inkId(), anchor:'CENTER', fontId:fid,
     source:{kind:'static',text:'WAITING FOR DATA...',sourceId:'',expr:''},
     format:{mode:'builder',decimals:1,prefix:'',suffix:'',raw:'%s'}, transform:'none', transformArg:{},
     condition:{enabled:false,sourceId:'',op:'on',val:'',val2:'',
@@ -376,13 +376,41 @@ function renameScreen(){
 function selected(){ return els().find(e=>e.id===selectedId) || null; }
 function fontById(id){ return profile().fonts.find(f=>f.id===id); }
 function colorById(id){ return profile().colors.find(c=>c.id===id); }
+/* The first two palette colours are structural: [0] = background/paper, [1] = ink/text.
+   Resolve them by position so they keep working after the user renames them. */
+function bgId(){  const p=profile(); return (p&&p.colors&&p.colors[0]&&p.colors[0].id)||'color_bg'; }
+function inkId(){ const p=profile(); return (p&&p.colors&&p.colors[1]&&p.colors[1].id)||'color_text'; }
 /* negative mode (black screen, white text): swap the two base ink/paper colours wherever a
    colour is resolved (canvas preview + generated YAML). Other palette colours are left as-is. */
 function negColorId(id){
   const p=profile(); if(!p || !p.negative) return id;
-  if(id==='color_text') return 'color_bg';
-  if(id==='color_bg') return 'color_text';
+  const b=bgId(), k=inkId();
+  if(id===k) return b;
+  if(id===b) return k;
   return id;
+}
+/* Rename a colour id; every reference (elements, condition branches, graph traces) and the
+   generated YAML (which uses the id) follow automatically. Returns {ok, err}. */
+function renameColor(oldId, newId){
+  const p=profile(); if(!p) return {ok:false, err:'no profile'};
+  newId=(newId||'').trim();
+  if(newId===oldId) return {ok:true};
+  if(!/^[a-z_][a-z0-9_]*$/.test(newId))
+    return {ok:false, err:T('ongeldig (gebruik a-z, 0-9, _; niet met cijfer beginnen)','invalid (use a-z, 0-9, _; not starting with a digit)')};
+  if(p.colors.some(c=>c.id===newId)) return {ok:false, err:T('bestaat al','already exists')};
+  const c=p.colors.find(x=>x.id===oldId); if(!c) return {ok:false, err:'not found'};
+  pushUndo();
+  c.id=newId;
+  const fix=o=>{ if(o && o.colorId===oldId) o.colorId=newId; };
+  const scan=arr=>(arr||[]).forEach(el=>{
+    fix(el);
+    if(el.condition){ fix(el.condition.whenTrue); fix(el.condition.whenFalse); }
+    if(el.graph && el.graph.traces) el.graph.traces.forEach(fix);
+  });
+  ensureScreens(p).forEach(s=>scan(s.elements));
+  scan(p.waitElements);
+  persist(); afterChange();
+  return {ok:true};
 }
 function srcById(id){ return profile().sources.find(s=>s.id===id); }
 
@@ -2202,7 +2230,7 @@ function addElement(type, pos){
   const cx = pos ? clamp(Math.round(pos.x),0,p.device.w) : Math.round(p.device.w/2);
   const cy = pos ? clamp(Math.round(pos.y),0,p.device.h) : 120;
   const base={ id:uid(), type, name:elName(nameType), visible:true,
-    x:cx, y:cy, colorId:'color_text', anchor:'CENTER',
+    x:cx, y:cy, colorId:inkId(), anchor:'CENTER',
     condition:{enabled:false,sourceId:'',op:'on',val:'',val2:'',
                whenTrue:{text:'',iconName:'',iconHex:'',colorId:'',visible:true},
                whenFalse:{text:'',iconName:'',iconHex:'',colorId:'',visible:true}} };
@@ -2215,23 +2243,23 @@ function addElement(type, pos){
   } else if(type==='icon'){
     Object.assign(base,{ fontId:mdiFontFor('font_mdi_large'), iconName:'thermometer-water', iconHex:'F1A80' });
   } else if(type==='line'){
-    Object.assign(base,{ x:cx-80,y:cy,x2:cx+80,y2:cy, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx-80,y:cy,x2:cx+80,y2:cy, colorId:inkId(), anchor:undefined });
   } else if(type==='rect'){
-    Object.assign(base,{ x:cx-80,y:cy-40, w:160,h:80, filled:false, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx-80,y:cy-40, w:160,h:80, filled:false, colorId:inkId(), anchor:undefined });
   } else if(type==='circle'){
-    Object.assign(base,{ x:cx,y:cy, r:40, filled:false, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx,y:cy, r:40, filled:false, colorId:inkId(), anchor:undefined });
   } else if(type==='triangle'){
-    Object.assign(base,{ x:cx,y:cy, w:120,h:100, rotation:0, filled:false, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx,y:cy, w:120,h:100, rotation:0, filled:false, colorId:inkId(), anchor:undefined });
   } else if(type==='polygon'){
-    Object.assign(base,{ x:cx,y:cy, r:60, sides:6, rotation:0, filled:false, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx,y:cy, r:60, sides:6, rotation:0, filled:false, colorId:inkId(), anchor:undefined });
   } else if(type==='ring'){
-    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, colorId:inkId(), anchor:undefined });
   } else if(type==='gauge'){
-    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, percent:50, colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx,y:cy, r:50, inner:30, percent:50, colorId:inkId(), anchor:undefined });
   } else if(type==='qr'){
-    Object.assign(base,{ x:cx-50,y:cy-50, text:'https://home-assistant.io', scale:4, ecc:'LOW', colorId:'color_text', anchor:undefined });
+    Object.assign(base,{ x:cx-50,y:cy-50, text:'https://home-assistant.io', scale:4, ecc:'LOW', colorId:inkId(), anchor:undefined });
   } else if(type==='wifi'){
-    Object.assign(base,{ fontId:mdiFontFor('font_mdi_small'), anchor:'CENTER', colorId:'color_text',
+    Object.assign(base,{ fontId:mdiFontFor('font_mdi_small'), anchor:'CENTER', colorId:inkId(),
       // signal thresholds (dBm) -> MDI icon, strongest first
       wifi:{ sourceId:'', levels:[
         {min:-50, icon:'wifi-strength-4', hex:'F0928'},
@@ -2241,13 +2269,13 @@ function addElement(type, pos){
         {min:-999, icon:'wifi-strength-alert-outline', hex:'F092B'} ] } });
   } else if(type==='clock'){
     const mdi=mdiFontFor('font_mdi_small');
-    Object.assign(base,{ fontId:defaultTextFont(), anchor:'CENTER', colorId:'color_text',
+    Object.assign(base,{ fontId:defaultTextFont(), anchor:'CENTER', colorId:inkId(),
       clock:{ strftime:'%H:%M', icon:true, iconName:'recycle', iconHex:'F044C', iconFontId:mdi } });
   } else if(type==='graph'){
-    Object.assign(base,{ x:cx-150,y:cy, w:300,h:140, colorId:'color_text', anchor:undefined,
+    Object.assign(base,{ x:cx-150,y:cy, w:300,h:140, colorId:inkId(), anchor:undefined,
       graph:{ duration:'1h', x_grid:'10min', y_grid:5, border:true,
         min_range:'', max_range:'',
-        traces:[{sourceId:'aquatemp', name:'', lineType:'SOLID', thickness:2, continuous:true, colorId:'color_text'}],
+        traces:[{sourceId:'aquatemp', name:'', lineType:'SOLID', thickness:2, continuous:true, colorId:inkId()}],
         axes:{ show:false, fontId:defaultTextFont(), yTitle:'', xTitle:'', showYScale:true, showXScale:true },
         legend:{ show:false, x:'', y:'', nameFontId:defaultTextFont(), valueFontId:'', border:true,
                  showLines:true, showValues:'AUTO', showUnits:true, direction:'AUTO' } } });
@@ -2933,13 +2961,13 @@ function bindInspector(host, el){
     const dot=sw.dataset.traceColor.indexOf('.'); const i=+sw.dataset.traceColor.slice(0,dot), cid=sw.dataset.traceColor.slice(dot+1);
     el.graph.traces[i].colorId=negColorId(cid); afterChange(); }));
   host.querySelectorAll('[data-trace-del]').forEach(b=>b.addEventListener('click',()=>{ pushUndo(); el.graph.traces.splice(+b.dataset.traceDel,1); afterChange(); }));
-  const ta=host.querySelector('#trace-add'); if(ta) ta.addEventListener('click',()=>{ pushUndo(); el.graph.traces.push({sourceId:'', lineType:'SOLID', thickness:2, continuous:true, colorId:'color_text'}); afterChange(); });
+  const ta=host.querySelector('#trace-add'); if(ta) ta.addEventListener('click',()=>{ pushUndo(); el.graph.traces.push({sourceId:'', lineType:'SOLID', thickness:2, continuous:true, colorId:inkId()}); afterChange(); });
 }
 
 /* ============================================================
    CODE GENERATION
    ============================================================ */
-function cppColor(id){ const base=colorById(id)?id:'color_text'; return negColorId(base); }
+function cppColor(id){ const base=colorById(id)?id:inkId(); return negColorId(base); }
 function pad8(hex){ return ('00000000'+hex).slice(-8).toUpperCase(); }
 
 /* value expr + format token for a text element */
@@ -3103,7 +3131,7 @@ function graphDrawCode(el, I){
   }
   if(!ax.show) return out;
   const font=(fontById(ax.fontId)||{id:defaultTextFont()}).id;
-  const col='color_text';
+  const col=inkId();
   const x=el.x, y=el.y, w=el.w, h=el.h;
   const lines=[];
   // y-axis scale (needs a fixed range; auto-scale has no known numbers)
@@ -3870,7 +3898,7 @@ function genYAML(){
   const L='      ';
   // negative mode: paint the whole panel with the ink colour first; every element then
   // draws with the swapped (paper) colour via cppColor → black screen, white content.
-  if(p.negative) out+=`${L}it.fill(id(color_text));\n`;
+  if(p.negative) out+=`${L}it.fill(id(${inkId()}));\n`;
   // draw in LAYER order (array order = the layers panel, bottom→top) so the z-order
   // you see on the canvas and set in the layers list is exactly what ESPHome draws.
   const drawEls=(arr, indent)=>{ (arr||[]).forEach(el=>{ const code=elementCode(el, indent); if(code) out+=code+'\n'; }); };
@@ -3900,7 +3928,7 @@ function genYAML(){
     if(waitEls.length){
       drawEls(waitEls, L+'  ');
     } else {
-      out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), ${cppColor('color_text')}, TextAlign::CENTER, "${T('WACHTEN OP DATA...','WAITING FOR DATA...')}");\n`;
+      out+=`${L}  it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), ${cppColor(inkId())}, TextAlign::CENTER, "${T('WACHTEN OP DATA...','WAITING FOR DATA...')}");\n`;
     }
     out+=`${L}} else {\n`;
     drawScreens(L+'  ');
@@ -4178,6 +4206,41 @@ function openSources(){
       persist(); openSources();
       toast(n? T(`${n} type(s) bijgewerkt vanuit HA`, `${n} type(s) updated from HA`) : T('Alle types kloppen al','All types already match'));
     }; }
+}
+
+/* Colours editor — rename a colour id (e.g. color_bg, color_text, red). Every element
+   reference and the generated YAML use the id, so renaming flows through everywhere. */
+function openColors(){
+  const p=profile(); if(!p) return;
+  const rows=p.colors.map((c,i)=>`
+    <div class="row" style="align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)">
+      <div style="background:${c.css};width:24px;height:24px;border-radius:5px;flex:none;border:1px solid var(--line)"></div>
+      <input class="col-id" data-old="${attr(c.id)}" value="${attr(c.id)}" spellcheck="false" autocomplete="off"
+             style="flex:1;font-family:var(--mono)">
+      ${i<2?`<span class="tag" style="flex:none">${i===0?T('achtergrond','background'):T('inkt','ink')}</span>`:''}
+      <span class="mono hint" style="flex:none;min-width:64px;text-align:right">${attr(c.css)}</span>
+    </div>`).join('');
+  openModal(T('Kleuren hernoemen','Rename colours'),
+    `<div class="hint" style="margin-bottom:8px">${T('Hernoem een kleur-id; alle elementen én de gegenereerde YAML gaan automatisch mee. Toegestaan: a-z, 0-9 en _ (niet met een cijfer beginnen). De eerste twee zijn de vaste achtergrond- en inktkleur.','Rename a colour id; every element and the generated YAML follow automatically. Allowed: a-z, 0-9 and _ (not starting with a digit). The first two are the fixed background and ink colours.')}</div>
+     <div id="col-list">${rows}</div>`,
+    [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ if(applyColorRenames()) closeModal(); }}]);
+  // commit a single field on Enter (rest stay editable)
+  $$('#col-list .col-id').forEach(inp=>inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); applyColorRenames(); } }));
+}
+/* apply every changed id field; returns true when all succeeded (no errors) */
+function applyColorRenames(){
+  const inputs=$$('#col-list .col-id'); const errs=[]; let changed=0;
+  inputs.forEach(inp=>{
+    const oldId=inp.dataset.old, newId=inp.value.trim();
+    if(newId && newId!==oldId){
+      const r=renameColor(oldId, newId);
+      if(r.ok){ inp.dataset.old=newId; changed++; }
+      else { errs.push(`${oldId}: ${r.err}`); inp.style.borderColor='var(--bad,#f44336)'; }
+    }
+  });
+  if(errs.length){ toast(errs.join(' · '), true); return false; }
+  if(changed) toast(T(`${changed} kleur(en) hernoemd`, `${changed} colour(s) renamed`));
+  return true;
 }
 
 /* Searchable Home Assistant entity picker — adds a value source from live data */
@@ -5001,7 +5064,7 @@ function _lid(a){ const m=/id\(\s*([A-Za-z_]\w*)\s*\)/.exec(String(a)); return m
 function _lalign(args){ const m=/TextAlign::(\w+)/.exec(args.join(',')); return m?m[1]:'TOP_LEFT'; }
 function _lcolor(args, colors){ for(const a of args){ const id=String(a).trim(); if(colors.some(c=>c.id===id)) return id; } return (colors[0]&&colors[0].id)||'color_text'; }
 function _lblank(type){
-  return { id:uid(), type, name:elName(type), visible:true, x:0,y:0, colorId:'color_text', anchor:'TOP_LEFT',
+  return { id:uid(), type, name:elName(type), visible:true, x:0,y:0, colorId:inkId(), anchor:'TOP_LEFT',
     condition:{enabled:false,sourceId:'',op:'on',val:'',val2:'',
       whenTrue:{text:'',iconName:'',iconHex:'',colorId:'',visible:true},
       whenFalse:{text:'',iconName:'',iconHex:'',colorId:'',visible:true}} };
@@ -5620,6 +5683,7 @@ function wire(){
 
   $('#btn-import').onclick=openImport;
   $('#btn-sources').onclick=openSources;
+  { const b=$('#btn-colors'); if(b) b.onclick=openColors; }
   $('#btn-fonts').onclick=openFonts;
   $('#btn-save').onclick=saveProject;
   $('#btn-theme').onclick=()=>{ if(window.haTheme) window.haTheme.toggle(); };
