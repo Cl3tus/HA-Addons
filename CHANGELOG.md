@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.111 — Friendlier default colour ids + palette icon
+
+- **New profiles use `background` and `text`** as the default structural colour ids
+  (instead of `color_bg` / `color_text`); the generated YAML uses these names too.
+  They carry an internal role so negative mode and resolution keep working, and
+  existing profiles keep their current ids (rename them yourself via the Colours
+  button if you like).
+- The **Colours** top-bar button now uses the 🎨 palette emoji.
+
 ## 3.9.110 — Colour swatches follow negative mode
 
 In negative mode the swatches and the hex in the Colours dialog (and the colour
