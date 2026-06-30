@@ -4,6 +4,17 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.109 — Negative-mode fix + tidier Colours dialog
+
+- **Negative mode swaps the right colours again.** 3.9.108 resolved the
+  background/ink pair by list position, which broke the swap for profiles where
+  those colours weren't first. They're now resolved by an explicit role (pinned on
+  rename), then their original id, then position — so negative mode inverts
+  correctly even after renaming or reordering.
+- **The Colours dialog is tidier:** narrower modal, a fixed-width name field (no
+  longer stretched across the row), and a friendly colour name on every row
+  (background, ink, red/rood, yellow/geel, …) next to the hex.
+
 ## 3.9.108 — Rename colours
 
 New **Colours** button in the top bar opens a small editor where you can rename any

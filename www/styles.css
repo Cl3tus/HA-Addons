@@ -634,6 +634,7 @@ body.code-open #code-out, body.code-open input, body.code-open textarea { user-s
   transform: translateZ(0);     /* own compositing layer → stable, no hover jitter */
 }
 .modal.wide { width: min(960px, 96vw); }
+.modal.narrow { width: min(440px, 92vw); }
 .modal header { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; }
 .modal header b { flex: 1; }
 .modal .mbody { padding: 16px; overflow-y: scroll; overflow-x: hidden; }

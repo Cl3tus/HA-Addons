@@ -376,10 +376,17 @@ function renameScreen(){
 function selected(){ return els().find(e=>e.id===selectedId) || null; }
 function fontById(id){ return profile().fonts.find(f=>f.id===id); }
 function colorById(id){ return profile().colors.find(c=>c.id===id); }
-/* The first two palette colours are structural: [0] = background/paper, [1] = ink/text.
-   Resolve them by position so they keep working after the user renames them. */
-function bgId(){  const p=profile(); return (p&&p.colors&&p.colors[0]&&p.colors[0].id)||'color_bg'; }
-function inkId(){ const p=profile(); return (p&&p.colors&&p.colors[1]&&p.colors[1].id)||'color_text'; }
+/* Two colours are structural: background/paper and ink/text. Resolve them robustly —
+   by an explicit role first (pinned on rename), then the original id, then position —
+   so negative mode keeps swapping the right pair even after a rename or reorder. */
+function _structColor(role){
+  const cs=(profile()||{}).colors||[];
+  return cs.find(c=>c.role===role)
+      || cs.find(c=>c.id===(role==='bg'?'color_bg':'color_text'))
+      || cs[role==='bg'?0:1];
+}
+function bgId(){  const c=_structColor('bg');  return (c&&c.id)||'color_bg'; }
+function inkId(){ const c=_structColor('ink'); return (c&&c.id)||'color_text'; }
 /* negative mode (black screen, white text): swap the two base ink/paper colours wherever a
    colour is resolved (canvas preview + generated YAML). Other palette colours are left as-is. */
 function negColorId(id){
@@ -400,6 +407,8 @@ function renameColor(oldId, newId){
   if(p.colors.some(c=>c.id===newId)) return {ok:false, err:T('bestaat al','already exists')};
   const c=p.colors.find(x=>x.id===oldId); if(!c) return {ok:false, err:'not found'};
   pushUndo();
+  // pin the structural role before the id changes, so bg/ink stay resolvable by role
+  if(!c.role){ if(oldId===bgId()) c.role='bg'; else if(oldId===inkId()) c.role='ink'; }
   c.id=newId;
   const fix=o=>{ if(o && o.colorId===oldId) o.colorId=newId; };
   const scan=arr=>(arr||[]).forEach(el=>{
@@ -4065,7 +4074,7 @@ async function openIconPicker(cb, defaultQuery){
 let _modalClose=null;   // optional callback when the modal is dismissed (✕ / backdrop / any close)
 let _modalGuard=null;   // optional ()=>bool : truthy = modal has unsaved edits, confirm before closing
 function openModal(title, body, footerBtns, onClose){
-  $('#modal').classList.remove('wide');   // each modal starts at the default width; widen per-modal after opening
+  $('#modal').classList.remove('wide','narrow');   // each modal starts at the default width; widen/narrow per-modal after opening
   $('#modal-title').textContent=title; $('#modal-body').innerHTML=body;
   const f=$('#modal-footer'); f.innerHTML='';
   (footerBtns||[]).forEach(b=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||'ghost'); if(b.html) el.innerHTML=b.html; else el.textContent=b.label; el.onclick=b.onClick; if(b.style) el.style.cssText=b.style; if(b.id) el.id=b.id; if(b.title) el.title=b.title; f.appendChild(el); });
@@ -4212,18 +4221,28 @@ function openSources(){
    reference and the generated YAML use the id, so renaming flows through everywhere. */
 function openColors(){
   const p=profile(); if(!p) return;
-  const rows=p.colors.map((c,i)=>`
-    <div class="row" style="align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)">
-      <div style="background:${c.css};width:24px;height:24px;border-radius:5px;flex:none;border:1px solid var(--line)"></div>
+  // friendly colour name shown at the end of each row (by hex; bg/ink by role/position)
+  const NL={'#f4f1e9':'achtergrond','#1d1d1b':'inkt','#d6483b':'rood','#e3c81e':'geel','#2f5fd0':'blauw','#3a9e4a':'groen','#e08a2e':'oranje'};
+  const EN={'#f4f1e9':'background','#1d1d1b':'ink','#d6483b':'red','#e3c81e':'yellow','#2f5fd0':'blue','#3a9e4a':'green','#e08a2e':'orange'};
+  const bg=bgId(), ink=inkId();
+  const cname=(c)=>{ if(c.id===bg) return T('achtergrond','background'); if(c.id===ink) return T('inkt','ink');
+    const h=(c.css||'').toLowerCase(); return T(NL[h]||'', EN[h]||''); };
+  const rows=p.colors.map(c=>{
+    const nm=cname(c);
+    return `<div class="row" style="align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)">
+      <div style="background:${c.css};width:22px;height:22px;border-radius:5px;flex:none;border:1px solid var(--line)"></div>
       <input class="col-id" data-old="${attr(c.id)}" value="${attr(c.id)}" spellcheck="false" autocomplete="off"
-             style="flex:1;font-family:var(--mono)">
-      ${i<2?`<span class="tag" style="flex:none">${i===0?T('achtergrond','background'):T('inkt','ink')}</span>`:''}
-      <span class="mono hint" style="flex:none;min-width:64px;text-align:right">${attr(c.css)}</span>
-    </div>`).join('');
+             style="width:150px;flex:none;font-family:var(--mono);font-size:12px">
+      <div style="flex:1"></div>
+      ${nm?`<span class="tag" style="flex:none">${nm}</span>`:''}
+      <span class="mono hint" style="flex:none;width:62px;text-align:right">${attr(c.css)}</span>
+    </div>`;
+  }).join('');
   openModal(T('Kleuren hernoemen','Rename colours'),
-    `<div class="hint" style="margin-bottom:8px">${T('Hernoem een kleur-id; alle elementen én de gegenereerde YAML gaan automatisch mee. Toegestaan: a-z, 0-9 en _ (niet met een cijfer beginnen). De eerste twee zijn de vaste achtergrond- en inktkleur.','Rename a colour id; every element and the generated YAML follow automatically. Allowed: a-z, 0-9 and _ (not starting with a digit). The first two are the fixed background and ink colours.')}</div>
+    `<div class="hint" style="margin-bottom:10px">${T('Hernoem een kleur-id; alle elementen én de YAML gaan automatisch mee. Gebruik a-z, 0-9 en _ (niet met een cijfer beginnen).','Rename a colour id; every element and the YAML follow automatically. Use a-z, 0-9 and _ (not starting with a digit).')}</div>
      <div id="col-list">${rows}</div>`,
     [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ if(applyColorRenames()) closeModal(); }}]);
+  $('#modal').classList.add('narrow');
   // commit a single field on Enter (rest stay editable)
   $$('#col-list .col-id').forEach(inp=>inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); applyColorRenames(); } }));
 }
