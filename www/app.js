@@ -95,7 +95,7 @@ function mkColor(id,r,g,b,w,css,role){ const c={id,r,g,b,w,css}; if(role) c.role
 function colorSetFor(type){
   // structural colours carry a role so negative-mode/resolution survive renames
   const white=mkColor('background',0,0,0,0,'#f4f1e9','bg');
-  const black=mkColor('text',0,0,0,100,'#1d1d1b','ink');
+  const black=mkColor('black',0,0,0,100,'#1d1d1b','ink');
   if(type==='mono') return [white,black];
   if(type==='7c') return [white,black,
     mkColor('red',0,0,0,0,'#d6483b'), mkColor('yellow',0,0,0,0,'#e3c81e'),
@@ -395,7 +395,7 @@ function _structColor(role){
       || cs[role==='bg'?0:1];
 }
 function bgId(){  const c=_structColor('bg');  return (c&&c.id)||'background'; }
-function inkId(){ const c=_structColor('ink'); return (c&&c.id)||'text'; }
+function inkId(){ const c=_structColor('ink'); return (c&&c.id)||'black'; }
 /* negative mode (black screen, white text): swap the two base ink/paper colours wherever a
    colour is resolved (canvas preview + generated YAML). Other palette colours are left as-is. */
 function negColorId(id){
@@ -4226,7 +4226,7 @@ function openSources(){
     }; }
 }
 
-/* Colours editor — rename a colour id (e.g. background, text, red). Every element
+/* Colours editor — rename a colour id (e.g. background, black, red). Every element
    reference and the generated YAML use the id, so renaming flows through everywhere. */
 function openColors(){
   const p=profile(); if(!p) return;
@@ -5093,7 +5093,7 @@ function _lstr(a){ const m=/^"((?:[^"\\]|\\.)*)"$/.exec(String(a).trim())||/^'((
   return m? m[1].replace(/\\"/g,'"').replace(/\\\\/g,'\\') : null; }
 function _lid(a){ const m=/id\(\s*([A-Za-z_]\w*)\s*\)/.exec(String(a)); return m?m[1]:null; }
 function _lalign(args){ const m=/TextAlign::(\w+)/.exec(args.join(',')); return m?m[1]:'TOP_LEFT'; }
-function _lcolor(args, colors){ for(const a of args){ const id=String(a).trim(); if(colors.some(c=>c.id===id)) return id; } return (colors[0]&&colors[0].id)||'text'; }
+function _lcolor(args, colors){ for(const a of args){ const id=String(a).trim(); if(colors.some(c=>c.id===id)) return id; } return (colors[0]&&colors[0].id)||'black'; }
 function _lblank(type){
   return { id:uid(), type, name:elName(type), visible:true, x:0,y:0, colorId:inkId(), anchor:'TOP_LEFT',
     condition:{enabled:false,sourceId:'',op:'on',val:'',val2:'',

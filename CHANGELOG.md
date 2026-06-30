@@ -4,6 +4,11 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.112 — Default ink colour id is `black`
+
+The default ink/text colour id is now `black` (was `text`); the structural pair for
+new profiles is `background` + `black`. Existing profiles are unchanged.
+
 ## 3.9.111 — Friendlier default colour ids + palette icon
 
 - **New profiles use `background` and `text`** as the default structural colour ids
