@@ -376,6 +376,14 @@ function renameScreen(){
 function selected(){ return els().find(e=>e.id===selectedId) || null; }
 function fontById(id){ return profile().fonts.find(f=>f.id===id); }
 function colorById(id){ return profile().colors.find(c=>c.id===id); }
+/* Effective on-screen colour of a palette entry: in negative mode the bg/ink pair
+   is swapped, so a swatch shows what the colour actually renders as (e.g. color_bg
+   shows black, color_text shows white). Other colours are unchanged. */
+function effColorCss(c){
+  const p=profile();
+  if(p && p.negative){ const t=colorById(negColorId(c.id)); if(t) return t.css; }
+  return c.css;
+}
 /* Two colours are structural: background/paper and ink/text. Resolve them robustly —
    by an explicit role first (pinned on rename), then the original id, then position —
    so negative mode keeps swapping the right pair even after a rename or reorder. */
@@ -2555,7 +2563,7 @@ function renderInspector(){
         <div class="row tight"><div><label class="fld">${T('Lijntype','Line type')}</label><select data-trace="${i}.lineType">
           ${[['SOLID',T('Doorgetrokken','Solid')],['DOTTED',T('Gestippeld','Dotted')],['DASHED',T('Gestreept','Dashed')]].map(([o,lbl])=>`<option value="${o}" ${t.lineType===o?'selected':''}>${lbl}</option>`).join('')}</select></div>
           <div><label class="fld">${T('Dikte','Thickness')}</label><input data-trace="${i}.thickness" class="spin" type="number" min="1" max="10" value="${t.thickness??2}"></div></div>
-        <div><label class="fld">${T('Kleur','Colour')}</label><div class="swatches">${profile().colors.map(c=>`<div class="swatch ${c.id===negColorId(t.colorId)?'on':''}" data-trace-color="${i}.${c.id}" style="background:${c.css}" title="${c.id}"></div>`).join('')}</div></div>
+        <div><label class="fld">${T('Kleur','Colour')}</label><div class="swatches">${profile().colors.map(c=>`<div class="swatch ${c.id===negColorId(t.colorId)?'on':''}" data-trace-color="${i}.${c.id}" style="background:${effColorCss(c)}" title="${c.id}"></div>`).join('')}</div></div>
         <label class="toggle"><input type="checkbox" data-trace="${i}.continuous" ${t.continuous!==false?'checked':''}> ${T('Continu','Continuous')}</label>
         ${(gr.traces.length>1)?`<button class="btn ghost sm danger" data-trace-del="${i}">${T('Trace verwijderen','Remove trace')}</button>`:''}
       </div>`).join('')}
@@ -2619,7 +2627,7 @@ function colorSwatches(sel,key){
   // in negative mode the canvas swaps text/bg, so present + store colours in that swapped
   // space too (negColorId is a no-op when negative is off) → the highlighted swatch matches
   // what you actually see, and clicking white gives white.
-  return '<div class="swatches">'+profile().colors.map(c=>`<div class="swatch ${c.id===negColorId(sel)?'on':''}" data-color="${c.id}" data-key="${key}" style="background:${c.css}" title="${c.id}"></div>`).join('')+'</div>';
+  return '<div class="swatches">'+profile().colors.map(c=>`<div class="swatch ${c.id===negColorId(sel)?'on':''}" data-color="${c.id}" data-key="${key}" style="background:${effColorCss(c)}" title="${c.id}"></div>`).join('')+'</div>';
 }
 function srcOpts(sel,allowEmpty){
   let o = allowEmpty?`<option value="">— kies —</option>`:'';
@@ -4229,17 +4237,20 @@ function openColors(){
     const h=(c.css||'').toLowerCase(); return T(NL[h]||'', EN[h]||''); };
   const rows=p.colors.map(c=>{
     const nm=cname(c);
+    const css=effColorCss(c);   // shows the swapped colour while negative mode is on
     return `<div class="row" style="align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)">
-      <div style="background:${c.css};width:22px;height:22px;border-radius:5px;flex:none;border:1px solid var(--line)"></div>
+      <div style="background:${css};width:22px;height:22px;border-radius:5px;flex:none;border:1px solid var(--line)"></div>
       <input class="col-id" data-old="${attr(c.id)}" value="${attr(c.id)}" spellcheck="false" autocomplete="off"
              style="width:150px;flex:none;font-family:var(--mono);font-size:12px">
       <div style="flex:1"></div>
       ${nm?`<span class="tag" style="flex:none">${nm}</span>`:''}
-      <span class="mono hint" style="flex:none;width:62px;text-align:right">${attr(c.css)}</span>
+      <span class="mono hint" style="flex:none;width:62px;text-align:right">${attr(css)}</span>
     </div>`;
   }).join('');
+  const negHint = p.negative ? `<div class="hint" style="margin-bottom:8px;color:var(--accent)">${T('Negatief-modus staat aan: de swatch en hex tonen de geswapte kleur (achtergrond↔inkt).','Negative mode is on: the swatch and hex show the swapped colour (background↔ink).')}</div>` : '';
   openModal(T('Kleuren hernoemen','Rename colours'),
     `<div class="hint" style="margin-bottom:10px">${T('Hernoem een kleur-id; alle elementen én de YAML gaan automatisch mee. Gebruik a-z, 0-9 en _ (niet met een cijfer beginnen).','Rename a colour id; every element and the YAML follow automatically. Use a-z, 0-9 and _ (not starting with a digit).')}</div>
+     ${negHint}
      <div id="col-list">${rows}</div>`,
     [{label:T('Klaar','Done'),cls:'primary',onClick:()=>{ if(applyColorRenames()) closeModal(); }}]);
   $('#modal').classList.add('narrow');

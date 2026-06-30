@@ -4,6 +4,15 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.9.110 — Colour swatches follow negative mode
+
+In negative mode the swatches and the hex in the Colours dialog (and the colour
+pickers in the inspector) now show the **effective, swapped colour** — so
+`color_bg` shows black and `color_text` shows white, matching how they actually
+render — instead of always showing the defined white/black. A hint in the dialog
+points this out while negative mode is on. The stored ids and the generated YAML
+are unchanged; only the displayed colour follows the swap.
+
 ## 3.9.109 — Negative-mode fix + tidier Colours dialog
 
 - **Negative mode swaps the right colours again.** 3.9.108 resolved the
