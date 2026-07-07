@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESPHome E-ink Lambda Editor</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
+
+<!-- Fonts: IBM Plex (UI) + preview display fonts — bundled locally -->
+<link rel="stylesheet" href="vendor/fonts.css?v=3.9.112">
+
+<!-- Material Design Icons 7.4.47 — bundled locally -->
+<link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
+
+<!-- Libraries — bundled locally (no internet needed) -->
+<script src="vendor/konva.min.js"></script>
+<script src="vendor/js-yaml.min.js"></script>
+<script src="vendor/qrcode-generator.js"></script>
+
+<link rel="stylesheet" href="styles.css?v=3.9.112">
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ TOP BAR ============ -->
+  <header id="topbar">
+    <div class="brand">
+      <div class="logo"></div>
+      <div class="brand-text">
+        <b>E-ink Studio</b>
+        <span>Lambda Generator <span id="brand-version"></span></span>
+      </div>
+    </div>
+    <div class="profile-pick">
+      <select id="profile-select" data-i18n-title="Profiel" title="Profiel" style="width:auto;min-width:120px;max-width:160px"></select>
+      <button class="btn ghost sm" id="profile-new" data-i18n-title="Nieuw profiel" title="Nieuw profiel"><span class="mdi mdi-plus-thick mdi-c-nav"></span></button>
+      <button class="btn ghost sm" id="profile-settings" data-i18n-title="Profiel-instellingen" title="Profiel-instellingen"><span class="emo">⚙️</span></button>
+    </div>
+    <button class="btn ghost" id="btn-save" data-i18n-title="Profiel opslaan"><span class="emo">💾</span> <span data-i18n="Opslaan">Opslaan</span></button>
+    <button class="btn ghost" id="btn-load" data-i18n-title="Profiel openen"><span class="emo">📂</span> <span data-i18n="Openen">Openen</span></button>
+    <div class="topbar-sep"></div>
+    <div id="topbar-actions">
+      <div id="topbar-scroll">
+        <button class="btn ghost" id="btn-import" data-i18n-title="Code importeren (YAML en/of base64-herstelcode)"><span class="emo">📥</span> <span data-i18n="Code importeren">Code importeren</span></button>
+        <div class="topbar-sep"></div>
+        <a href="files.html" class="btn ghost" data-i18n-title="Bestandsbeheer" title="Bestandsbeheer"><span class="emo">📁</span> <span data-i18n="Bestanden">Bestanden</span></a>
+        <button class="btn ghost" id="btn-fonts" data-i18n-title="Fonts beheren"><span class="mdi mdi-format-font mdi-c-nav"></span> Fonts</button>
+        <div class="topbar-sep"></div>
+        <button class="btn ghost" id="btn-sources" data-i18n-title="Waardebronnen (sensoren) beheren"><span class="mdi mdi-database mdi-c-nav"></span> <span data-i18n="Bronnen">Bronnen</span></button>
+        <button class="btn ghost" id="btn-colors" data-i18n-title="Kleuren hernoemen"><span class="emo">🎨</span> <span data-i18n="Kleuren">Kleuren</span></button>
+        <button class="btn ghost" id="btn-live" data-i18n-title="Live data" title="Live data">○ Live</button>
+        <button class="btn ghost" id="btn-refresh" data-i18n-title="Vernieuw live data nu" title="Vernieuw live data nu"><span class="emo">♻️</span></button>
+        <select id="live-interval" data-i18n-title="Live data automatisch vernieuwen" title="Live data automatisch vernieuwen" style="width:auto;padding:4px 6px">
+          <option value="0" data-i18n="Auto-vernieuwen uit">Auto-vernieuwen uit</option>
+          <option value="1" selected>1 min</option>
+          <option value="2">2 min</option>
+          <option value="5">5 min</option>
+          <option value="10">10 min</option>
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+          <option value="custom" data-i18n="Aangepast…">Aangepast…</option>
+        </select>
+        <div class="topbar-sep"></div>
+        <button class="btn primary" id="btn-code" data-i18n-title="Genereer de ESPHome-YAML"><svg class="codeic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="18" rx="4" fill="#3e4a54" stroke="#232a30" stroke-width="1.5"/><g fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9.5 6.5 12 9 14.5"/><path d="M15 9.5 17.5 12 15 14.5"/><path d="M13.6 8.2 10.4 15.8"/></g></svg> <span data-i18n="Genereer YAML">Genereer YAML</span></button>
+      </div>
+      <div id="tb-fade-l" class="ctb-fade tb-fade fade-l"><button id="tb-arrow-l" class="ctb-arrow" tabindex="-1"><span class="mdi mdi-chevron-left"></span></button></div>
+      <div id="tb-fade-r" class="ctb-fade tb-fade fade-r"><button id="tb-arrow-r" class="ctb-arrow" tabindex="-1"><span class="mdi mdi-chevron-right"></span></button></div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="topbar-sep"></div>
+      <button class="btn ghost" id="btn-theme" data-i18n-title="Thema" title="Thema"><svg class="yny" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47" fill="#e8ebf1" stroke="currentColor" stroke-width="2.5" stroke-opacity=".5"/><path d="M50,3 a47,47 0 0,1 0,94 a23.5,23.5 0 0,1 0,-47 a23.5,23.5 0 0,0 0,-47z" fill="#3a3f47"/><circle cx="50" cy="26.5" r="6" fill="#e8ebf1"/><circle cx="50" cy="73.5" r="6" fill="#3a3f47"/></svg><span>Dark</span></button>
+      <button class="btn ghost" id="btn-lang" data-lang-toggle onclick="toggleLang()" title="Taal / Language"><svg class="flag" viewBox="0 0 60 30" aria-hidden="true"><clipPath id="ujs"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="ujt"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#ujs)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#ujt)" stroke="#c8102e" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#c8102e" stroke-width="6"/></g></svg></button>
+    </div>
+  </header>
+
+  <!-- ============ LEFT: palette + layers ============ -->
+  <aside id="left">
+    <div class="section">
+      <h3 data-i18n="Elementen toevoegen">Elementen toevoegen</h3>
+    </div>
+    <div class="palette" id="palette">
+      <div class="tool" data-add="text" data-i18n-title="Statische tekst"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M5 6h14M12 6v12M9 18h6"/></svg><span data-i18n="Tekst">Tekst</span></div>
+      <div class="tool" data-add="value" data-i18n-title="Sensorwaarde met format & transform"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M9 4 7 20M17 4 15 20M4 9h16M3.5 15h16"/></svg><span data-i18n="Waarde">Waarde</span></div>
+      <div class="tool" data-add="icon" data-i18n-title="Material Design Icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><path d="M9 10h.01M15 10h.01M9 15c1.5 1 4.5 1 6 0"/></svg><span data-i18n="MDI-icoon">MDI-icoon</span></div>
+      <div class="tool" data-add="line" data-i18n-title="Lijn"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M4 20 20 4"/></svg><span data-i18n="Lijn">Lijn</span></div>
+      <div class="tool" data-add="rect" data-i18n-title="Rechthoek (open of gevuld)"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><rect x="4" y="6" width="16" height="12" rx="1"/></svg><span data-i18n="Rechthoek">Rechthoek</span></div>
+      <div class="tool" data-add="circle" data-i18n-title="Cirkel / ovaal"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><circle cx="12" cy="12" r="8"/></svg><span data-i18n="Cirkel">Cirkel</span></div>
+      <div class="tool" data-add="triangle" data-i18n-title="Driehoek"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M12 4 21 20 3 20Z"/></svg><span data-i18n="Driehoek">Driehoek</span></div>
+      <div class="tool" data-add="polygon" data-i18n-title="Regelmatige veelhoek"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M12 3 21 9.5 17.5 20 6.5 20 3 9.5Z"/></svg><span data-i18n="Veelhoek">Veelhoek</span></div>
+      <div class="tool" data-add="ring" data-i18n-title="Ring (gevuld)"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/></svg><span data-i18n="Ring">Ring</span></div>
+      <div class="tool" data-add="gauge" data-i18n-title="Meter / voortgang"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 15l4-3"/></svg><span data-i18n="Meter">Meter</span></div>
+      <div class="tool" data-add="qr" data-i18n-title="QR-code"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2M18 18h2M16 20h4"/></svg><span data-i18n="QR-code">QR-code</span></div>
+      <div class="tool" data-add="graph" data-i18n-title="Grafiek (sensor-history)"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M4 4v16h16"/><path d="M7 15l3-4 3 2 4-6"/></svg><span data-i18n="Grafiek">Grafiek</span></div>
+      <div class="tool" data-add="clock" data-i18n-title="Refresh-tijdstempel"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg><span data-i18n="Refresh Time">Refresh Time</span></div>
+      <div class="tool" data-add="wifi" data-i18n-title="WiFi-signaal icoon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M2 8c6-5 14-5 20 0M5 12c4-3.5 10-3.5 14 0M8.5 15.5c2-1.8 5-1.8 7 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg><span data-i18n="WiFi-icoon">WiFi-icoon</span></div>
+    </div>
+
+    <div class="section" style="flex:1; display:flex; flex-direction:column;">
+      <h3><span data-i18n="Lagen">Lagen</span> <span id="layer-count" class="tag">0</span></h3>
+      <div class="layers" id="layers"></div>
+    </div>
+  </aside>
+
+  <!-- ============ CENTER: canvas ============ -->
+  <section id="center">
+    <div id="canvas-toolbar">
+      <select id="screen-select" data-i18n-title="Scherm" title="Scherm" style="width:auto;padding:3px 6px"></select>
+      <span id="screen-single" style="display:none;padding:3px 8px;color:var(--txt-dim);font-weight:500;font-size:12px"></span>
+      <div class="grp" id="screen-nav" style="margin-left:4px">
+        <button class="btn ghost sm" id="scr-first" data-i18n-title="Eerste scherm" title="Eerste scherm"><span class="mdi mdi-page-first mdi-c-nav"></span></button>
+        <button class="btn ghost sm" id="scr-prev" data-i18n-title="Vorig scherm" title="Vorig scherm"><span class="mdi mdi-chevron-left mdi-c-nav"></span></button>
+        <button class="btn ghost sm" id="scr-next" data-i18n-title="Volgend scherm" title="Volgend scherm"><span class="mdi mdi-chevron-right mdi-c-nav"></span></button>
+        <button class="btn ghost sm" id="scr-last" data-i18n-title="Laatste scherm" title="Laatste scherm"><span class="mdi mdi-page-last mdi-c-nav"></span></button>
+      </div>
+      <div class="topbar-sep" id="screen-nav-sep"></div>
+      <div class="grp" id="screen-grp">
+        <button class="btn ghost sm" id="scr-add" data-i18n-title="Scherm toevoegen"><span class="mdi mdi-plus-thick mdi-c-nav"></span></button>
+        <button class="btn ghost sm" id="scr-dup" data-i18n-title="Scherm dupliceren"><span class="emo">🗂️</span></button>
+        <button class="btn ghost sm" id="scr-ren" data-i18n-title="Scherm hernoemen"><span class="emo">📝</span></button>
+        <button class="btn ghost sm" id="scr-del" data-i18n-title="Scherm verwijderen"><img class="bin" src="img/recyclebin.png" alt="" aria-hidden="true"></button>
+      </div>
+      <div class="topbar-spacer" style="flex:1"></div>
+      <div class="grp" id="align-grp">
+        <button class="btn ghost sm" id="al-left" data-i18n-title="Links uitlijnen"><span class="mdi mdi-format-align-left mdi-c-align"></span></button>
+        <button class="btn ghost sm" id="al-hcenter" data-i18n-title="Horizontaal centreren"><span class="mdi mdi-format-align-center mdi-c-align"></span></button>
+        <button class="btn ghost sm" id="al-right" data-i18n-title="Rechts uitlijnen"><span class="mdi mdi-format-align-right mdi-c-align"></span></button>
+        <button class="btn ghost sm" id="al-top" data-i18n-title="Boven uitlijnen"><span class="mdi mdi-format-vertical-align-top mdi-c-align"></span></button>
+        <button class="btn ghost sm" id="al-vcenter" data-i18n-title="Verticaal centreren"><span class="mdi mdi-format-vertical-align-center mdi-c-align"></span></button>
+        <button class="btn ghost sm" id="al-bottom" data-i18n-title="Onder uitlijnen"><span class="mdi mdi-format-vertical-align-bottom mdi-c-align"></span></button>
+      </div>
+      <div class="topbar-sep"></div>
+      <div class="grp">
+        <button class="btn ghost sm" id="btn-bring-front" data-i18n-title="Naar voren (bovenste laag)"><span class="mdi mdi-arrange-bring-to-front mdi-c-layer"></span></button>
+        <button class="btn ghost sm" id="btn-step-forward" data-i18n-title="Één stap naar voren"><span class="mdi mdi-arrange-bring-forward mdi-c-layer"></span></button>
+        <button class="btn ghost sm" id="btn-step-back" data-i18n-title="Één stap naar achteren"><span class="mdi mdi-arrange-send-backward mdi-c-layer"></span></button>
+        <button class="btn ghost sm" id="btn-bring-back" data-i18n-title="Naar achteren (onderste laag)"><span class="mdi mdi-arrange-send-to-back mdi-c-layer"></span></button>
+      </div>
+      <div class="topbar-sep"></div>
+      <div class="grp">
+        <button class="btn ghost sm" id="btn-undo" data-i18n-title="Ongedaan maken (Ctrl+Z)"><span class="mdi mdi-undo mdi-c-nav"></span></button>
+        <button class="btn ghost sm" id="btn-redo" data-i18n-title="Opnieuw (Ctrl+Y)"><span class="mdi mdi-redo mdi-c-nav"></span></button>
+        <button class="btn ghost sm" id="btn-dup" data-i18n-title="Dupliceren (Ctrl+D)"><span class="emo">🗂️</span></button>
+        <button class="btn ghost sm" id="btn-copy-el" data-i18n-title="Kopiëren (Ctrl+C)"><span class="emo">📑</span></button>
+        <button class="btn ghost sm" id="btn-cut-el" data-i18n-title="Knippen (Ctrl+X)"><span class="emo">✂️</span></button>
+        <button class="btn ghost sm" id="btn-paste-el" data-i18n-title="Plakken (Ctrl+V)"><span class="emo">📋</span></button>
+        <button class="btn ghost sm danger" id="btn-del" data-i18n-title="Element verwijderen (Del)"><img class="bin" src="img/recyclebin.png" alt="" aria-hidden="true"></button>
+      </div>
+    </div>
+    <div id="ctb-fade-l" class="ctb-fade fade-l"><button id="ctb-arrow-l" class="ctb-arrow" tabindex="-1"><span class="mdi mdi-chevron-left"></span></button></div>
+    <div id="ctb-fade-r" class="ctb-fade fade-r"><button id="ctb-arrow-r" class="ctb-arrow" tabindex="-1"><span class="mdi mdi-chevron-right"></span></button></div>
+
+    <div id="stage-wrap">
+      <div id="ruler-corner"></div>
+      <div id="ruler-x"></div>
+      <div id="ruler-y"></div>
+      <div id="canvas-area">
+        <div id="stage-frame">
+          <div id="konva-host"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- canvas status bar (zoom | grid + ruler | snap) -->
+    <div id="canvas-statusbar">
+      <!-- zoom group -->
+      <div class="grp">
+        <button class="btn ghost sm" id="zoom-out" data-i18n-title="Uitzoomen"><span class="mdi mdi-minus-thick mdi-c-nav"></span></button>
+        <input id="zoom-val" type="text" value="100%" data-i18n-title="Zoom (handmatig invullen)" title="Zoom — klik om handmatig in te vullen" style="width:48px;text-align:center;font-family:var(--mono);font-size:11px;padding:1px 4px">
+        <button class="btn ghost sm" id="zoom-in" data-i18n-title="Inzoomen"><span class="mdi mdi-plus-thick mdi-c-nav"></span></button>
+        <button class="btn ghost sm" id="zoom-fit" data-i18n-title="Passend in beeld" title="Passend"><span class="mdi mdi-fit-to-page-outline mdi-c-nav"></span></button>
+      </div>
+      <div class="sb-sep"></div>
+      <!-- grid + ruler group -->
+      <label class="toggle" data-i18n-title="Toon of verberg het raster"><input type="checkbox" id="tg-grid" checked> <span data-i18n="Raster">Raster</span></label>
+      <select id="grid-size" data-i18n-title="Rastergrootte" title="Rastergrootte" style="width:auto;padding:2px 5px;font-size:11px">
+        <option value="8">8 px</option>
+        <option value="10">10 px</option>
+        <option value="16" selected>16 px</option>
+        <option value="20">20 px</option>
+        <option value="25">25 px</option>
+        <option value="40">40 px</option>
+      </select>
+      <label class="toggle" data-i18n-title="Toon of verberg de linealen"><input type="checkbox" id="tg-ruler" checked> <span data-i18n="Lineaal">Lineaal</span></label>
+      <div class="sb-sep"></div>
+      <!-- snap group -->
+      <label class="toggle" data-i18n-title="Elementen tijdens slepen vastklikken op het raster"><input type="checkbox" id="tg-snap" checked> <span data-i18n="Snap raster">Snap raster</span></label>
+      <label class="toggle" data-i18n-title="Elementen tijdens slepen vastklikken op de hulplijnen"><input type="checkbox" id="tg-snap-guides"> <span data-i18n="Snap lineaal">Snap lineaal</span></label>
+      <div style="flex:1"></div>
+      <span id="screen-rot" data-i18n-title="Schermrotatie" title="Schermrotatie" style="color:var(--txt-dim);font-size:11px;white-space:nowrap"></span>
+      <div class="sb-sep" id="page-sep"></div>
+      <span id="page-num" data-i18n-title="Huidige pagina / scherm" title="Huidige pagina / scherm" style="color:var(--txt-dim);font-size:11px;white-space:nowrap"></span>
+    </div>
+
+    <!-- slide-in code drawer -->
+    <div id="code-drawer">
+      <div id="code-resizer" data-i18n-title="Sleep om breder/smaller te maken" title="Sleep om breder/smaller te maken"></div>
+      <header>
+        <b data-i18n="Gegenereerde YAML">Gegenereerde YAML</b>
+        <label class="toggle" data-i18n-title="Voegt onderaan een herstelcode toe. Plak die YAML later terug via 'YAML importeren' om je volledige ontwerp te herstellen." title="Voegt onderaan een herstelcode toe."><input type="checkbox" id="code-b64" checked> <span data-i18n="Base64 Herstel Code">Base64 Herstel Code</span></label>
+        <label class="toggle" style="margin-right:auto" data-i18n-title="Voegt bovenaan een complete device-config toe (substitutions, esphome, esp32, wifi, ota, api…). De on_boot wordt in dat esphome-blok samengevoegd." title="Volledige device-config bovenaan toevoegen"><input type="checkbox" id="code-boilerplate"> <span data-i18n="Standaard config">Standaard config</span></label>
+        <button class="btn sm" id="code-open" data-i18n-title="Een opgeslagen YAML uit projects/ openen en terugzetten" title="Een opgeslagen YAML uit projects/ openen" data-i18n="Openen">Openen</button>
+        <button class="btn sm" id="code-save" data-i18n-title="Deze YAML opslaan in projects/<profiel>.yaml" title="Deze YAML opslaan in projects/" data-i18n="Opslaan">Opslaan</button>
+        <button class="btn sm" id="code-copy" data-i18n="Kopieer">Kopieer</button>
+        <button class="btn sm" id="code-download" data-i18n="Download .yaml">Download .yaml</button>
+        <button class="btn ghost sm" id="code-close"><span class="emo">❌</span></button>
+      </header>
+      <pre id="code-out"></pre>
+    </div>
+  </section>
+
+  <!-- ============ RIGHT: inspector ============ -->
+  <aside id="right">
+    <div class="section"><h3 data-i18n="Elementen inspector">Elementen inspector</h3></div>
+    <div id="inspector">
+      <div class="inspector-empty">Selecteer een element op het canvas<br>of voeg er een toe.</div>
+    </div>
+  </aside>
+</div>
+
+<!-- ============ MODALS ============ -->
+<div class="modal-back" id="modal-back">
+  <div class="modal" id="modal">
+    <header><b id="modal-title">Titel</b><button class="btn ghost sm" id="modal-x"><span class="emo">❌</span></button></header>
+    <div class="mbody" id="modal-body"></div>
+    <footer id="modal-footer"></footer>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="ctxmenu" class="ctxmenu"></div>
+
+<script src="app.js?v=3.9.112"></script>
+<script src="lang.js?v=3.9.112"></script>
+<script src="theme.js?v=3.9.112"></script>
+</body>
+</html>

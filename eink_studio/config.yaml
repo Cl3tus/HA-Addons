@@ -1,0 +1,116 @@
+name: E-ink Studio
+version: "3.9.112"
+slug: eink_studio
+description: Visual editor for ESPHome e-ink displays — design your layout and generate the lambda + YAML.
+url: https://github.com/Cl3tus/HA-Eink-Studio-App
+arch:
+  - aarch64
+  - amd64
+init: false
+
+# --- Ingress: verschijnt in de HA-zijbalk, HA regelt de auth ---
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:image-edit
+panel_title: E-ink Studio
+panel_admin: true
+
+# --- Live preview: lees-toegang tot HA-states via de Supervisor proxy ---
+homeassistant_api: true
+hassio_api: false
+
+# Projects, fonts and profiles are stored in the add-on config folder,
+# reachable over SAMBA at \\<HA-IP>\addon_configs\<slug>.
+map:
+  - addon_config:rw
+
+# --- User options (Configuration tab; rendered as dropdowns) ---
+#   Language : Auto (follow HA) | Nederlands | English
+#   Theme    : Auto (follow HA) | Light | Dark
+# Labels/descriptions are translated per HA language via translations/*.yaml.
+# Options are grouped into nested sections (Interface / Live data / Logging) so
+# the Configuration tab renders them under headers. Section titles + field
+# labels are translated via translations/*.yaml (configuration.<group>.fields.*).
+options:
+  interface:
+    language: Auto
+    theme: Auto
+  live_data:
+    live_on_start: true
+    live_interval: 1
+    hide_unavailable: false
+    # Default: every domain enabled (alphabetical). Uncheck what you don't want.
+    entity_domains:
+      - ai_task
+      - air_quality
+      - alarm_control_panel
+      - assist_satellite
+      - automation
+      - binary_sensor
+      - button
+      - calendar
+      - camera
+      - climate
+      - conversation
+      - counter
+      - cover
+      - date
+      - datetime
+      - device_tracker
+      - event
+      - fan
+      - geo_location
+      - group
+      - humidifier
+      - image
+      - image_processing
+      - input_boolean
+      - input_button
+      - input_datetime
+      - input_number
+      - input_select
+      - input_text
+      - lawn_mower
+      - light
+      - lock
+      - media_player
+      - notify
+      - number
+      - person
+      - remote
+      - scene
+      - schedule
+      - script
+      - select
+      - sensor
+      - siren
+      - stt
+      - sun
+      - switch
+      - tag
+      - text
+      - time
+      - timer
+      - todo
+      - tts
+      - update
+      - vacuum
+      - valve
+      - wake_word
+      - water_heater
+      - weather
+      - zone
+  logging:
+    debug: false
+schema:
+  interface:
+    language: list(Auto|Nederlands|English)
+    theme: list(Auto|Light|Dark)
+  live_data:
+    live_on_start: bool
+    live_interval: list(0|1|2|5|10|15|30)
+    hide_unavailable: bool
+    entity_domains:
+      - list(ai_task|air_quality|alarm_control_panel|assist_satellite|automation|binary_sensor|button|calendar|camera|climate|conversation|counter|cover|date|datetime|device_tracker|event|fan|geo_location|group|humidifier|image|image_processing|input_boolean|input_button|input_datetime|input_number|input_select|input_text|lawn_mower|light|lock|media_player|notify|number|person|remote|scene|schedule|script|select|sensor|siren|stt|sun|switch|tag|text|time|timer|todo|tts|update|vacuum|valve|wake_word|water_heater|weather|zone)
+  logging:
+    debug: bool

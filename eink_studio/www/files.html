@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bestandsbeheer — E-ink Studio</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23f4f1e9'/><rect x='3' y='4' width='10' height='1.5' fill='%231d1d1b'/><rect x='3' y='7' width='6' height='1.5' fill='%23d6483b'/><rect x='3' y='10' width='8' height='1.5' fill='%231d1d1b'/></svg>">
+<link rel="stylesheet" href="vendor/fonts.css?v=3.9.112">
+<link rel="stylesheet" href="vendor/mdi/css/materialdesignicons.min.css">
+<link rel="stylesheet" href="styles.css?v=3.9.112">
+<style>
+  body { overflow: hidden; }
+
+  #fe-app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Header */
+  #fe-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 14px;
+    height: 56px;
+    background: var(--panel);   /* #1c1c1c dark / #ffffff light — matches HA */
+    border-bottom: 1px solid var(--line);
+    flex: none;
+  }
+
+  /* Breadcrumb */
+  #fe-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-family: var(--mono);
+    font-size: 12px;
+    overflow: hidden;
+    max-width: 500px;
+    flex-shrink: 1;
+  }
+  .crumb {
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--accent);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .crumb:hover { background: var(--panel-2); }
+  .crumb.last { color: var(--txt); cursor: default; }
+  .crumb.last:hover { background: transparent; }
+  .crumb-sep { color: var(--txt-faint); padding: 0 1px; flex-shrink: 0; }
+
+  /* SAMBA info badge */
+  #samba-wrap {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--txt-dim);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  #samba-wrap .mdi { color: var(--accent); font-size: 14px; }
+
+  /* Toolbar */
+  #fe-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-2);
+    flex: none;
+  }
+
+  /* File table */
+  #fe-main {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+  }
+  #fe-main.drag-over {
+    outline: 2px dashed var(--accent);
+    outline-offset: -6px;
+    background: rgba(232,161,58,.04);
+  }
+
+  .fe-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .fe-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg);
+    text-align: left;
+    padding: 7px 10px 6px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    color: var(--txt-dim);
+    font-weight: 500;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+    user-select: none;
+  }
+  .fe-table tbody tr { cursor: pointer; }
+  .fe-table tbody tr:hover td { background: var(--panel-2); }
+  .fe-table tbody tr.sel td { background: var(--panel-2); box-shadow: inset 2px 0 0 var(--accent); }
+  .fe-table tbody tr.sel:hover td { background: var(--line); }
+  .fe-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+  }
+  .fe-table td.fe-check { width: 30px; text-align: center; padding-right: 0; }
+  .fe-table td.fe-check input { accent-color: var(--accent); cursor: pointer; }
+  .fe-table td.fe-icon { width: 36px; text-align: center; font-size: 17px; padding-right: 4px; }
+  .fe-name { font-size: 13px; }
+  .fe-name.is-dir { color: var(--accent); font-weight: 500; }
+  .fe-name.is-up  { color: var(--txt-faint); }
+  .fe-size, .fe-date {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--txt-dim);
+    white-space: nowrap;
+  }
+  .fe-size { width: 90px; }
+  .fe-date { width: 148px; }
+
+  #fe-empty {
+    display: none;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--txt-faint);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  /* Dialog */
+  #fe-dialog-back {
+    position: fixed;
+    inset: 0;
+    background: rgba(6,7,10,.72);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    backdrop-filter: blur(3px);
+  }
+  #fe-dialog-back.open { display: flex; }
+  #fe-dialog {
+    background: var(--panel);
+    border: 1px solid var(--line-2);
+    border-radius: 10px;
+    width: min(420px, 90vw);
+    padding: 20px 20px 16px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.55);
+  }
+  #fe-dialog h3 { margin: 0 0 13px; font-size: 14px; font-weight: 600; }
+  #fe-dialog input { width: 100%; margin-bottom: 13px; }
+  #fe-dialog .hint { font-size: 11px; color: var(--txt-faint); margin: -8px 0 12px; }
+  .dlg-btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* Text editor overlay */
+  #fe-editor-back {
+    position: fixed;
+    inset: 0;
+    background: rgba(6,7,10,.72);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 210;
+    backdrop-filter: blur(3px);
+  }
+  #fe-editor-back.open { display: flex; }
+  #fe-editor {
+    background: var(--panel);
+    border: 1px solid var(--line-2);
+    border-radius: 10px;
+    width: min(900px, 94vw);
+    height: min(80vh, 720px);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 30px 80px rgba(0,0,0,.6);
+    overflow: hidden;
+  }
+  #fe-editor header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line);
+    flex: none;
+  }
+  #fe-editor header b {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #fe-editor-area {
+    flex: 1;
+    width: 100%;
+    border: 0;
+    resize: none;
+    padding: 14px 16px;
+    background: var(--bg-2);
+    color: var(--txt);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.55;
+    tab-size: 2;
+    outline: none;
+    white-space: pre;
+    overflow: auto;
+  }
+  #fe-editor-dirty {
+    color: var(--accent);
+    font-size: 11px;
+    font-family: var(--mono);
+    min-width: 8px;
+  }
+
+  /* Status bar */
+  #fe-statusbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 14px;
+    border-top: 1px solid var(--line);
+    background: var(--bg-2);
+    flex: none;
+    font-size: 11px;
+    color: var(--txt-faint);
+    font-family: var(--mono);
+  }
+</style>
+</head>
+<body><script>
+(function(){
+  try{var p=document.createElement('div');p.style.cssText='background-color:Canvas;color-scheme:light dark;position:fixed;left:-9999px;width:1px;height:1px;';document.documentElement.appendChild(p);var m=getComputedStyle(p).backgroundColor.match(/[\d.]+/g);p.remove();if(m&&m.length>=3){var l=(0.299*+m[0]+0.587*+m[1]+0.114*+m[2])/255;document.body.classList.toggle('light',l>=0.5);return;}}catch(e){}
+  if(!matchMedia('(prefers-color-scheme:dark)').matches)document.body.classList.add('light');
+})();
+</script>
+<div id="fe-app">
+
+  <!-- ===== HEADER ===== -->
+  <header id="fe-header">
+    <div class="brand">
+      <div class="logo"></div>
+      <b>E-ink Studio</b>
+    </div>
+    <div class="topbar-sep"></div>
+    <span style="color:var(--txt-dim);font-size:12px;white-space:nowrap" data-i18n="Bestandsbeheer">Bestandsbeheer</span>
+    <div class="topbar-sep"></div>
+    <nav id="fe-breadcrumb"></nav>
+    <div class="topbar-spacer"></div>
+    <a href="index.html" class="btn ghost sm"><span class="mdi mdi-arrow-left-bold mdi-c-nav"></span> <span data-i18n="Terug naar editor">Terug naar editor</span></a>
+  </header>
+
+  <!-- ===== TOOLBAR ===== -->
+  <div id="fe-toolbar">
+    <button class="btn sm" id="btn-upload" data-i18n-title="Bestanden uploaden naar deze map"><span class="emo">📤</span> <span data-i18n="Uploaden">Uploaden</span></button>
+    <button class="btn ghost sm" id="btn-mkdir" data-i18n-title="Nieuwe map aanmaken"><span class="emo">📁</span> <span data-i18n="Nieuwe map">Nieuwe map</span></button>
+    <div class="topbar-sep"></div>
+    <button class="btn ghost sm" id="btn-rename" data-i18n-title="Geselecteerd item hernoemen" disabled><span class="emo">📝</span> <span data-i18n="Hernoemen">Hernoemen</span></button>
+    <button class="btn ghost sm" id="btn-move" data-i18n-title="Verplaatsen naar een andere map" disabled><span class="emo">📦</span> <span data-i18n="Verplaatsen">Verplaatsen</span></button>
+    <button class="btn ghost sm" id="btn-download" data-i18n-title="Bestand downloaden" disabled><span class="emo">📥</span> <span data-i18n="Downloaden">Downloaden</span></button>
+    <button class="btn ghost sm danger" id="btn-delete" data-i18n-title="Geselecteerde items verwijderen (Del)" disabled><img class="bin" src="img/recyclebin.png" alt="" aria-hidden="true"> <span data-i18n="Verwijderen">Verwijderen</span></button>
+    <div class="topbar-spacer"></div>
+    <button class="btn ghost sm" id="btn-refresh" data-i18n-title="Vernieuwen (F5)" title="Vernieuwen (F5)"><span class="emo">♻️</span></button>
+    <button class="btn ghost sm" id="btn-theme-fe" data-i18n-title="Thema" title="Thema"><svg class="yny" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47" fill="#e8ebf1" stroke="currentColor" stroke-width="2.5" stroke-opacity=".5"/><path d="M50,3 a47,47 0 0,1 0,94 a23.5,23.5 0 0,1 0,-47 a23.5,23.5 0 0,0 0,-47z" fill="#3a3f47"/><circle cx="50" cy="26.5" r="6" fill="#e8ebf1"/><circle cx="50" cy="73.5" r="6" fill="#3a3f47"/></svg><span>Dark</span></button>
+    <button class="btn ghost sm" id="btn-lang-fe" data-lang-toggle onclick="toggleLang()" title="Taal / Language"><svg class="flag" viewBox="0 0 60 30" aria-hidden="true"><clipPath id="ujs"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="ujt"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#ujs)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#ujt)" stroke="#c8102e" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#c8102e" stroke-width="6"/></g></svg></button>
+  </div>
+
+  <!-- ===== FILE LIST ===== -->
+  <main id="fe-main">
+    <table class="fe-table">
+      <thead>
+        <tr>
+          <th style="width:30px;text-align:center"><input type="checkbox" id="fe-selall" data-i18n-title="Alles selecteren" title="Alles selecteren"></th>
+          <th></th>
+          <th data-i18n="Naam">Naam</th>
+          <th class="fe-size" data-i18n="Grootte">Grootte</th>
+          <th class="fe-date" data-i18n="Gewijzigd">Gewijzigd</th>
+        </tr>
+      </thead>
+      <tbody id="fe-tbody"></tbody>
+    </table>
+    <div id="fe-empty">
+      <span style="font-size:32px;display:block;margin-bottom:8px">📂</span>
+      Deze map is leeg.<br>
+      <span style="font-size:11px">Sleep bestanden hierheen of gebruik <b>Uploaden</b>.</span>
+    </div>
+  </main>
+
+  <!-- ===== STATUS BAR ===== -->
+  <div id="fe-statusbar">
+    <span id="fe-status"></span>
+    <span id="fe-sel-status"></span>
+  </div>
+
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="upload-input" multiple style="display:none">
+
+<!-- Dialog -->
+<div id="fe-dialog-back">
+  <div id="fe-dialog">
+    <h3 id="dlg-title"></h3>
+    <p class="hint" id="dlg-hint" style="display:none"></p>
+    <input type="text" id="dlg-input" autocomplete="off" spellcheck="false">
+    <div class="dlg-btns">
+      <button class="btn ghost sm" id="dlg-cancel">Annuleren</button>
+      <button class="btn primary sm" id="dlg-ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Text editor -->
+<div id="fe-editor-back">
+  <div id="fe-editor">
+    <header>
+      <span class="mdi mdi-file-edit-outline" style="color:var(--accent);font-size:18px"></span>
+      <b id="fe-editor-name"></b>
+      <span id="fe-editor-dirty"></span>
+      <button class="btn ghost sm" id="fe-editor-undo" title="Undo (Ctrl+Z)" disabled><span class="mdi mdi-undo mdi-c-nav"></span></button>
+      <button class="btn ghost sm" id="fe-editor-redo" title="Redo (Ctrl+Y)" disabled><span class="mdi mdi-redo mdi-c-nav"></span></button>
+      <button class="btn primary sm" id="fe-editor-save" data-i18n="Opslaan">Opslaan</button>
+      <button class="btn ghost sm" id="fe-editor-close"><span class="emo">❌</span></button>
+    </header>
+    <textarea id="fe-editor-area" spellcheck="false" autocomplete="off" wrap="off"></textarea>
+  </div>
+</div>
+
+<!-- Font preview -->
+<div id="fe-fontprev-back" style="position:fixed;inset:0;background:rgba(6,7,10,.72);display:none;align-items:center;justify-content:center;z-index:210;backdrop-filter:blur(3px)">
+  <div style="background:var(--panel);border:1px solid var(--line-2);border-radius:10px;width:min(720px,94vw);max-height:84vh;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden">
+    <header style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);flex:none">
+      <span class="mdi mdi-format-font" style="color:var(--accent);font-size:18px"></span>
+      <b id="fe-fontprev-name" style="flex:1;font-family:var(--mono);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
+      <button class="btn ghost sm" id="fe-fontprev-close"><span class="emo">❌</span></button>
+    </header>
+    <div id="fe-fontprev-body" style="padding:18px 18px;overflow:auto"></div>
+  </div>
+</div>
+
+<!-- Context menu -->
+<div id="ctxmenu" class="ctxmenu"></div>
+
+<!-- Toast -->
+<div class="toast" id="fe-toast"></div>
+
+<script src="files.js?v=3.9.112"></script>
+<script src="lang.js?v=3.9.112"></script>
+<script src="theme.js?v=3.9.112"></script>
+</body>
+</html>

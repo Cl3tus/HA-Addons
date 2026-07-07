@@ -1,0 +1,731 @@
+/* ============================================================
+   ESPHome E-ink Lambda Editor — styles
+   Aesthetic: dark technical "instrument", paper-white canvas,
+   IBM Plex Sans (UI) + IBM Plex Mono (coords/code), amber + tri-color red accents.
+   ============================================================ */
+
+/* ===== Dark theme — Home Assistant style (default) =====
+   HA-like neutral greys + amber/orange accent. Tri-colour red & e-ink
+   paper/ink are kept for the canvas semantics.
+   To ROLL BACK to the previous (classic) dark theme, replace this :root
+   block with the "CLASSIC DARK" block commented out just below. */
+:root {
+  --bg:        #111111;   /* HA background */
+  --bg-2:      #1c1c1c;   /* inputs / secondary surfaces */
+  --panel:     #1c1c1c;   /* cards */
+  --panel-2:   #242424;   /* raised surface */
+  --line:      #343434;   /* card borders */
+  --line-2:    #3f3f3f;
+  --txt:       #e1e1e1;   /* HA primary text */
+  --txt-dim:   #9b9b9b;   /* secondary text */
+  --txt-faint: #6f6f6f;
+  --accent:    #ff9800;   /* HA accent (amber/orange) — overridden by HA --accent-color in ingress */
+  --accent-2:  #ffb74d;
+  --accent-ink:#1a1407;   /* readable text on the accent (auto-flips to #fff for dark accents) */
+  --guide:     #1a7fe8;   /* ruler / guide lines — follows HA --primary-color in ingress */
+  --red:       #f44336;
+  --ok:        #4caf50;
+  --paper:     #f4f1e9;   /* e-ink paper */
+  --ink:       #1d1d1b;   /* e-ink black */
+  --radius:    10px;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+}
+/* ===== CLASSIC DARK (previous theme) — rollback: swap into :root above =====
+:root {
+  --bg:#101218; --bg-2:#161922; --panel:#1b1f2a; --panel-2:#20242f;
+  --line:#2b3140; --line-2:#3a4253;
+  --txt:#d7dce6; --txt-dim:#8b93a4; --txt-faint:#5c6475;
+  --accent:#e8a13a; --accent-2:#f2c277; --red:#d6483b; --ok:#5bbf8a;
+  --paper:#f4f1e9; --ink:#1d1d1b; --radius:7px;
+}
+===== END CLASSIC DARK ===== */
+
+/* Light theme — applied when <body> has class "light" */
+body.light {
+  --bg:        #eceef2;
+  --bg-2:      #f5f6f9;
+  --panel:     #ffffff;
+  --panel-2:   #f0f2f6;
+  --line:      #d6dae2;
+  --line-2:    #c2c8d3;
+  --txt:       #1c2230;
+  --txt-dim:   #5a6373;
+  --txt-faint: #8a93a3;
+  --accent:    #c9791a;   /* amber, darker for contrast on light */
+  --accent-2:  #e0922e;
+  --accent-ink:#1a1407;
+  --guide:     #1a7fe8;
+  --red:       #c4302b;
+  --ok:        #2f9e6a;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+/* Vertelt de browser dat deze pagina beide kleurschema's ondersteunt.
+   Hierdoor propageert HA's color-scheme naar de iframe en werkt
+   prefers-color-scheme correct (zelfde techniek als ESPHome webserver). */
+html { color-scheme: light dark; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--txt);
+  font-size: 13px;
+  /* the top bar / toolbars must stay put: never scroll the page vertically
+     (inner frames scroll instead). Horizontal scroll only kicks in on very
+     narrow windows. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+
+/* ---------- App shell ---------- */
+#app {
+  display: grid;
+  grid-template-rows: 56px 1fr;   /* top bar matches HA's header height */
+  grid-template-columns: 240px 1fr 320px;
+  grid-template-areas:
+    "top top top"
+    "left center right";
+  height: 100vh;
+  overflow: hidden;            /* regions manage their own scrolling */
+  /* keep a usable minimum width (horizontal scroll on narrow windows); height
+     always fits the viewport so the top bar/toolbars never scroll away */
+  min-width: 1000px;
+}
+body.chrome-hidden #app { grid-template-rows: 0 1fr; }
+body.chrome-hidden #topbar { display: none; }
+
+/* ---------- Top bar ---------- */
+#topbar {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  background: var(--panel);   /* #1c1c1c dark / #ffffff light — matches HA */
+  border-bottom: 1px solid var(--line);
+}
+/* brand sits in its own boxed cell, flush with the left panel (240px) below it */
+.brand {
+  display: flex; align-items: center; justify-content: center; gap: 9px; flex: none;
+  width: 240px; box-sizing: border-box; margin-left: -10px;   /* cancel #topbar padding → flush left */
+  align-self: stretch; height: 100%; border-right: 1px solid var(--line);
+}
+.brand-text b, .brand-text span { white-space: nowrap; }
+.brand .logo {
+  width: 22px; height: 22px; border-radius: 5px;
+  background: var(--paper);
+  border: 1px solid #cbc6b6;
+  position: relative; flex: none;
+  box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px #d9d4c4;
+}
+.brand .logo::before {
+  content: ""; position: absolute; inset: 4px 5px;
+  background:
+    linear-gradient(var(--ink) 0 0) 0 0/100% 2px no-repeat,
+    linear-gradient(var(--red) 0 0) 0 5px/60% 2px no-repeat,
+    linear-gradient(var(--ink) 0 0) 0 10px/80% 2px no-repeat;
+}
+.brand .brand-text { display: flex; flex-direction: column; line-height: 1.12; }
+.brand b { font-weight: 600; letter-spacing: .2px; }
+.brand span { color: var(--txt-dim); font-size: 11px; font-family: var(--mono); }
+.brand #brand-version { color: var(--txt-faint); margin-left: 6px; font-size: 9px; }
+
+.topbar-sep { width: 1px; height: 22px; background: var(--line); }
+.topbar-spacer { flex: 1; }
+
+.profile-pick { display: flex; align-items: center; gap: 6px; flex: none; margin-left: 8px; }
+.profile-pick label { color: var(--txt-dim); font-size: 11px; }
+/* middle action strip scrolls; brand (left) + settings cluster (right) stay fixed */
+#topbar-actions { position: relative; flex: 1 1 auto; min-width: 0; align-self: stretch;
+  display: flex; align-items: center; overflow: hidden; }
+#topbar-scroll { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0;
+  height: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+#topbar-scroll::-webkit-scrollbar { display: none; }
+/* right-align the action buttons; the auto margin collapses on overflow so it stays
+   scrollable to the start */
+#topbar-scroll > :first-child { margin-left: auto; }
+.topbar-right { display: flex; align-items: center; gap: 6px; flex: none; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  color: var(--txt);
+  padding: 6px 11px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: background .12s, border-color .12s, transform .05s;
+  white-space: nowrap;
+  text-decoration: none;   /* a.btn (e.g. the Files link) must not be underlined */
+}
+.btn:hover { background: var(--line); border-color: var(--line-2); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn.primary:hover { background: var(--accent-2); }
+/* ghost buttons (top bar + canvas toolbar) use the HA button fill:
+   #242424 dark / #f0f2f6 light (= --panel-2) */
+.btn.ghost { background: var(--panel-2); border-color: var(--line); color: var(--txt-dim); }
+.btn.ghost:hover { background: var(--line); color: var(--txt); border-color: var(--line-2); }
+.btn.sm { padding: 4px 8px; font-size: 12px; }
+.btn:disabled, .btn[disabled] { opacity: .45; cursor: default; pointer-events: none; }
+.btn.danger:hover { border-color: var(--red); color: var(--red); }
+.btn .k { font-family: var(--mono); font-size: 10px; opacity: .6; }
+
+/* colourful emoji glyphs on buttons (v3.9.44) — force the colour emoji font and
+   a consistent size so they line up with text/MDI icons inside flex buttons */
+.emo {
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji",
+               "Twemoji Mozilla", sans-serif;
+  font-style: normal; font-weight: 400; line-height: 1;
+  font-size: 14px; display: inline-block;
+}
+.btn.sm .emo { font-size: 13px; }
+/* inline SVG glyphs that need to render identically on every OS (flag emoji
+   don't render as flags on Windows, and the ☯ emoji looks flat) */
+.btn .flag { height: 15px; width: auto; border-radius: 2px; display: block;
+             box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+.btn .yny  { width: 16px; height: 16px; display: block; }
+/* keep every top-bar button the same height regardless of icon vs text content,
+   and run them tight so the whole bar fits (esp. the longer Dutch labels) */
+#topbar .btn { box-sizing: border-box; min-height: 30px; gap: 5px; padding: 6px 8px; }
+/* square icon-only refresh button */
+#btn-refresh { width: 30px; padding: 0; justify-content: center; }
+/* file-manager toolbar: one uniform button height (so refresh is square + matches
+   the theme/flag buttons) */
+#fe-toolbar .btn { box-sizing: border-box; min-height: 30px; }
+/* recycle-bin glyph used on every delete/trash control */
+.bin { height: 17px; width: auto; display: inline-block; vertical-align: middle; }
+.ctxmenu .ic .bin { height: 15px; }
+/* </> code badge on the Generate-YAML button — scaled up visually (transform doesn't
+   affect layout, so the button keeps its size) */
+/* layout box small enough to keep the button the same height as the others; the
+   icon is scaled up visually (transform doesn't affect layout) */
+.btn .codeic { width: 16px; height: 16px; display: block; transform: scale(1.5); margin-right: 2px; }
+/* zip icon on the Download-Fonts button (smooth, transparent PNG) */
+.btn .zipic { height: 18px; width: auto; display: block; }
+/* fixed-size square icon button: guarantees two action buttons are identical in
+   size regardless of which glyph sits inside (used in the sources + fonts tables) */
+.btn.icobtn { box-sizing: border-box; width: 26px; height: 26px; padding: 0;
+              justify-content: center; flex: none; }
+/* tinted MDI icons for the structural groups that have no good emoji
+   (alignment = blue, layer order = purple) — readable on dark + light themes */
+.mdi.mdi-c-align { color: #4a90d9; }
+.mdi.mdi-c-layer { color: #9b6dd6; }
+/* icons that follow HA's primary colour (= --guide): screen nav, undo/redo, +/- */
+.mdi.mdi-c-nav { color: var(--guide); }
+/* square icon-only close buttons (modal / drawer / editor headers) — the ❌
+   emoji needs an equal-sided button, not the default rectangular one */
+#modal-x, #code-close, #fe-editor-close, #fe-fontprev-close {
+  width: 28px; height: 28px; padding: 0; flex: none; justify-content: center;
+}
+
+select, textarea,
+input[type=text], input[type=number], input[type=search], input:not([type]) {
+  background: var(--bg-2);
+  color: var(--txt);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 5px 7px;
+  width: 100%;
+}
+select option { background: var(--panel); color: var(--txt); }
+input::placeholder, textarea::placeholder { color: var(--txt-faint); }
+input[type=file] { color: var(--txt-dim); }
+/* localized file picker (hides the browser's English "Choose File / No file chosen") */
+.file-ctl { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; max-width: 100%; vertical-align: middle; }
+.file-hidden { position: absolute !important; width: 1px; height: 1px; opacity: 0; overflow: hidden; padding: 0; margin: 0; border: 0; }
+/* match the height of an adjacent text input (padding/border/font equal) */
+.file-pick { display: inline-block; padding: 3px 10px 4px; border: 1px solid var(--line-2); border-radius: 5px; background: var(--bg-2); color: var(--txt-dim); white-space: nowrap; line-height: 1.5; }
+.file-ctl:hover .file-pick { border-color: var(--accent); color: var(--txt); }
+.file-name { font-size: 10px; color: var(--txt-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; }
+.tbl td .file-ctl.compact .file-pick { padding: 2px 6px; font-size: 10px; }
+input[type=color] {
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 5px;
+  width: 100%; height: 30px; padding: 2px; cursor: pointer;
+}
+select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+input:disabled, select:disabled { opacity: .45; cursor: not-allowed; }
+.toggle input:disabled + *, label:has(input:disabled) { opacity: .55; }
+/* always reserve room for number spinners so hovering them doesn't shift layout */
+input[type=number] { width: 100%; -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* custom up/down stepper (native arrows are unreliable in the dark HA iframe) */
+.stepper { display: inline-flex; align-items: stretch; width: 100%; }
+.stepper > input { flex: 1; min-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.stepper .step-col { display: flex; flex-direction: column; width: 18px; flex: none; }
+.stepper .step-btn {
+  flex: 1; padding: 0; line-height: 1; font-size: 8px; cursor: pointer;
+  background: var(--bg-2); color: var(--txt-dim); border: 1px solid var(--line);
+  border-left: none; display: flex; align-items: center; justify-content: center;
+}
+.stepper .step-btn:first-child { border-top-right-radius: 6px; border-bottom: none; }
+.stepper .step-btn:last-child { border-bottom-right-radius: 6px; }
+.stepper .step-btn:hover { background: var(--line); color: var(--txt); }
+label.fld { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--txt-dim); margin: 0 0 4px; }
+
+/* ---------- Side panels ---------- */
+#left, #right {
+  background: var(--panel);
+  display: flex; flex-direction: column;
+  /* CRITICAL: grid items default to min-height:auto and would grow past the 1fr
+     row with their content; min-height:0 bounds them so overflow actually works */
+  min-height: 0; min-width: 0;
+}
+#left  { grid-area: left;  border-right: 1px solid var(--line); overflow: hidden; }
+#right { grid-area: right; border-left: 1px solid var(--line); overflow: hidden; }
+/* Right panel: the "Inspector" header bar stays fixed; only the inspector body
+   scrolls (mirrors the "Add elements" header on the left). */
+#right > .section:first-child { flex: none; }
+#right > #inspector { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+/* Left panel: the "Add elements" palette stays fixed; only the layers list
+   scrolls when there are more layers than fit. */
+#left > .section:first-child { flex: none; }
+/* the elements palette is capped to ~60% of the panel and scrolls on its own,
+   so the layers list below always keeps ~40% (never pushed off) */
+#left > .palette { flex: 0 0 auto; max-height: 60%; overflow-y: auto; }
+#left > .section:last-child { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+#left > .section:last-child > h3 { flex: none; }
+#left .layers { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+.section { border-bottom: 1px solid var(--line); }
+.section > h3 {
+  margin: 0; padding: 10px 12px 8px;
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .9px;
+  color: var(--txt-dim); font-weight: 600;
+  display: flex; align-items: center; justify-content: space-between;
+}
+/* The first header of each side panel is a 40px-tall bar so its divider
+   lines up exactly with the canvas toolbar (grid/snap bar, also 40px). */
+#left > .section:first-child > h3,
+#right > .section:first-child > h3 {
+  height: 39px; padding-top: 0; padding-bottom: 0;   /* +1px border = 40px, matches the canvas toolbar */
+  justify-content: center;                            /* centre the panel title */
+}
+.section .body { padding: 0 12px 12px; }
+
+/* palette */
+.palette { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 12px; }
+.tool {
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 10px 8px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  color: var(--txt-dim); transition: .12s;
+}
+.tool:hover { border-color: var(--accent); color: var(--txt); transform: translateY(-1px); }
+.tool svg { width: 22px; height: 22px; stroke: currentColor; }
+.tool span { font-size: 11px; }
+
+/* layers */
+.layers { padding: 0 8px 10px; }
+.layer {
+  position: relative;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 5px; cursor: pointer;
+  border: 1px solid transparent;
+}
+.layer:hover { background: var(--panel-2); }
+.layer.sel { background: var(--panel-2); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+/* insertion line shown while dragging a layer above/below a row — a crisp,
+   full-width straight bar (a pseudo-element, so the row's border-radius doesn't
+   round its ends like an inset box-shadow did) */
+.layer.drop-before::after,
+.layer.drop-after::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 2px;
+  background: var(--accent); pointer-events: none; z-index: 3;
+}
+.layer.drop-before::after { top: -1px; }
+.layer.drop-after::after  { bottom: -1px; }
+/* dragged layer would stay in place if dropped here → a dashed accent box (not an insertion line) */
+.layer.drop-self { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.layer .lmove { color: var(--txt-faint); cursor: grab; flex: none; font-size: 16px; line-height: 1; opacity: .6; }
+.layer .lmove:active { cursor: grabbing; }
+.layer:hover .lmove { opacity: 1; }
+.layer .ltype { width: 16px; color: var(--txt-faint); flex: none; }
+.layer .lname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer .lvis { color: var(--txt-faint); cursor: pointer; position: relative; top: -1px; }
+.layer .ldel { color: var(--txt-faint); cursor: pointer; flex: none; opacity: .55; font-size: 12px; }
+.layer .ldel:hover { opacity: 1; filter: grayscale(0); }
+.layer:hover .ldel { opacity: .8; }
+.layer.hidden .lname { opacity: .4; }
+.lname-edit {
+  flex: 1; background: var(--bg-2); border: 1px solid var(--accent);
+  border-radius: 4px; padding: 2px 6px; font-size: 12.5px; color: var(--txt); min-width: 0;
+}
+
+/* ---------- Center / canvas ---------- */
+#center {
+  grid-area: center; position: relative;
+  background:
+    radial-gradient(circle at 50% 30%, var(--bg-2) 0%, var(--bg) 70%);
+  display: flex; flex-direction: column; min-width: 0; min-height: 0;
+}
+#canvas-toolbar {
+  height: 40px; display: flex; align-items: center; gap: 10px;
+  padding: 0 14px; border-bottom: 1px solid var(--line);
+  background: var(--panel); flex: none;
+  /* when the window is too narrow, scroll the toolbar (via the edge arrows below)
+     instead of letting it spill over the inspector — scrollbar itself is hidden */
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+}
+#canvas-toolbar::-webkit-scrollbar { display: none; }
+/* edge fade + scroll arrow, shown only when the toolbar overflows on that side */
+.ctb-fade {
+  position: absolute; top: 0; height: 40px; width: 56px; z-index: 6;
+  display: none; align-items: center; pointer-events: none;
+}
+.ctb-fade.show { display: flex; }
+.ctb-fade.fade-l { left: 0;  justify-content: flex-start; padding-left: 5px;
+  background: linear-gradient(to right, var(--panel) 38%, transparent); }
+.ctb-fade.fade-r { right: 0; justify-content: flex-end;   padding-right: 5px;
+  background: linear-gradient(to left,  var(--panel) 38%, transparent); }
+/* topbar variant: full bar height (its container is exactly the bar height) */
+.tb-fade { top: 0; bottom: 0; height: auto; }
+.ctb-arrow {
+  pointer-events: auto; cursor: pointer; position: relative;
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 1px solid var(--line-2); background: var(--panel-2); color: var(--guide);
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  font-size: 17px; box-shadow: 0 1px 5px rgba(0,0,0,.35);
+}
+/* invisible hit-area around the arrow: a toolbar button sitting (partly) under the
+   arrow catches this instead, so the obscured button can't be clicked — clicking
+   there scrolls the toolbar rather than triggering the hidden button */
+.fade-l .ctb-arrow::after,
+.fade-r .ctb-arrow::after { content: ""; position: absolute; top: -8px; bottom: -8px; }
+.fade-l .ctb-arrow::after { left: -5px;  right: -43px; }   /* extend the dead zone inward */
+.fade-r .ctb-arrow::after { left: -43px; right: -5px;  }
+.ctb-arrow:hover { background: var(--line); border-color: var(--accent); }
+.ctb-arrow:active { transform: translateY(1px); }
+/* keep button groups intact so they overflow into the scroll instead of shrinking */
+#canvas-toolbar .grp { display: flex; align-items: center; gap: 6px; flex: none; }
+#canvas-toolbar .zoomval { font-family: var(--mono); width: 42px; text-align: center; color: var(--txt-dim); }
+
+/* ---- Canvas status bar (bottom, sticky) ---- */
+#canvas-statusbar {
+  position: sticky; bottom: 0; left: 0;
+  height: 32px; flex: none;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px;
+  background: var(--panel); border-top: 1px solid var(--line);
+  font-size: 11px; color: var(--txt-dim);
+  z-index: 10;
+  /* only span the left portion — right side empty */
+  width: 100%;
+  box-sizing: border-box;
+}
+#canvas-statusbar .grp { display: flex; align-items: center; gap: 5px; }
+#canvas-statusbar .zoomval { font-family: var(--mono); width: 38px; text-align: center; color: var(--txt-dim); }
+#canvas-statusbar .toggle { font-size: 11px; }
+#canvas-statusbar select { font-size: 11px; }
+#canvas-statusbar .btn { font-size: 12px; padding: 1px 5px; height: 22px; }
+.sb-sep { width: 1px; height: 16px; background: var(--line-2); margin: 0 2px; flex-shrink: 0; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--txt-dim); cursor: pointer; user-select: none; white-space: nowrap; }
+.toggle input { accent-color: var(--accent); }
+
+/* -------- Ruler strips (Figma-style) -------- */
+:root { --ruler-sz: 20px; }
+#stage-wrap {
+  flex: 1; min-height: 0; overflow: auto;
+  display: grid;
+  grid-template-columns: var(--ruler-sz) 1fr;
+  grid-template-rows: var(--ruler-sz) 1fr;
+  gap: 0;
+}
+#ruler-corner {
+  grid-column: 1; grid-row: 1;
+  width: var(--ruler-sz); height: var(--ruler-sz);
+  background: var(--panel-2);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; left: 0; z-index: 12;
+}
+#ruler-x {
+  grid-column: 2; grid-row: 1;
+  height: var(--ruler-sz);
+  position: sticky; top: 0; z-index: 11;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  overflow: visible; cursor: crosshair;
+  user-select: none;
+  /* clip only vertically so markers can poke into the canvas area */
+  clip-path: inset(0 0 -20px 0);
+}
+#ruler-y {
+  grid-column: 1; grid-row: 2;
+  width: var(--ruler-sz);
+  position: sticky; left: 0; z-index: 11;
+  background: var(--panel-2);
+  border-right: 1px solid var(--line);
+  overflow: visible; cursor: crosshair;
+  user-select: none;
+  clip-path: inset(0 -20px 0 0);
+}
+/* canvas area: col 2 / row 2 — plain block so overflow scrolls correctly.
+   padding gives breathing room around the stage-frame on all sides. */
+#canvas-area {
+  grid-column: 2; grid-row: 2;
+  padding: 24px 40px 32px 40px;
+  /* let content determine size so the parent stage-wrap can scroll to it */
+  width: max-content; height: max-content;
+  min-width: 100%; min-height: 100%;
+  box-sizing: border-box;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+}
+/* stage-frame — centred when canvas fits, scrollable when it doesn't */
+#stage-frame {
+  /* margin:auto centres when canvas-area is bigger than stage-frame */
+  margin: auto;
+  overflow: hidden;      /* clip the scaled inner content to the frame box */
+  background: #d4d6d7;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px #000, 0 0 0 9px #2a2a2a, 0 0 0 10px #000;
+  border-radius: 3px;
+  position: relative;
+  flex-shrink: 0;
+}
+/* guide drag-preview lines — shown in the whitespace between ruler and canvas only */
+#guide-preview-h, #guide-preview-v {
+  position: fixed; pointer-events: none; z-index: 200;
+}
+#guide-preview-h {
+  height: 0;
+  border-top: 1px dotted rgba(140,140,140,0.75);
+}
+#guide-preview-v {
+  width: 0;
+  border-left: 1px dotted rgba(140,140,140,0.75);
+}
+body.light #guide-preview-h { border-top-color: rgba(80,80,80,0.6); }
+body.light #guide-preview-v { border-left-color: rgba(80,80,80,0.6); }
+/* #stage-frame — positioned/styled in the ruler block above */
+body.light #stage-frame { box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px #b8bcc6, 0 0 0 9px #d8dbe2, 0 0 0 10px #c2c6d0; }
+#stage-frame.eink { filter: none; }
+#stage-frame.drop-hover { box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 2px var(--accent), 0 0 0 10px rgba(232,161,58,.18); }
+.tool { cursor: grab; user-select: none; touch-action: none; }
+.tool:active { cursor: grabbing; }
+#palette .tool * { pointer-events: none; }
+.drag-ghost {
+  position: fixed; z-index: 300; pointer-events: none;
+  transform: translate(10px, 10px);
+  background: var(--accent); color: #1a1407; font-size: 11px; font-weight: 600;
+  padding: 5px 9px; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.4);
+  white-space: nowrap;
+}
+#konva-host { display: block; }
+#eink-canvas { position: absolute; inset: 0; pointer-events: none; display: none; }
+#stage-frame.eink-on #eink-canvas { display: block; }
+
+/* ---------- Inspector (right) ---------- */
+.inspector-empty { padding: 24px 14px; color: var(--txt-faint); text-align: center; line-height: 1.6; }
+.insp-group { border-bottom: 1px solid var(--line); padding: 12px; }
+.insp-group h4 {
+  margin: 0 0 10px; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .7px; color: var(--accent); font-weight: 600;
+}
+.row { display: flex; gap: 8px; margin-bottom: 8px; }
+.row > div { flex: 1; }
+.row.tight { gap: 6px; }
+.mono { font-family: var(--mono); }
+.hint { font-size: 10.5px; color: var(--txt-faint); margin-top: 3px; line-height: 1.4; }
+
+.anchor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; max-width: 96px; }
+.anchor-grid button {
+  aspect-ratio: 1; background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 4px; cursor: pointer; padding: 0;
+}
+.anchor-grid button.on { background: var(--accent); border-color: var(--accent); }
+
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.swatch {
+  width: 30px; height: 24px; border-radius: 4px; cursor: pointer;
+  border: 2px solid var(--line); position: relative;
+}
+.swatch.on { border-color: var(--accent); }
+.swatch .lbl { position: absolute; bottom: -15px; left: 0; right: 0; text-align: center; font-size: 9px; color: var(--txt-faint); }
+
+.cond-box, .src-box { background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin-top: 6px; }
+.branch { border-left: 2px solid var(--line-2); padding-left: 8px; margin-top: 8px; }
+.branch.t { border-color: var(--ok); }
+.branch.f { border-color: var(--red); }
+.branch h5 { margin: 0 0 6px; font-size: 10px; color: var(--txt-dim); text-transform: uppercase; letter-spacing: .5px; }
+
+/* ---------- Code drawer ---------- */
+#code-drawer {
+  position: absolute; right: 0; bottom: 32px; top: 40px; width: 0;   /* stop above the status bar */
+  background: var(--bg-2); border-left: 1px solid var(--line);
+  transition: width .18s ease; overflow: hidden; z-index: 30;
+  display: flex; flex-direction: column;
+}
+#code-drawer.open { width: var(--code-w, min(930px, 85%)); }
+#code-resizer { position: absolute; left: 0; top: 0; bottom: 0; width: 7px; cursor: ew-resize; z-index: 6; }
+#code-resizer:hover { background: var(--accent); opacity: .5; }
+#code-drawer header {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  border-bottom: 1px solid var(--line); flex: none;
+}
+#code-drawer header b { flex: 1; }
+#code-out {
+  flex: 1; margin: 0; padding: 14px 14px 14px 0; overflow: auto;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.55;
+  color: var(--txt); tab-size: 2; white-space: pre;   /* theme-aware: dark in light mode */
+  counter-reset: cl;
+}
+/* one inline span per line (real newlines between them so copy keeps blank lines) +
+   a gutter line-number drawn as a ::before pseudo-element that is never copied */
+#code-out .cl { counter-increment: cl; }
+#code-out .cl::before {
+  content: counter(cl);
+  display: inline-block; width: 3ch; margin-right: 1.1em;
+  text-align: right; color: #8a93a3; opacity: .8;
+  user-select: none; -webkit-user-select: none; pointer-events: none;
+}
+/* only the base64 recovery string wraps (no giant horizontal scrollbar for it);
+   the rest of the YAML keeps pre formatting and may scroll horizontally */
+/* base64 on its own block so wrapped lines align to the left edge (no staircase
+   indent under the "# eink-editor:vX:" prefix) */
+#code-out .b64wrap { display: inline-block; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; }
+/* dim the base64 recovery line (it sits after a blank line) as a "stop here" cue
+   when manually selecting — you usually don't want the recovery code copied too */
+#code-out .cl-b64 { color: var(--txt-faint); opacity: .65; }
+/* while the YAML drawer is open, only its text is selectable — so a drag-copy can't
+   accidentally pick up other parts of the page */
+body.code-open { user-select: none; -webkit-user-select: none; }
+body.code-open #code-out, body.code-open input, body.code-open textarea { user-select: text; -webkit-user-select: text; }
+/* keep the YAML selection clearly highlighted even when the window loses focus */
+#code-out::selection { background: rgba(232,161,58,0.40); }
+#code-out ::selection { background: rgba(232,161,58,0.40); }
+.code-tag { color: var(--accent); }
+.code-key { color: #79c0ff; }
+.code-str { color: #a7e0a0; }
+.code-com { color: #5c6475; font-style: italic; }
+.code-num { color: var(--accent-2); }
+
+/* ---------- Custom tooltip (consistent 1px border, replaces native title) ---------- */
+#app-tooltip {
+  position: fixed; z-index: 9999; pointer-events: none;
+  background: var(--panel-2); color: var(--txt);
+  border: 1px solid var(--line-2); border-radius: 6px;
+  padding: 4px 8px; font-size: 11px; line-height: 1.35;
+  max-width: 260px; box-shadow: 0 4px 16px rgba(0,0,0,.45);
+  opacity: 0; transition: opacity .08s; white-space: normal;
+}
+#app-tooltip.show { opacity: 1; }
+
+/* ---------- Modal ---------- */
+.modal-back {
+  position: fixed; inset: 0; background: rgba(6,7,10,.7);
+  /* anchor near the top (not centred) so the dialog never re-positions when its
+     content height changes — prevents the "jump" on hover/expand */
+  display: none; align-items: flex-start; justify-content: center; z-index: 100;
+  /* integer px offset (not vh) avoids sub-pixel re-positioning that caused a
+     1px "jump" when hovering controls in a scrolled dialog */
+  padding: 40px 16px; overflow: hidden; backdrop-filter: blur(3px);
+}
+.modal-back.open { display: flex; }
+.modal {
+  background: var(--panel); border: 1px solid var(--line-2);
+  border-radius: 10px; width: min(720px, 92vw); max-height: calc(100vh - 80px);
+  display: flex; flex-direction: column; box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  transform: translateZ(0);     /* own compositing layer → stable, no hover jitter */
+}
+.modal.wide { width: min(960px, 96vw); }
+.modal.narrow { width: min(440px, 92vw); }
+.modal header { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; }
+.modal header b { flex: 1; }
+.modal .mbody { padding: 16px; overflow-y: scroll; overflow-x: hidden; }
+.modal footer { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
+
+/* icon picker */
+.icon-search { width: 100%; margin-bottom: 10px; }
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px,1fr)); gap: 6px; max-height: 46vh; overflow: auto; }
+.icon-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 4px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;
+  color: var(--txt-dim);
+}
+.icon-cell:hover { border-color: var(--accent); color: var(--txt); }
+.icon-cell .mdi { font-size: 26px; line-height: 1; }
+.icon-cell small { font-size: 8.5px; text-align: center; word-break: break-all; color: var(--txt-faint); }
+
+/* value-source / font / color tables */
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th, .tbl td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); font-size: 11.5px; }
+.tbl th { color: var(--txt-dim); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+.tbl td input, .tbl td select { padding: 3px 5px; }
+.tbl .mono { font-family: var(--mono); }
+.tag { display: inline-block; padding: 1px 6px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); font-size: 10px; color: var(--txt-dim); }
+/* small "snap to HA" icon used in the Sources table — a plain inline-block (not a flex
+   .btn) so table-layout measures it and it never overflows into the next column */
+.snap-btn { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; cursor: pointer; margin-left: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); color: var(--txt-dim); font-size: 16px; line-height: 1; user-select: none; vertical-align: middle; }
+.snap-btn:hover { background: var(--line); color: var(--txt); }
+
+textarea.import-area { width: 100%; height: 260px; font-family: var(--mono); font-size: 11px; }
+
+.ctxmenu {
+  position: fixed; z-index: 400; display: none;
+  background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 8px;
+  padding: 5px; min-width: 170px; box-shadow: 0 12px 32px rgba(0,0,0,.5);
+}
+.ctxmenu.open { display: block; }
+.ctxmenu button {
+  display: flex; width: 100%; align-items: center; gap: 8px;
+  background: transparent; border: 0; color: var(--txt); text-align: left;
+  padding: 7px 10px; border-radius: 5px; cursor: pointer; font-size: 12.5px;
+}
+.ctxmenu .ic  { flex: none; width: 18px; text-align: center; font-size: 14px; line-height: 1; }
+.ctxmenu .lbl { flex: 1; }
+.ctxmenu button:hover { background: var(--panel-2); }
+.ctxmenu button:disabled { opacity: .4; cursor: default; }
+.ctxmenu button:disabled:hover { background: transparent; }
+.ctxmenu button.danger:hover { background: #3a2526; color: var(--red); }
+.ctxmenu .sep { height: 1px; background: var(--line); margin: 4px 2px; }
+.ctxmenu .k { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--txt-faint); }
+
+/* ---- in-app confirm dialog (replaces browser confirm()) ---- */
+#app-confirm {
+  position: fixed; z-index: 4000;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: var(--panel); border: 1px solid var(--line-2);
+  border-radius: var(--radius); padding: 18px 20px 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  max-width: 380px; width: calc(100vw - 40px);
+}
+.app-confirm-msg { font-size: 13px; line-height: 1.5; color: var(--txt); margin-bottom: 14px; }
+.app-confirm-btns { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* validation popup (pre-flight before Generate YAML) */
+#app-confirm.vchk-wide { max-width: 520px; }
+.vchk-title { font-size: 14px; font-weight: 600; color: var(--txt); margin-bottom: 6px; }
+.vchk-sub { font-size: 12px; color: var(--txt-dim); line-height: 1.5; margin-bottom: 10px; }
+.vchk-sub .mono { font-family: var(--mono); color: var(--red); }
+.vchk-list { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow: auto; }
+.vchk-row {
+  display: flex; align-items: flex-start; gap: 9px; text-align: left;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: 8px 10px; cursor: pointer; color: var(--txt); width: 100%;
+}
+.vchk-row:hover { background: var(--panel-2); border-color: var(--accent); }
+.vchk-bullet { color: var(--red); font-size: 13px; line-height: 1.4; flex: none; }
+.vchk-text { font-size: 12.5px; line-height: 1.45; }
+.vchk-screen {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .5px;
+  background: var(--line); color: var(--txt-dim); border-radius: 4px; padding: 1px 5px; margin-left: 4px;
+}
+.vchk-why { color: var(--red); font-size: 11.5px; }
+
+.toast {
+  position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--ink); color: var(--paper); padding: 9px 16px; border-radius: 20px;
+  font-size: 12px; opacity: 0; transition: .2s; z-index: 200; pointer-events: none;
+  border: 1px solid #000;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }

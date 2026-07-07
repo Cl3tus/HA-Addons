@@ -1,0 +1,44 @@
+configuration:
+  interface:
+    name: Interface
+    fields:
+      language:
+        name: Taal
+        description: >-
+          Taal van de editor en bestandsbeheerder.
+          "Auto" volgt de taal van Home Assistant.
+      theme:
+        name: Thema
+        description: >-
+          Kleurthema. "Auto" volgt de licht/donker-instelling van Home Assistant.
+  live_data:
+    name: Live data
+    fields:
+      live_on_start:
+        name: Live data bij opstarten
+        description: >-
+          Haal automatisch live Home Assistant-waarden op zodra de editor opent
+          (alleen-lezen). Zet uit als je live data liever handmatig aanzet.
+      live_interval:
+        name: Live-vernieuwinterval (minuten)
+        description: >-
+          Standaard auto-vernieuwinterval voor live data, in minuten (0 = uit). Je
+          kunt het per sessie nog wijzigen in de bovenbalk.
+      hide_unavailable:
+        name: Verberg niet-beschikbare entiteiten
+        description: >-
+          Verberg entiteiten met status "unavailable" of "unknown" in de
+          "Uit Home Assistant"-kiezer.
+      entity_domains:
+        name: Entiteit-domeinfilter
+        description: >-
+          Welke entiteit-domeinen in de "Uit Home Assistant"-kiezer verschijnen.
+          Standaard staan alle domeinen aan — vink uit wat je niet nodig hebt.
+  logging:
+    name: Logging
+    fields:
+      debug:
+        name: Debug-logging
+        description: >-
+          Log alles: elk HTTP-verzoek (methode, pad, status, tijdsduur) en extra
+          detail. Uitgebreid — zet alleen aan bij problemen oplossen, anders uit.
