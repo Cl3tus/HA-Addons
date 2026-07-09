@@ -422,6 +422,7 @@ function renderCategories() {
     if (activeCategories.has(NONE_CATEGORY_ID)) activeCategories.delete(NONE_CATEGORY_ID);
     else activeCategories.add(NONE_CATEGORY_ID);
     render();
+    closeSidebarOnMobile();
   };
   noneBtn.oncontextmenu = (e) => e.preventDefault();
   noneLi.appendChild(noneBtn);
@@ -451,6 +452,7 @@ function renderCategories() {
       if (activeCategories.has(cat.id)) activeCategories.delete(cat.id);
       else activeCategories.add(cat.id);
       render();
+      closeSidebarOnMobile();
     };
     btn.oncontextmenu = (e) => {
       e.preventDefault();
@@ -460,6 +462,13 @@ function renderCategories() {
     ul.appendChild(li);
   });
   updateCategorySelectionUi();
+}
+
+function closeSidebarOnMobile() {
+  const sidebar = document.getElementById("sidebar");
+  if (!sidebar) return;
+  sidebar.classList.remove("open");
+  document.getElementById("btn-toggle-sidebar")?.setAttribute("aria-expanded", "false");
 }
 
 function updateStatusbar(shown) {
@@ -483,6 +492,19 @@ const CONN_LABELS = {
   conn_zwave: "Z-Wave",
 };
 
+function formatDateTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function connectivitySummary(c) {
   return Object.keys(CONN_LABELS)
     .filter((k) => c[k])
@@ -503,6 +525,7 @@ const TABLE_SORT_ACCESSORS = {
   categories: (c) => categoryNamesJoined(c.category_ids),
   in_use: (c) => (c.in_use ? 1 : 0),
   connectivity: (c) => connectivitySummary(c),
+  added_at: (c) => c.created_at || "",
 };
 
 function sortTableCodes(codes) {
@@ -542,6 +565,7 @@ function renderTable() {
         <td>${escapeHtml(categoryNamesJoined(c.category_ids))}</td>
         <td>${c.in_use ? "✓" : ""}</td>
         <td>${escapeHtml(connectivitySummary(c))}</td>
+        <td>${escapeHtml(formatDateTime(c.created_at))}</td>
         <td class="table-row-actions">
           <button type="button" class="card-icon-btn card-icon-btn-danger" data-table-delete title="${escapeHtml(t("action.delete"))}">
             <svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./static/brand/icons.svg#rm-icon-trash"/></svg>
@@ -887,6 +911,7 @@ function buildQuickMeta(code, proto) {
   parts.push(`${t("code.in_use")}: ${code.in_use ? t("filter.yes") : t("filter.no")}`);
   const conn = connectivitySummary(code);
   if (conn) parts.push(`${t("code.connectivity")}: ${conn}`);
+  if (code.created_at) parts.push(`${t("code.added_at")}: ${formatDateTime(code.created_at)}`);
   return parts.join(" · ");
 }
 
@@ -900,11 +925,18 @@ function openQuickView(code) {
     proto === "homekit" || proto === "zwave"
       ? `${API}/codes/${code.id}/card.svg`
       : `${API}/codes/${code.id}/qr.png`;
-  wrap.innerHTML = `<img src="${src}" alt="" />`;
+  // HomeKit/Z-Wave card.svg already bakes in their brand logo server-side; Matter's
+  // qr.png doesn't, so overlay the same logo the card grid shows next to its QR.
+  const logo =
+    proto === "matter"
+      ? `<img class="quickview-protocol-logo" src="./static/assets/matter_logo.svg" alt="" />`
+      : "";
+  wrap.innerHTML = `${logo}<img class="quickview-code-img" src="${src}" alt="" />`;
+  const codeImg = wrap.querySelector(".quickview-code-img");
   if (proto === "matter") {
-    wrap.querySelector("img").ondblclick = () => openMtDecodeDialog(code);
+    codeImg.ondblclick = () => openMtDecodeDialog(code);
   } else if (proto === "zwave") {
-    wrap.querySelector("img").ondblclick = () => openZwaveDecodeDialog(code);
+    codeImg.ondblclick = () => openZwaveDecodeDialog(code);
   }
   document.getElementById("quickview-manual").textContent =
     Cards?.displayManual?.(code) || code.manual_code || "";
@@ -1597,7 +1629,21 @@ function bindUi() {
   document.getElementById("filter-all").onclick = () => {
     activeCategories.clear();
     render();
+    closeSidebarOnMobile();
   };
+
+  document.getElementById("btn-toggle-sidebar")?.addEventListener("click", () => {
+    const sidebar = document.getElementById("sidebar");
+    const btn = document.getElementById("btn-toggle-sidebar");
+    const open = sidebar.classList.toggle("open");
+    btn.setAttribute("aria-expanded", String(open));
+  });
+
+  document.addEventListener("click", (e) => {
+    const sidebar = document.getElementById("sidebar");
+    if (!sidebar || !sidebar.classList.contains("open")) return;
+    if (!sidebar.contains(e.target)) closeSidebarOnMobile();
+  });
 
   document.getElementById("btn-delete-selected-codes")?.addEventListener("click", deleteSelectedCodes);
   document.getElementById("btn-clear-code-selection")?.addEventListener("click", () => {
@@ -1715,9 +1761,19 @@ function bindUi() {
       e.stopPropagation();
       const panel = btn.nextElementSibling;
       document.querySelectorAll(".filter-dropdown-panel").forEach((p) => {
-        if (p !== panel) p.classList.add("hidden");
+        if (p !== panel) {
+          p.classList.add("hidden");
+          p.classList.remove("align-right");
+        }
       });
+      const wasHidden = panel?.classList.contains("hidden");
       panel?.classList.toggle("hidden");
+      if (panel && wasHidden) {
+        panel.classList.remove("align-right");
+        if (panel.getBoundingClientRect().right > window.innerWidth - 8) {
+          panel.classList.add("align-right");
+        }
+      }
     });
   });
   document.addEventListener("click", (e) => {

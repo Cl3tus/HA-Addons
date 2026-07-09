@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.0.38
+
+- Fixed the "Invert QR" toggle not doing anything when you opened a code via
+  single-click quickview (its white background was never in the inverted
+  selector list — now the whole quickview panel flips like the card grid
+  does).
+- Quickview now shows the protocol logo next to the code, same as the card
+  grid: Matter gets its logo overlaid next to the QR (HomeKit/Z-Wave already
+  had theirs baked into their card image).
+
+
+- Show the date/time a code was added: new sortable "Added" column in table
+  view, and an "Added" line in the code quickview detail.
+
+## 1.0.36
+
+- Toolbar filter dropdowns (Vendor, Product, Type, Area, etc.) capped to ~6 rows
+  with a scrollbar instead of growing unbounded; rows now have hover highlight
+  and wrap long labels instead of overflowing. Panels also clamp to the
+  viewport edge on open so they don't get clipped on narrow/mobile screens.
+  Values were already alphabetically sorted.
+
+## 1.0.35
+
+- Mobile layout: the categories panel is now collapsed by default (was
+  permanently open at the bottom, eating screen space) and expands as a
+  slide-down overlay when tapped. Closes automatically after picking a
+  category or tapping outside it.
+
 ## 1.0.34
 
 - Table view ("Excel mode") column headers are now clickable to sort — click again
