@@ -201,6 +201,19 @@ Every design has a **Main** screen and an optional **Waiting-for-data** screen (
 until the first data arrives after boot). Switch between them with the selector above
 the canvas; turn the waiting screen on/off in **Profile settings → Use waiting screen**.
 
+### Away & Holiday override screens
+
+Turn on **Use Away screen** and/or **Use Holiday screen** in Profile settings for two
+extra **static** screens that sit in the selector right after the waiting screen and
+before Screen 1. They generate a Home Assistant **Display Override** control
+(`select` with options *Normal / Away / Holiday*, plus optional buttons — style set by
+**Away/Holiday controls in HA**). While the override is on *Away* or *Holiday* the panel
+**freezes on that screen** — no interval refresh, no rotation — until you set it back to
+*Normal*: handy so the display doesn't cycle all night while you're out, or for a week
+while on holiday. If both are active, **Holiday wins**. The boot *waiting-for-data*
+branch still runs first. Unlike the screen selector, the override **survives a reboot**
+(`restore_value`), so a running holiday state comes back after a power blip.
+
 ### Multiple screens (Home Assistant–switchable)
 
 Turn on **Use multiple screens** in Profile settings to design **up to 10** separate
@@ -245,6 +258,10 @@ Open the **⚙** next to the profile picker.
   **width/height** are pre-filled to the native resolution, rotation-aware),
   **rotation**, **width/height**, **canvas background** (preview only).
 - **Use waiting screen** on/off.
+- **Use Away screen** / **Use Holiday screen** on/off — static override screens that
+  freeze the panel while active (see *Away & Holiday override screens* under *Screens*).
+  The **Away/Holiday controls in HA** dropdown (none / dropdown only / buttons only /
+  both) appears once either is on.
 - **Use multiple screens** on/off (remembered per profile) — off gives a single
   screen and hides the add/duplicate/rename/delete buttons; on enables the full
   multi-screen controls (see *Screens* above) and reveals the **Screen controls in HA**
@@ -374,7 +391,8 @@ Both can also be toggled live inside the editor.
 ## 🗄️ Storage & SAMBA
 
 Projects, fonts and profiles live in the add-on config folder, reachable over SAMBA
-at `\\<HA-IP>\addon_configs\<slug>_eink_studio\`:
+at `\\<HA-IP>\app_configs\<slug>_eink_studio\` (on older Home Assistant the share is
+still called `addon_configs` — both names point at the same folder):
 
 ```
 projects/   ← saved designs (.json)

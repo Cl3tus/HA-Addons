@@ -4,6 +4,30 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.10.0 — Away & Holiday override screens
+
+Two optional **static override screens**, enabled per profile in **Profile settings →
+Use Away screen / Use Holiday screen**. They sit in the screen selector right after the
+waiting screen and before Screen 1.
+
+- A Home Assistant **Display Override** control is generated — a `select` with options
+  *Normal / Away / Holiday* plus optional per-option buttons (style set by the new
+  **Away/Holiday controls in HA** dropdown: none / dropdown only / buttons only / both).
+- While the override is on *Away* or *Holiday* the panel **freezes on that screen**: the
+  interval refresh **and** Screen Rotation are skipped until you switch back to *Normal*
+  — so the display doesn't cycle all night while you're out, or for a week on holiday.
+- If both would apply, **Holiday wins**. The boot "waiting for data" branch still runs
+  first.
+- Unlike `screen_select`, `display_override` uses `restore_value` so a running
+  Away/Holiday state survives a reboot; it stays crash-safe because the redraw is gated
+  on `initial_data_received`.
+- Empty override screens fall back to a centred "AWAY" / "HOLIDAY" label. The base64
+  recovery code round-trips both screens and their enable flags.
+
+Also: the SAMBA storage path in the docs now points at `\\<HA-IP>\app_configs\…`
+(Home Assistant renamed the `addon_configs` share to `app_configs`; the old name still
+works).
+
 ## 3.9.112 — Default ink colour id is `black`
 
 The default ink/text colour id is now `black` (was `text`); the structural pair for

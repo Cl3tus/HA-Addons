@@ -12,13 +12,14 @@ log_line() {   # $1=LEVEL  $2=ANSI colour  $3=message
 log_line INFO '\033[32m' "E-ink Studio start op poort 8099 (ingress)..."
 
 export DATA_DIR="/data"
-export ADDON_VERSION="3.9.112"
+export ADDON_VERSION="3.10.0"
 
 # addon_config:rw monteert de add-on config-map op /config.
-# Op de SAMBA-share is dit zichtbaar als addon_configs\3d980088_eink_studio.
+# Op de SAMBA-share is dit zichtbaar als app_configs\3d980088_eink_studio
+# (oudere HA: addon_configs — beide namen wijzen naar dezelfde map).
 # SAMBA_SLUG wordt meegestuurd naar de frontend voor de badge.
 if [ -d "/config" ]; then
-    log_line INFO '\033[32m' "SAMBA opslag actief: /config (\\\\<HA-IP>\\addon_configs\\3d980088_eink_studio)"
+    log_line INFO '\033[32m' "SAMBA opslag actief: /config (\\\\<HA-IP>\\app_configs\\3d980088_eink_studio)"
     export STORAGE_DIR="/config"
     export SAMBA_SLUG="3d980088_eink_studio"
 else

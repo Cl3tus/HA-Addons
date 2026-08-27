@@ -7,8 +7,8 @@ Responsibilities:
   * Proxy read-only Home Assistant state data via the Supervisor API.
   * Persist projects + uploaded fonts under STORAGE_DIR.
     - STORAGE_DIR defaults to /data but is set to
-      /addon_configs/<slug> via run.sh so data is directly visible
-      in the SAMBA share (\\<HA-IP>\\addon_configs\\<slug>).
+      /config via run.sh so data is directly visible in the SAMBA
+      share (\\<HA-IP>\\app_configs\\<slug>; older HA: addon_configs).
 
 Everything is read-only towards Home Assistant. Nothing is written to the
 ESPHome config; fonts/projects live only inside this add-on's volume.
@@ -59,7 +59,8 @@ log = logging.getLogger("eink")
 
 DATA_DIR     = Path(os.environ.get("DATA_DIR", "/data"))
 # STORAGE_DIR is where projects/fonts are kept.  run.sh points this at
-# /addon_configs/<slug> so the data is reachable via SAMBA.
+# /config (the addon_config mount) so the data is reachable via SAMBA
+# under \\<HA-IP>\app_configs\<slug> (older HA: addon_configs).
 STORAGE_DIR  = Path(os.environ.get("STORAGE_DIR", str(DATA_DIR)))
 WWW_DIR      = Path(__file__).parent / "www"
 PROJECTS_DIR  = STORAGE_DIR / "projects"
