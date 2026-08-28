@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.10.1 — One HA-controls dropdown
+
+The **Screen controls in HA** dropdown was renamed **HA controls (screen & override)**
+and now sets the style (none / dropdown / buttons / both) for the screen picker **and**
+the Away/Holiday **Display Override** in one place — no separate per-feature dropdown. It
+shows whenever multiple screens, Away, or Holiday is on.
+
 ## 3.10.0 — Away & Holiday override screens
 
 Two optional **static override screens**, enabled per profile in **Profile settings →
@@ -11,10 +18,8 @@ Use Away screen / Use Holiday screen**. They sit in the screen selector right af
 waiting screen and before Screen 1.
 
 - A Home Assistant **Display Override** control is generated — a `select` with options
-  *Normal / Away / Holiday* plus optional per-option buttons. The existing **Screen
-  controls in HA** dropdown was renamed **HA controls (screen & override)** and now sets
-  the style (none / dropdown / buttons / both) for the screen picker **and** the override
-  in one place; it shows when multiple screens, Away, or Holiday is on.
+  *Normal / Away / Holiday* plus optional per-option buttons, styled by the shared **HA
+  controls (screen & override)** dropdown.
 - While the override is on *Away* or *Holiday* the panel **freezes on that screen**: the
   interval refresh **and** Screen Rotation are skipped until you switch back to *Normal*
   — so the display doesn't cycle all night while you're out, or for a week on holiday.
