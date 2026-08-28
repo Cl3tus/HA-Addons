@@ -206,8 +206,8 @@ the canvas; turn the waiting screen on/off in **Profile settings → Use waiting
 Turn on **Use Away screen** and/or **Use Holiday screen** in Profile settings for two
 extra **static** screens that sit in the selector right after the waiting screen and
 before Screen 1. They generate a Home Assistant **Display Override** control
-(`select` with options *Normal / Away / Holiday*, plus optional buttons — style set by
-**Away/Holiday controls in HA**). While the override is on *Away* or *Holiday* the panel
+(`select` with options *Normal / Away / Holiday*, plus optional buttons — style set by the
+shared **HA controls (screen & override)** dropdown). While the override is on *Away* or *Holiday* the panel
 **freezes on that screen** — no interval refresh, no rotation — until you set it back to
 *Normal*: handy so the display doesn't cycle all night while you're out, or for a week
 while on holiday. If both are active, **Holiday wins**. The boot *waiting-for-data*
@@ -220,8 +220,9 @@ Turn on **Use multiple screens** in Profile settings to design **up to 10** sepa
 screens, each with its own elements. The selector above the canvas then shows
 **add / duplicate / rename / delete** buttons. With two or more screens the generated
 YAML branches per screen and adds your chosen Home Assistant controls — pick them right
-under the **Use multiple screens** toggle in Profile settings (**Screen controls in HA**,
-shown only while multiple screens is on):
+under the **Use multiple screens** toggle in Profile settings (**HA controls (screen &
+override)**, shown when multiple screens, Away, or Holiday is on — one style for the
+screen picker *and* the Away/Holiday override):
 
 - **None** — no HA controls; the screen select stays `internal: true` so the display
   still works while you drive it from your own automations.
@@ -260,12 +261,12 @@ Open the **⚙** next to the profile picker.
 - **Use waiting screen** on/off.
 - **Use Away screen** / **Use Holiday screen** on/off — static override screens that
   freeze the panel while active (see *Away & Holiday override screens* under *Screens*).
-  The **Away/Holiday controls in HA** dropdown (none / dropdown only / buttons only /
-  both) appears once either is on.
 - **Use multiple screens** on/off (remembered per profile) — off gives a single
   screen and hides the add/duplicate/rename/delete buttons; on enables the full
-  multi-screen controls (see *Screens* above) and reveals the **Screen controls in HA**
-  dropdown (none / dropdown only / buttons only / both) right below it.
+  multi-screen controls (see *Screens* above).
+- **HA controls (screen & override)** — one dropdown (none / dropdown only / buttons only
+  / both) that sets the style for *both* the screen picker and the Away/Holiday **Display
+  Override**. Shown when multiple screens, Away, or Holiday is on.
 - **Negative mode** on/off (per profile) — fills the screen with the ink colour and
   draws everything in the paper colour, i.e. a black screen with white content. The
   canvas preview turns dark with a light grid and the YAML gets an `it.fill(...)`

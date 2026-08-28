@@ -3423,8 +3423,7 @@ function outputDefaults(){
     refresh:true,                                   // master: esphome on_boot + script + time + the display-mode switches
     refreshEsphome:true, refreshScript:true, refreshTime:true,  // each block individually on/off (under refresh)
     bootPriority:'600.0', bootDelay:'2s', waitTimeout:'30s', timeInterval:15,
-    screenControl:'both',                           // HA screen-picker style with ≥2 screens: 'none' | 'select' | 'buttons' | 'both'
-    overrideControl:'both',                          // HA Away/Holiday control style: 'none' | 'select' | 'buttons' | 'both'
+    screenControl:'both',                           // HA control style for the screen picker + Away/Holiday override: 'none' | 'select' | 'buttons' | 'both'
     globals:true,
     spi:false, spiClk:'GPIO13', spiMosi:'GPIO14',
     fonts:true, colors:true, sensors:true, textSensors:true,
@@ -3687,7 +3686,8 @@ function genYAML(){
   const hasOverride = overrideOpts.length > 1;
   const awayIdx = overrideOpts.indexOf('Away');
   const holidayIdx = overrideOpts.indexOf('Holiday');
-  const overrideCtrl = o.overrideControl || 'both';
+  // one HA-control style drives both the screen picker and the Display Override
+  const overrideCtrl = o.screenControl || 'both';
 
   // device config: optional full boilerplate (one esphome: block with on_boot merged in)
   // or the standalone esphome: on_boot block (the "paste into your existing config" flow)
@@ -4889,26 +4889,17 @@ function openProfileSettings(){
      <div class="hint" style="margin:4px 0 0">${T('Genereert de “waiting for data”-tak (if initial_data_received == false). Het wachtscherm ontwerp je via de scherm-keuze boven het canvas.','Generates the “waiting for data” branch (if initial_data_received == false). Design the waiting screen via the screen selector above the canvas.')}</div>
      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="ps-away" ${p.awayEnabled?'checked':''}> ${T('Afwezig-scherm gebruiken','Use Away screen')}</label>
      <label class="toggle" style="margin-top:6px"><input type="checkbox" id="ps-holiday" ${p.holidayEnabled?'checked':''}> ${T('Vakantie-scherm gebruiken','Use Holiday screen')}</label>
-     <div class="hint" style="margin:4px 0 0">${T('Statische override-schermen die je in HA via <b>Display Override</b> (dropdown/knoppen) inschakelt. Zolang een override actief is bevriest het scherm — geen verversing, geen rotatie — tot je terug op Normaal zet. Bij beide aan wint Vakantie. Ontwerp ze via de scherm-keuze boven het canvas (na het wachtscherm, vóór scherm 1).','Static override screens you switch on in HA via <b>Display Override</b> (dropdown/buttons). While an override is active the screen freezes — no refresh, no rotation — until you set it back to Normal. If both are on, Holiday wins. Design them via the screen selector above the canvas (after the waiting screen, before screen 1).')}</div>
-     <div id="ps-overridectl-box" style="margin:8px 0 0"><label class="fld">${T('Away/Holiday-bediening in HA','Away/Holiday controls in HA')}</label>
-       <select id="ps-o-overridectrl" style="width:auto">
-         <option value="none"${o.overrideControl==='none'?' selected':''}>${T('Geen','None')}</option>
-         <option value="select"${o.overrideControl==='select'?' selected':''}>${T('Alleen dropdown','Dropdown only')}</option>
-         <option value="buttons"${o.overrideControl==='buttons'?' selected':''}>${T('Alleen knoppen','Buttons only')}</option>
-         <option value="both"${(o.overrideControl||'both')==='both'?' selected':''}>${T('Dropdown & knoppen','Dropdown & buttons')}</option>
-       </select>
-       <div class="hint" style="margin:2px 0 0">${T('Hoe je in HA de override kiest: geen, een dropdown (Normal/Away/Holiday), losse knoppen, of beide. (Bij “Geen” blijft de select intern — stuur hem zelf via een automatisering.)','How you pick the override in HA: none, a dropdown (Normal/Away/Holiday), separate buttons, or both. (With “None” the select stays internal — drive it from your own automation.)')}</div>
-     </div>
+     <div class="hint" style="margin:4px 0 0">${T('Statische override-schermen die je in HA via <b>Display Override</b> inschakelt. Zolang een override actief is bevriest het scherm — geen verversing, geen rotatie — tot je terug op Normaal zet. Bij beide aan wint Vakantie. Ontwerp ze via de scherm-keuze boven het canvas (na het wachtscherm, vóór scherm 1).','Static override screens you switch on in HA via <b>Display Override</b>. While an override is active the screen freezes — no refresh, no rotation — until you set it back to Normal. If both are on, Holiday wins. Design them via the screen selector above the canvas (after the waiting screen, before screen 1).')}</div>
      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="ps-multi" ${multiScreenOn(p)?'checked':''}> ${T('Meerdere schermen gebruiken','Use multiple screens')}</label>
      <div class="hint" style="margin:4px 0 0">${T('Zet de scherm-knoppen (toevoegen/dupliceren/hernoemen/verwijderen) boven het canvas aan en genereert de HA-bediening om tussen schermen te wisselen. Uit = één scherm. Met meerdere schermen komt automatisch een <b>Scherm rotatie</b>-schakelaar in de YAML.','Enables the screen buttons (add/duplicate/rename/delete) above the canvas and generates the HA controls to switch screens. Off = a single screen. With multiple screens a <b>Screen Rotation</b> switch is added to the YAML automatically.')}</div>
-     <div id="ps-screenctl-box" style="margin:8px 0 0"><label class="fld">${T('Schermbediening in HA','Screen controls in HA')}</label>
+     <div id="ps-screenctl-box" style="margin:8px 0 0"><label class="fld">${T('HA-bediening (scherm & override)','HA controls (screen & override)')}</label>
        <select id="ps-o-screenctrl" style="width:auto">
          <option value="none"${o.screenControl==='none'?' selected':''}>${T('Geen','None')}</option>
          <option value="select"${o.screenControl==='select'?' selected':''}>${T('Alleen dropdown','Dropdown only')}</option>
          <option value="buttons"${o.screenControl==='buttons'?' selected':''}>${T('Alleen knoppen','Buttons only')}</option>
          <option value="both"${(o.screenControl||'both')==='both'?' selected':''}>${T('Dropdown & knoppen','Dropdown & buttons')}</option>
        </select>
-       <div class="hint" style="margin:2px 0 0">${T('Hoe je in HA tussen schermen wisselt: geen, een dropdown, losse knoppen per scherm, of beide. (Bij “Geen” blijft de schermselect intern zodat het display blijft werken — je stuurt zelf.)','How you switch screens in HA: none, a dropdown, one button per screen, or both. (With “None” the screen select stays internal so the display still works — you drive it yourself.)')}</div>
+       <div class="hint" style="margin:2px 0 0">${T('Eén keuze voor álle HA-bediening: de scherm-keuze (bij meerdere schermen) én de <b>Display Override</b> (Afwezig/Vakantie). Geen, een dropdown, losse knoppen, of beide. (Bij “Geen” blijven de selects intern zodat het display blijft werken — je stuurt zelf.)','One choice for all HA controls: the screen picker (with multiple screens) and the <b>Display Override</b> (Away/Holiday). None, a dropdown, separate buttons, or both. (With “None” the selects stay internal so the display still works — you drive it yourself.)')}</div>
      </div>
      <hr style="border-color:var(--line);margin:14px 0">
      <button type="button" id="ps-yaml-toggle" style="background:none;border:none;cursor:pointer;font-weight:600;color:var(--accent);padding:0;font-size:13px">▸ ${T('Gegenereerde YAML-blokken','Generated YAML Blocks')}</button>
@@ -4984,7 +4975,6 @@ function openProfileSettings(){
         // the screen controls are only emitted with multi-screen on (the generator gates on it),
         // so nothing is generated when it's off; the chosen value is just remembered for next time
         screenControl:$('#ps-o-screenctrl').value,
-        overrideControl:$('#ps-o-overridectrl').value,
         globals:$('#ps-o-globals').checked,
         fonts:$('#ps-o-fonts').checked, colors:$('#ps-o-colors').checked,
         sensors:$('#ps-o-sensors').checked, textSensors:$('#ps-o-textsensors').checked,
@@ -5024,16 +5014,13 @@ function openProfileSettings(){
       const enable=()=>{ const b=$('#ps-save'); if(b) b.disabled=false; };
       mb.addEventListener('input', enable); mb.addEventListener('change', enable); } }
   // screen controls only apply with multiple screens → only show the dropdown when that's on
-  { const m=$('#ps-multi');
-    const syncScreenCtl=()=>{ const box=$('#ps-screenctl-box'); if(box) box.style.display = (m&&m.checked) ? '' : 'none'; };
-    if(m) m.addEventListener('change', syncScreenCtl);
+  // the single HA-controls dropdown governs the screen picker AND the Away/Holiday
+  // override, so show it when any of multi-screen / Away / Holiday is on
+  { const m=$('#ps-multi'), aw=$('#ps-away'), ho=$('#ps-holiday');
+    const syncScreenCtl=()=>{ const box=$('#ps-screenctl-box');
+      if(box) box.style.display = ((m&&m.checked)||(aw&&aw.checked)||(ho&&ho.checked)) ? '' : 'none'; };
+    [m,aw,ho].forEach(el=>{ if(el) el.addEventListener('change', syncScreenCtl); });
     syncScreenCtl(); }
-  // Away/Holiday control dropdown only matters when at least one override screen is on
-  { const aw=$('#ps-away'), ho=$('#ps-holiday');
-    const syncOverrideCtl=()=>{ const box=$('#ps-overridectl-box');
-      if(box) box.style.display = ((aw&&aw.checked)||(ho&&ho.checked)) ? '' : 'none'; };
-    [aw,ho].forEach(el=>{ if(el) el.addEventListener('change', syncOverrideCtl); });
-    syncOverrideCtl(); }
   // refresh-logic greying (values always kept): master off → grey everything; boot priority /
   // delay / wait timeout follow the esphome on_boot block; interval follows the time block.
   // Turning all three sub-blocks off turns the master off; turning the master on restores them.

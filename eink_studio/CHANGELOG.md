@@ -11,8 +11,10 @@ Use Away screen / Use Holiday screen**. They sit in the screen selector right af
 waiting screen and before Screen 1.
 
 - A Home Assistant **Display Override** control is generated — a `select` with options
-  *Normal / Away / Holiday* plus optional per-option buttons (style set by the new
-  **Away/Holiday controls in HA** dropdown: none / dropdown only / buttons only / both).
+  *Normal / Away / Holiday* plus optional per-option buttons. The existing **Screen
+  controls in HA** dropdown was renamed **HA controls (screen & override)** and now sets
+  the style (none / dropdown / buttons / both) for the screen picker **and** the override
+  in one place; it shows when multiple screens, Away, or Holiday is on.
 - While the override is on *Away* or *Holiday* the panel **freezes on that screen**: the
   interval refresh **and** Screen Rotation are skipped until you switch back to *Normal*
   — so the display doesn't cycle all night while you're out, or for a week on holiday.
