@@ -4,6 +4,16 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.11.2 — Fix ESP32 bootloop from minimum_chip_revision
+
+Default boilerplate had `minimum_chip_revision: "3.1"` and `sram1_as_iram: true` **active**
+under `esp32.framework.advanced`, even though the comments right below them said
+"uncomment if the logger warns..." — they were meant to be opt-in. On any board with an
+actual chip revision below 3.1 (older/cheap ESP32 clones report v1.0/v1.1) the esp-idf
+bootloader hard-fails the revision check and the device bootloops forever. Both are now
+commented out by default, along with the two now-redundant one-line explanations for the
+3.11.1 `toolchain: esp-idf` and `web_server auth type: digest` defaults.
+
 ## 3.11.1 — Compile fix + ESPHome deprecation warnings
 
 - Fixed a build error in the diagnostic **`Screen`** text sensor added in 3.11.0 —
