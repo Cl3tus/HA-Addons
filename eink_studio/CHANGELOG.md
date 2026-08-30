@@ -4,6 +4,17 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.11.1 — Compile fix + ESPHome deprecation warnings
+
+- Fixed a build error in the diagnostic **`Screen`** text sensor added in 3.11.0 —
+  `TemplateSelect` has no `.state` member usable from another component's lambda; it now
+  reads the current option through `.active_index()` + `.at()`, same as everywhere else
+  in the generated YAML.
+- Default boilerplate now sets `toolchain: esp-idf` explicitly under `esp32:` (the
+  `platformio` toolchain is deprecated, removed in ESPHome 2027.2.0) and `type: digest`
+  under the `web_server` `auth:` block (`basic` sends the password over the network in
+  plain form; `digest` becomes the default in ESPHome 2027.1.0).
+
 ## 3.11.0 — Away/Holiday merged into the screen dropdown
 
 The separate **Display Override** entity is gone — Away and Holiday are now just extra

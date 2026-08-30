@@ -3574,6 +3574,8 @@ esphome:
 function boilerplateTail(){ return `# ${T('Bord','Board')}
 esp32:
   board: esp32dev
+  # ${T('esp-idf toolchain — "platformio" is deprecated en verdwijnt in ESPHome 2027.2.0','esp-idf toolchain — "platformio" is deprecated and is removed in ESPHome 2027.2.0')}
+  toolchain: esp-idf
   framework:
     type: esp-idf
     sdkconfig_options:
@@ -3627,6 +3629,8 @@ safe_mode:
 web_server:
   port: 80
   auth:
+    # ${T('Digest i.p.v. basic — basic stuurt het wachtwoord onversleuteld mee; digest wordt de nieuwe default in ESPHome 2027.1.0','Digest instead of basic — basic sends the password over the network in plain form; digest becomes the new default in ESPHome 2027.1.0')}
+    type: digest
     username: !secret esp_username
     password: !secret esp_pass
   include_internal: True
@@ -3821,7 +3825,7 @@ function genYAML(){
     // (internal: true, screenControl 'none'/'buttons') — otherwise there'd be no way
     // to see which screen/override is currently on from the HA UI.
     if(multi || hasOverride){
-      out+=`  - platform: template\n    name: "Screen"\n    id: eink_current_screen\n    icon: "mdi:monitor-dashboard"\n    entity_category: diagnostic\n    lambda: |-\n      return id(screen_select).state;\n`;
+      out+=`  - platform: template\n    name: "Screen"\n    id: eink_current_screen\n    icon: "mdi:monitor-dashboard"\n    entity_category: diagnostic\n    lambda: |-\n      return id(screen_select).at(id(screen_select).active_index().value_or(0)).value_or("");\n`;
     }
     out+=`  - platform: wifi_info\n    ip_address:\n      name: "IP Address"\n      icon: "mdi:network-outline"\n      entity_category: diagnostic\n    ssid:\n      name: "Connected SSID"\n      icon: "mdi:wifi"\n      entity_category: diagnostic\n`;
     out+=`  - platform: version\n    id: text_sensor_version\n    name: "ESPHome Version"\n    entity_category: diagnostic\n    hide_timestamp: true\n`;
