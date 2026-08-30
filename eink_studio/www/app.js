@@ -3584,13 +3584,8 @@ esp32:
       CONFIG_ESP_BROWNOUT_DET: "n"
       # ${T('Bootloader-rollback uitschakelen','Disable bootloader rollback')}
       # CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE: "n"
-    # ${T('advanced: is optioneel — alleen toevoegen als je hem nodig hebt (leeg advanced: {} laten staan is geldig maar overbodig)','advanced: is optional — only add it if you need it (an empty advanced: {} is valid but pointless)')}
-    # advanced:
-    #   ${T('Verwijder de # (op beide regels) als de logger waarschuwt: "Chip rev >= 3.0 detected" — verkleint de binary','Uncomment (both lines) if the logger warns: "Chip rev >= 3.0 detected" — reduces binary size')}
-    #   ${T('Waarde hangt af van je chip — check de logger-uitvoer na de eerste flash. LET OP: hoger dan je werkelijke chip-revisie zetten laat de bootloader hard falen (bootloop).','Value depends on your specific chip — check logger output after first flash. WARNING: setting this above your actual chip revision makes the bootloader hard-fail (bootloop).')}
-    #   minimum_chip_revision: "3.1"
-    #   ${T('Verwijder de # (op beide regels) als de logger waarschuwt: "Bootloader supports SRAM1 as IRAM (+40KB)"','Uncomment (both lines) if the logger warns: "Bootloader supports SRAM1 as IRAM (+40KB)"')}
-    #   sram1_as_iram: true
+    advanced:
+      sram1_as_iram: true
 
 # ${T('Flash-schrijfinterval (hoort bij restore_from_flash)','Flash write interval (companion to restore_from_flash)')}
 # preferences:

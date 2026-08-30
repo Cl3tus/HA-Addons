@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.11.3 — sram1_as_iram back on by default
+
+`minimum_chip_revision` stays out (see 3.11.2 — it bootlooped on chips below rev 3.1), but
+`sram1_as_iram: true` is safe on its own and the logger explicitly asks for it (+40KB
+IRAM), so `esp32.framework.advanced` now ships with just that line active, with its
+now-redundant "uncomment if the logger warns" explanation removed.
+
 ## 3.11.2 — Fix ESP32 bootloop from minimum_chip_revision
 
 Default boilerplate had `minimum_chip_revision: "3.1"` and `sram1_as_iram: true` **active**
