@@ -3555,13 +3555,14 @@ function snapElId(el, used){
 /* optional "default device config" boilerplate (the YAML-drawer checkbox). Split so the
    refresh on_boot can be merged into the single esphome: block. ${...} are ESPHome
    substitutions (escaped here so JS keeps them literal). */
-function boilerplateHead(){ return `# ${T('Substituties — pas dit blok per apparaat aan','Substitutions — change this block per device')}
+function boilerplateHead(cppName){ return `# ${T('Substituties — pas dit blok per apparaat aan','Substitutions — change this block per device')}
 substitutions:
   device_name: "device-name"
   device_id: deviceidname
   comment: "Device Naming Comment"
   friendly_name: "Device Name"
   board_type: "ESP32"       # ${T('Getoond in HA Apparaatinfo als firmware-label','Shown in HA Device Info as firmware label')}
+  profile: "${cppName}"     # ${T('Profielnaam — hergebruikt door de diagnostische Profile-sensor','Profile name — reused by the diagnostic Profile sensor')}
 
 # ${T('ESPHome-kern','ESPHome core')}
 esphome:
@@ -3659,6 +3660,9 @@ function genYAML(){
 
   const o = outCfg(p);
   const friendly = p.name || 'E-ink Display';
+  // C++-string-literal-safe profile name, shared by the substitutions "profile" entry
+  // (full boilerplate) and the diagnostic Profile text_sensor lambda.
+  const cppName = String(p.name||'E-ink Studio').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
 
   // designed screens. multi = ≥2 screens, which switches on the whole screen-control
   // machinery (branched display lambda, HA select/buttons/rotation).
@@ -3703,7 +3707,7 @@ function genYAML(){
     : 'id(data_updated) == true';
   const onBoot = `  on_boot:\n    priority: ${o.bootPriority}\n    then:\n      - delay: ${o.bootDelay}\n      - component.update: eink_display\n      - wait_until:\n          condition:\n            lambda: 'return ${bootWaitCond};'\n          timeout: ${o.waitTimeout}\n      - lambda: 'id(initial_data_received) = true;'\n      - script.execute: update_screen\n`;
   if(useBP){
-    out+=boilerplateHead();
+    out+=boilerplateHead(cppName);
     if(wantOnBoot) out+=onBoot;          // merged into the single esphome: block
     out+='\n'+boilerplateTail()+'\n';
   } else if(wantOnBoot){
@@ -3811,10 +3815,13 @@ function genYAML(){
   // text sensors: a diagnostic with the profile name (identifies the display in HA, since the
   // entity names no longer carry the profile prefix), plus the used string/time/bool HA sources.
   if(o.textSensors){
-    const cppName = String(p.name||'E-ink Studio').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+    // full boilerplate defines the name once under substitutions (profile: "...") and
+    // this just references it; without a substitutions: block there's nothing to
+    // reference, so the standalone flow keeps the literal inline.
+    const profileVal = useBP ? '${profile}' : cppName;
     out+=`# ${T('Diagnostische tekst-sensoren (+ HA-bronnen)','Diagnostic text sensors (+ HA sources)')}\n`;
     out+=`text_sensor:\n`;
-    out+=`  - platform: template\n    name: "Profile"\n    id: eink_profile\n    icon: "mdi:card-account-details"\n    entity_category: diagnostic\n    lambda: |-\n      return {"${cppName}"};\n`;
+    out+=`  - platform: template\n    name: "Profile"\n    id: eink_profile\n    icon: "mdi:card-account-details"\n    entity_category: diagnostic\n    lambda: |-\n      return {"${profileVal}"};\n`;
     // shows the active screen even when the screen_select control is hidden from HA
     // (internal: true, screenControl 'none'/'buttons') — otherwise there'd be no way
     // to see which screen/override is currently on from the HA UI.

@@ -4,6 +4,13 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.11.4 — Profile name as a substitution
+
+Full boilerplate now defines `profile: "<name>"` under `substitutions:` and the
+diagnostic **`Profile`** text sensor references `${profile}` instead of hardcoding the
+name a second time. The standalone "paste into your existing config" flow has no
+substitutions block to hook into, so it keeps the literal name inline as before.
+
 ## 3.11.3 — sram1_as_iram back on by default
 
 `minimum_chip_revision` stays out (see 3.11.2 — it bootlooped on chips below rev 3.1), but
