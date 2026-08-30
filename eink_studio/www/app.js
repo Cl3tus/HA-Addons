@@ -3677,17 +3677,19 @@ function genYAML(){
   const scrNames = (()=>{ const seen={}; return scrs.map(s=>{ let nm=(s.name||'').trim()||T('Scherm','Screen');
     if(seen[nm]!=null){ seen[nm]++; nm=nm+' '+seen[nm]; } else seen[nm]=1; return nm; }); })();
 
-  // Away / Holiday: STATIC override screens driven by a HA "Display Override" select.
-  // While it's on Away/Holiday the display freezes on that screen — no periodic refresh,
-  // no rotation. Options always run Normal → Away → Holiday; Holiday is checked first in
-  // the lambda so it wins when both would apply. These screens are NOT in scrs / scrNames,
-  // so they never enter the screen_select dropdown or the rotation cycle.
-  const overrideOpts = ['Normal', p.awayEnabled && 'Away', p.holidayEnabled && 'Holiday'].filter(Boolean);
-  const hasOverride = overrideOpts.length > 1;
-  const awayIdx = overrideOpts.indexOf('Away');
-  const holidayIdx = overrideOpts.indexOf('Holiday');
-  // one HA-control style drives both the screen picker and the Display Override
-  const overrideCtrl = o.screenControl || 'both';
+  // Away / Holiday: STATIC override screens, appended as extra options on the SAME
+  // screen_select dropdown (no separate "Display Override" entity — picking Away/Holiday
+  // from the one screen dropdown IS the override). While one is active the display
+  // freezes — no periodic refresh, no rotation — and Static Display is forced on.
+  // Holiday is checked first in the lambda so it wins when both would apply. These
+  // screens are NOT in scrs / scrNames, so they never enter the rotation cycle.
+  const baseNames = multi ? scrNames : scrNames.slice(0,1);   // options that map to an actual designed screen
+  const baseCount = baseNames.length;
+  const overrideNames = [p.awayEnabled && 'Away', p.holidayEnabled && 'Holiday'].filter(Boolean);
+  const hasOverride = overrideNames.length > 0;
+  const combinedOptions = baseNames.concat(overrideNames);
+  const awayIdx = overrideNames.includes('Away') ? baseCount + overrideNames.indexOf('Away') : -1;
+  const holidayIdx = overrideNames.includes('Holiday') ? baseCount + overrideNames.indexOf('Holiday') : -1;
 
   // device config: optional full boilerplate (one esphome: block with on_boot merged in)
   // or the standalone esphome: on_boot block (the "paste into your existing config" flow)
@@ -3738,17 +3740,24 @@ function genYAML(){
     const refreshIf = i => `${i}- if:\n${i}    condition:\n${i}      lambda: 'return id(data_updated) == true;'\n${i}    then:\n${i}      - logger.log: "E-ink: new sensor data — refreshing display"\n${i}      - script.execute: update_screen\n${i}    else:\n${i}      - logger.log: "E-ink: no new sensor data — refresh skipped"\n`;
     // rotation on → advance the select AND force a redraw (don't rely on the select's on_value,
     // which is guarded by initial_data_received); rotation off → the data-guarded refresh.
+    const i='          ';
+    // Rotation advances screen_select. Plain cycle:true would also rotate INTO the
+    // Away/Holiday options tacked onto the end of the same dropdown, so once an override
+    // is configured we step with a bounded lambda instead (wraps within [0, baseCount)).
+    const rotateStep = i2 => hasOverride
+      ? `${i2}- select.set:\n${i2}    id: screen_select\n${i2}    option: !lambda 'return id(screen_select).at((id(screen_select).active_index().value_or(0) + 1) % ${baseCount}).value();'\n`
+      : `${i2}- select.next:\n${i2}    id: screen_select\n${i2}    cycle: true\n`;
     const coreAct = i => rotateBool
-      ? `${i}- if:\n${i}    condition:\n${i}      lambda: 'return id(rotate_screens).state;'\n${i}    then:\n${i}      - select.next:\n${i}          id: screen_select\n${i}          cycle: true\n${i}      - component.update: eink_display\n${i}    else:\n${refreshIf(i+'      ')}`
+      ? `${i}- if:\n${i}    condition:\n${i}      lambda: 'return id(rotate_screens).state;'\n${i}    then:\n${rotateStep(i+'      ')}${i}      - component.update: eink_display\n${i}    else:\n${refreshIf(i+'      ')}`
       : refreshIf(i);
     // Decide the mode from Static (which freezes) — robust: "not Static" covers Auto Refresh
     // and any all-off edge state, so the interval always does something sensible. Static on →
     // skip entirely (the screen stays frozen). Off → Rotation advances, else data-driven refresh.
-    const i='          ';
-    // ...and skip entirely while a Display Override (Away/Holiday) is active — those
-    // screens are static, so the panel must not refresh or rotate until you clear them.
+    // ...and skip entirely while screen_select is parked on an Away/Holiday option (an
+    // index at/after baseCount) — those screens are static, so the panel must not refresh
+    // or rotate until you switch back to a designed screen.
     const freezeCond = hasOverride
-      ? `!id(static_display).state && id(display_override).active_index().value_or(0) == 0`
+      ? `!id(static_display).state && id(screen_select).active_index().value_or(0) < ${baseCount}`
       : `!id(static_display).state`;
     out+=`${i}- if:\n${i}    condition:\n${i}      lambda: 'return ${freezeCond};'\n${i}    then:\n`;
     out+=coreAct(i+'      ');
@@ -3808,6 +3817,12 @@ function genYAML(){
     out+=`# ${T('Diagnostische tekst-sensoren (+ HA-bronnen)','Diagnostic text sensors (+ HA sources)')}\n`;
     out+=`text_sensor:\n`;
     out+=`  - platform: template\n    name: "Profile"\n    id: eink_profile\n    icon: "mdi:card-account-details"\n    entity_category: diagnostic\n    lambda: |-\n      return {"${cppName}"};\n`;
+    // shows the active screen even when the screen_select control is hidden from HA
+    // (internal: true, screenControl 'none'/'buttons') — otherwise there'd be no way
+    // to see which screen/override is currently on from the HA UI.
+    if(multi || hasOverride){
+      out+=`  - platform: template\n    name: "Screen"\n    id: eink_current_screen\n    icon: "mdi:monitor-dashboard"\n    entity_category: diagnostic\n    lambda: |-\n      return id(screen_select).state;\n`;
+    }
     out+=`  - platform: wifi_info\n    ip_address:\n      name: "IP Address"\n      icon: "mdi:network-outline"\n      entity_category: diagnostic\n    ssid:\n      name: "Connected SSID"\n      icon: "mdi:wifi"\n      entity_category: diagnostic\n`;
     out+=`  - platform: version\n    id: text_sensor_version\n    name: "ESPHome Version"\n    entity_category: diagnostic\n    hide_timestamp: true\n`;
     const srcTs = used.filter(s=>s.kind!=='number');
@@ -3868,21 +3883,21 @@ function genYAML(){
     out+='\n';
   }
 
-  // Template selects — screen_select (active designed screen, ≥2 screens) and
-  // display_override (Away / Holiday). Collected into ONE `select:` block: a duplicate
-  // top-level key is invalid YAML. Each select HOLDS its state — the display lambda reads
-  // it via active_index(), so no extra global is needed. Picking a value forces an
-  // immediate redraw (component.update), independent of the data-driven update_screen.
-  // Boot-safety (both needed to avoid a LoadProhibited crash + bootloop):
-  //  * The on_value redraw is GUARDED by initial_data_received — an optimistic select
-  //    publishes its initial_option once at setup (restore_value re-publishes from NVS),
-  //    firing on_value; without the guard that renders before the graph/qr/sensor
-  //    components exist. First real render always happens via on_boot.
-  //  * screen_select has NO restore_value (its state is transient — resets to #0 on
-  //    reboot, fine). display_override DOES (a running holiday must outlast a power cut);
-  //    it's safe for the reason above.
-  const selectEntries = [];
-  if(multi){
+  // Template select — ONE screen_select for both the active designed screen AND the
+  // Away/Holiday override: the override options are just appended to the same dropdown
+  // (no separate "Display Override" entity — there's nothing to see it as "Normal" vs
+  // override, picking a screen from the list IS normal). It HOLDS its state — the display
+  // lambda reads it via active_index(), so no extra global is needed. Picking a value
+  // forces an immediate redraw (component.update), independent of the data-driven
+  // update_screen.
+  // Boot-safety: the on_value redraw is GUARDED by initial_data_received — an optimistic
+  // select publishes its initial_option once at setup (restore_value re-publishes from
+  // NVS), firing on_value; without the guard that renders before the graph/qr/sensor
+  // components exist. First real render always happens via on_boot.
+  // restore_value: yes so a running Away/Holiday survives a reboot (a week-long holiday
+  // must outlast a power cut) — crash-safe for the reason above; the plain screen choice
+  // now persisting too is a harmless side effect of sharing one entity.
+  if(multi || hasOverride){
     // control style decides what shows in Home Assistant: 'select' = dropdown, 'buttons' =
     // buttons only (select internal), 'both' = dropdown + buttons, 'none' = no HA controls
     // (select internal; drive it from your own ESPHome/HA logic).
@@ -3890,29 +3905,21 @@ function genYAML(){
     const hideSel = (ctrl==='buttons' || ctrl==='none');
     const selName = hideSel ? '' : `    name: "Screen"\n`;
     const selInternal = hideSel ? `    internal: true\n` : '';
-    selectEntries.push(`  - platform: template\n${selName}    id: screen_select\n${selInternal}    optimistic: true\n    options: [${scrNames.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(scrNames[0])}\n    on_value:\n      then:\n        - if:\n            condition:\n              lambda: 'return id(initial_data_received);'\n            then:\n              - component.update: eink_display\n`);
-  }
-  if(hasOverride){
-    // Display Override (Away / Holiday) — emitted whenever an override screen is enabled,
-    // independent of multi-screen. Unlike screen_select this one DOES restore_value: an
-    // Away/Holiday state is meant to outlast a power cut (a week-long holiday). Crash-safe
-    // for the same reason — the on_value redraw is gated on initial_data_received.
-    // 'select'/'both' expose the dropdown in HA; 'buttons'/'none' keep it internal.
-    const hideSel = (overrideCtrl==='buttons' || overrideCtrl==='none');
-    const selName = hideSel ? '' : `    name: "Display Override"\n`;
-    const selInternal = hideSel ? `    internal: true\n` : '';
-    selectEntries.push(`  - platform: template\n${selName}    id: display_override\n${selInternal}    optimistic: true\n    restore_value: yes\n    options: [${overrideOpts.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr('Normal')}\n    on_value:\n      then:\n        - if:\n            condition:\n              lambda: 'return id(initial_data_received);'\n            then:\n              - component.update: eink_display\n`);
-  }
-  if(selectEntries.length){
-    out+=`# ${T('Template-selects: scherm-keuze en/of Away/Holiday-override','Template selects: screen picker and/or Away/Holiday override')}\n`;
-    out+=`select:\n${selectEntries.join('')}\n`;
+    // when Away/Holiday is picked: force Static Display on (guarded — switch.turn_on is a
+    // no-op action either way, but the guard avoids re-triggering its own on_turn_on).
+    const forceStatic = (hasOverride && modeSwitches)
+      ? `        - if:\n            condition:\n              lambda: 'return id(screen_select).active_index().value_or(0) >= ${baseCount} && !id(static_display).state;'\n            then:\n              - switch.turn_on: static_display\n`
+      : '';
+    out+=`# ${T('Template-select: scherm-keuze + Away/Holiday-override in één dropdown','Template select: screen picker + Away/Holiday override in one dropdown')}\n`;
+    out+=`select:\n  - platform: template\n${selName}    id: screen_select\n${selInternal}    optimistic: true\n    restore_value: yes\n    options: [${combinedOptions.map(yamlStr).join(', ')}]\n    initial_option: ${yamlStr(combinedOptions[0])}\n    on_value:\n      then:\n        - if:\n            condition:\n              lambda: 'return id(initial_data_received);'\n            then:\n              - component.update: eink_display\n${forceStatic}\n`;
   }
 
-  // buttons: a restart button is always emitted; screen buttons follow with multi-screen
+  // buttons: a restart button is always emitted; screen/override buttons follow, all
+  // driving the one shared screen_select.
   {
     const ctrl = o.screenControl || 'both';
     const wantScreenBtns = multi && (ctrl==='both' || ctrl==='buttons');
-    const wantOverrideBtns = hasOverride && (overrideCtrl==='both' || overrideCtrl==='buttons');
+    const wantOverrideBtns = hasOverride && (ctrl==='both' || ctrl==='buttons');
     out+= (wantScreenBtns || wantOverrideBtns)
       ? `# ${T('Knoppen — herstart, verversen en scherm-/override-knoppen','Buttons — restart, refresh and screen/override buttons')}\n`
       : `# ${T('Restart ESP Knop','Restart ESP Button')}\n`;
@@ -3926,16 +3933,16 @@ function genYAML(){
     out+=`  - platform: template\n    name: "Refresh Screen"\n    entity_category: config\n    on_press:\n${refreshAct}`;
     if(wantScreenBtns){
       out+=`# ${T('Schermknoppen','Multi-screen buttons')}\n`;
-      scrNames.forEach((nm)=>{
+      baseNames.forEach((nm)=>{
         // press → set the select, which fires on_value (redraws the display)
         out+=`  - platform: template\n    name: "${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: screen_select\n            option: "${esc(nm)}"\n`;
       });
     }
-    // Away / Holiday override buttons (incl. a "Normal" to clear it)
+    // Away / Holiday override buttons
     if(wantOverrideBtns){
-      out+=`# ${T('Override-knoppen (Afwezig / Vakantie / Normaal)','Override buttons (Away / Holiday / Normal)')}\n`;
-      overrideOpts.forEach(nm=>{
-        out+=`  - platform: template\n    name: "${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: display_override\n            option: "${esc(nm)}"\n`;
+      out+=`# ${T('Override-knoppen (Afwezig / Vakantie)','Override buttons (Away / Holiday)')}\n`;
+      overrideNames.forEach(nm=>{
+        out+=`  - platform: template\n    name: "${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: screen_select\n            option: "${esc(nm)}"\n`;
       });
     }
     out+='\n';
@@ -3958,22 +3965,30 @@ function genYAML(){
       if(onOff.length) s += `    on_turn_off:\n${onOff.join('')}`;
       return s;
     };
+    // Auto Refresh and Away/Holiday are mutually exclusive: turning Refresh on while
+    // screen_select is parked on an override option snaps it back to the main screen —
+    // Refresh must never run behind an Away/Holiday freeze.
+    const resetToMain = hasOverride
+      ? [ g(`id(screen_select).active_index().value_or(0) >= ${baseCount}`, `select.set: {id: screen_select, option: ${yamlStr(combinedOptions[0])}}`) ]
+      : [];
     if(rotateBool){
       switchEntries.push(sw(T('Automatisch verversen','Auto Refresh'), R, 'mdi:autorenew', true,
-        [ g(`id(${S}).state`, `switch.turn_off: ${S}`) ],
+        [ g(`id(${S}).state`, `switch.turn_off: ${S}`), ...resetToMain ],
         [ g(`id(${Rot}).state`, `switch.turn_off: ${Rot}`),
           g(`!id(${S}).state && !id(${Rot}).state`, `switch.turn_on: ${S}`) ]));
       switchEntries.push(sw(T('Statisch Display','Static Display'), S, 'mdi:image-lock-outline', false,
         [ g(`id(${R}).state`, `switch.turn_off: ${R}`),
           g(`id(${Rot}).state`, `switch.turn_off: ${Rot}`) ],
         [ g(`!id(${R}).state && !id(${Rot}).state`, `switch.turn_on: ${R}`) ]));
-      switchEntries.push(sw(T('Scherm rotatie','Screen Rotation'), Rot, 'mdi:rotate-3d-variant', false,
+      // multi-screen ships with Rotation on by default (Refresh, its prerequisite, already
+      // defaults on above) — a fresh install cycles through screens out of the box.
+      switchEntries.push(sw(T('Scherm rotatie','Screen Rotation'), Rot, 'mdi:rotate-3d-variant', true,
         [ g(`id(${S}).state`, `switch.turn_off: ${S}`),
           g(`!id(${R}).state`, `switch.turn_on: ${R}`) ],
         []));
     } else {
       switchEntries.push(sw(T('Automatisch verversen','Auto Refresh'), R, 'mdi:autorenew', true,
-        [ g(`id(${S}).state`, `switch.turn_off: ${S}`) ],
+        [ g(`id(${S}).state`, `switch.turn_off: ${S}`), ...resetToMain ],
         [ g(`!id(${S}).state`, `switch.turn_on: ${S}`) ]));
       switchEntries.push(sw(T('Statisch Display','Static Display'), S, 'mdi:image-lock-outline', false,
         [ g(`id(${R}).state`, `switch.turn_off: ${R}`) ],
@@ -4007,14 +4022,17 @@ function genYAML(){
   // draw the active designed screen. single screen → just its elements; multiple → read
   // the active index straight from the HA select (no global needed) and branch on it,
   // falling back to screen 0 when out of range / unset.
-  const drawScreens=(indent)=>{
+  // existingVar: reuse an already-declared index variable (drawMain declares `cs` once
+  // when an override is on) instead of redeclaring it here.
+  const drawScreens=(indent, existingVar)=>{
     if(!multi || scrs.length<=1){ drawEls(scrs[0].elements, indent); return; }
-    out+=`${indent}int cs = id(screen_select).active_index().value_or(0);\n`;
+    const v = existingVar || 'cs';
+    if(!existingVar) out+=`${indent}int ${v} = id(screen_select).active_index().value_or(0);\n`;
     // screens 1..N-1 get explicit branches; screen 0 (the main screen) is the final else —
     // which is also the safe fallback for an out-of-range index — so it isn't emitted twice.
     scrs.forEach((s,i)=>{
       if(i===0) return;
-      out+=`${indent}${i===1?'if':'} else if'} (cs == ${i}) {\n`;
+      out+=`${indent}${i===1?'if':'} else if'} (${v} == ${i}) {\n`;
       drawEls(s.elements, indent+'  ');
     });
     out+=`${indent}} else {\n`;
@@ -4026,24 +4044,24 @@ function genYAML(){
     if(arr && arr.length){ drawEls(arr, indent); return; }
     out+=`${indent}it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), ${cppColor(inkId())}, TextAlign::CENTER, "${label}");\n`;
   };
-  // the "data received" body: Display Override (Holiday wins, then Away) takes over,
-  // otherwise the normal designed-screen logic.
+  // the "data received" body: an Away/Holiday option on screen_select (Holiday wins, then
+  // Away) takes over, otherwise the normal designed-screen logic.
   const drawMain=(indent)=>{
     if(!hasOverride){ drawScreens(indent); return; }
-    out+=`${indent}int ov = id(display_override).active_index().value_or(0);\n`;
+    out+=`${indent}int cs = id(screen_select).active_index().value_or(0);\n`;
     let first=true;
-    if(holidayIdx>0){
-      out+=`${indent}if (ov == ${holidayIdx}) {\n`;
+    if(holidayIdx>=0){
+      out+=`${indent}if (cs == ${holidayIdx}) {\n`;
       drawStatic(p.holidayElements, T('VAKANTIE','HOLIDAY'), indent+'  ');
       first=false;
     }
-    if(awayIdx>0){
-      out+=`${indent}${first?'if':'} else if'} (ov == ${awayIdx}) {\n`;
+    if(awayIdx>=0){
+      out+=`${indent}${first?'if':'} else if'} (cs == ${awayIdx}) {\n`;
       drawStatic(p.awayElements, T('AFWEZIG','AWAY'), indent+'  ');
       first=false;
     }
     out+=`${indent}} else {\n`;
-    drawScreens(indent+'  ');
+    drawScreens(indent+'  ', 'cs');
     out+=`${indent}}\n`;
   };
   if(p.waitEnabled===false){

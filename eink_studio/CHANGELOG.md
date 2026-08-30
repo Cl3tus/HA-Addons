@@ -4,6 +4,21 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.11.0 — Away/Holiday merged into the screen dropdown
+
+The separate **Display Override** entity is gone — Away and Holiday are now just extra
+options **appended to the same `Screen` select** as your designed screens, so there's one
+dropdown/button set in Home Assistant instead of two.
+
+- Picking **Away** or **Holiday** freezes the panel and now also forces **Static
+  Display** on automatically.
+- **Auto Refresh** and an active Away/Holiday selection are mutually exclusive: turning
+  Refresh back on snaps `Screen` back to the main screen.
+- **Screen Rotation** now defaults **on** whenever multiple screens are enabled (it never
+  rotates into Away/Holiday, override or not).
+- A new diagnostic **`Screen`** text sensor mirrors the current selection, useful when
+  the `Screen` control itself is set to `internal: true`.
+
 ## 3.10.1 — One HA-controls dropdown
 
 The **Screen controls in HA** dropdown was renamed **HA controls (screen & override)**

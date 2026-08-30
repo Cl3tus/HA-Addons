@@ -205,14 +205,17 @@ the canvas; turn the waiting screen on/off in **Profile settings → Use waiting
 
 Turn on **Use Away screen** and/or **Use Holiday screen** in Profile settings for two
 extra **static** screens that sit in the selector right after the waiting screen and
-before Screen 1. They generate a Home Assistant **Display Override** control
-(`select` with options *Normal / Away / Holiday*, plus optional buttons — style set by the
-shared **HA controls (screen & override)** dropdown). While the override is on *Away* or *Holiday* the panel
-**freezes on that screen** — no interval refresh, no rotation — until you set it back to
-*Normal*: handy so the display doesn't cycle all night while you're out, or for a week
-while on holiday. If both are active, **Holiday wins**. The boot *waiting-for-data*
-branch still runs first. Unlike the screen selector, the override **survives a reboot**
-(`restore_value`), so a running holiday state comes back after a power blip.
+before Screen 1. There's no separate "Display Override" entity — Away and Holiday are
+just extra options **appended to the same Home Assistant `Screen` dropdown** as your
+designed screens (style set by the shared **HA controls (screen & override)** dropdown).
+Picking Away or Holiday from that one selector **freezes the panel on that screen** — no
+interval refresh, no rotation — and automatically turns **Static Display** on; picking a
+normal screen again (or turning **Auto Refresh** back on) clears it. Auto Refresh and an
+Away/Holiday selection can never be on at the same time: turning Refresh on while one is
+active snaps the selector back to the main screen. If both Away and Holiday are active,
+**Holiday wins**. The boot *waiting-for-data* branch still runs first. The selector
+**survives a reboot** (`restore_value`), so a running holiday state comes back after a
+power blip.
 
 ### Multiple screens (Home Assistant–switchable)
 
@@ -222,29 +225,37 @@ screens, each with its own elements. The selector above the canvas then shows
 YAML branches per screen and adds your chosen Home Assistant controls — pick them right
 under the **Use multiple screens** toggle in Profile settings (**HA controls (screen &
 override)**, shown when multiple screens, Away, or Holiday is on — one style for the
-screen picker *and* the Away/Holiday override):
+whole `Screen` selector, screens and Away/Holiday options alike):
 
 - **None** — no HA controls; the screen select stays `internal: true` so the display
   still works while you drive it from your own automations.
-- **Dropdown only** — a template `select` whose options are your screen names.
-- **Buttons only** — one template `button` per screen (handy on a dashboard).
+- **Dropdown only** — a template `select` whose options are your screen names (plus Away
+  / Holiday when enabled).
+- **Buttons only** — one template `button` per screen and per enabled override (handy on
+  a dashboard).
 - **Dropdown & buttons** — both.
 
 Switching a screen forces an immediate redraw, independent of new sensor data.
 Single-screen designs generate exactly the same YAML as before, and your existing layout
 migrates into the first screen automatically (the recovery code round-trips all screens).
+A diagnostic **Screen** text sensor always mirrors the current selection, even when the
+dropdown itself is hidden (`internal: true`).
 
 ### Display-mode switches (Auto Refresh / Static / Rotation)
 
 When **Refresh logic** is on, the YAML also generates interlocked Home Assistant
 **switches** that decide what the display does on each interval. **Exactly one is always
-on** (default **Auto Refresh**, remembered across reboots):
+on** (default **Auto Refresh**, remembered across reboots; **Screen Rotation** also
+defaults on when multiple screens are enabled):
 
 - **Auto Refresh** — refreshes the display each interval *when a bound sensor has new data*
-  (it logs and skips the round otherwise).
+  (it logs and skips the round otherwise). Turning it on clears an active Away/Holiday
+  selection back to the main screen.
 - **Static Display** — freezes the screen: after the first render it stops refreshing.
-- **Screen Rotation** — advances to the next screen each interval; generated automatically
-  with ≥2 screens. Turning it on also turns Auto Refresh on.
+  Turned on automatically whenever the `Screen` selector is on Away or Holiday.
+- **Screen Rotation** — advances to the next *designed* screen each interval (never into
+  Away/Holiday); generated automatically with ≥2 screens. Turning it on also turns Auto
+  Refresh on.
 
 Turning one on turns the conflicting ones off, and you can never leave all three off — so
 there's always a defined mode.
@@ -265,8 +276,9 @@ Open the **⚙** next to the profile picker.
   screen and hides the add/duplicate/rename/delete buttons; on enables the full
   multi-screen controls (see *Screens* above).
 - **HA controls (screen & override)** — one dropdown (none / dropdown only / buttons only
-  / both) that sets the style for *both* the screen picker and the Away/Holiday **Display
-  Override**. Shown when multiple screens, Away, or Holiday is on.
+  / both) that sets the style for the one `Screen` selector, which carries the screen
+  picker *and* the Away/Holiday options together. Shown when multiple screens, Away, or
+  Holiday is on.
 - **Negative mode** on/off (per profile) — fills the screen with the ink colour and
   draws everything in the paper colour, i.e. a black screen with white content. The
   canvas preview turns dark with a light grid and the YAML gets an `it.fill(...)`
@@ -437,7 +449,9 @@ including decorative display fonts and icon fonts.
   length guard, so an empty/unknown value at boot can't crash the device).
 - Generated **entity names carry no profile prefix** (ESPHome already prefixes with the
   device name). A diagnostic **`Profile`** `text_sensor` with the profile name is added so
-  you can still tell displays apart in Home Assistant.
+  you can still tell displays apart in Home Assistant. When the `Screen` selector exists
+  (multiple screens and/or Away/Holiday), a diagnostic **`Screen`** `text_sensor` mirrors
+  its current option too — handy when the selector itself is set to `internal: true`.
 
 ---
 
