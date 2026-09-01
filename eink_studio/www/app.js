@@ -144,12 +144,13 @@ function seedProfile(name='My display'){
     elements: [],
     waitEnabled: true,    // whether to emit the "waiting for data" branch at all
     waitElements: [],     // seeded with a default WAITING FOR DATA text on first boot
-    // Away / Holiday: optional STATIC override screens (like the waiting screen —
-    // kept out of screens[] and the rotation carousel). When the HA "Display
-    // Override" select is on Away/Holiday the display freezes on that screen:
-    // no periodic refresh, no rotation. Holiday wins if both are active.
+    // Away / Holiday / Sleep: optional STATIC override screens (like the waiting screen —
+    // kept out of screens[] and the rotation carousel). When screen_select is on one of
+    // these the display freezes on that screen: no periodic refresh, no rotation.
+    // Priority when multiple are active: Holiday > Away > Sleep.
     awayEnabled: false,    awayElements: [],    awayGuides: [],
     holidayEnabled: false, holidayElements: [], holidayGuides: [],
+    sleepEnabled: false,   sleepElements: [],   sleepGuides: [],
     output: outputDefaults(),   // which YAML blocks to generate
   };
   function f(id,kind,file,family,weight,size,dynamic,base){
@@ -212,11 +213,11 @@ function ensureScreens(p){
 function screensList(){ return ensureScreens(profile()); }
 function activeScreen(){ const ss=screensList(); return ss.find(s=>s.id===editScreen) || ss[0]; }
 function isWaitScreen(){ return editScreen==='wait'; }
-/* the "special" (non-carousel) screens: waiting + the Away/Holiday overrides.
+/* the "special" (non-carousel) screens: waiting + the Away/Holiday/Sleep overrides.
    Each is a flat element array on the profile, edited via the screen selector
    just like the waiting screen. */
-const SPECIAL_ELS   = { wait:'waitElements',  away:'awayElements',  holiday:'holidayElements'  };
-const SPECIAL_GUIDES = { wait:'waitGuides',   away:'awayGuides',    holiday:'holidayGuides'    };
+const SPECIAL_ELS   = { wait:'waitElements',  away:'awayElements',  holiday:'holidayElements',  sleep:'sleepElements'  };
+const SPECIAL_GUIDES = { wait:'waitGuides',   away:'awayGuides',    holiday:'holidayGuides',    sleep:'sleepGuides'    };
 function specialKey(id){ return SPECIAL_ELS[id||editScreen] || null; }
 function isSpecialScreen(){ return !!specialKey(editScreen); }
 function els(){
@@ -242,6 +243,7 @@ function allElements(p){
   (p.waitElements||[]).forEach(e=>out.push(e));
   (p.awayElements||[]).forEach(e=>out.push(e));
   (p.holidayElements||[]).forEach(e=>out.push(e));
+  (p.sleepElements||[]).forEach(e=>out.push(e));
   return out;
 }
 
@@ -259,11 +261,12 @@ function renderScreenSelect(){
   const list=screensList();
   const waitOn = p.waitEnabled!==false;
   const mOn = multiScreenOn(p);
-  // leading "special" (non-carousel) options, in nav order: waiting → Away → Holiday.
+  // leading "special" (non-carousel) options, in nav order: waiting → Away → Holiday → Sleep.
   const specials = [
     waitOn            && { id:'wait',    label:T('Wachtscherm','Waiting screen') },
     p.awayEnabled     && { id:'away',    label:T('Afwezig-scherm','Away screen') },
     p.holidayEnabled  && { id:'holiday', label:T('Vakantie-scherm','Holiday screen') },
+    p.sleepEnabled    && { id:'sleep',   label:T('Slaapscherm','Sleep screen') },
   ].filter(Boolean);
   const specialIds = specials.map(s=>s.id);
   // single-screen mode: only the first screen is selectable (extra screens, if any, stay
@@ -454,7 +457,7 @@ function renameColor(oldId, newId){
     if(el.graph && el.graph.traces) el.graph.traces.forEach(fix);
   });
   ensureScreens(p).forEach(s=>scan(s.elements));
-  scan(p.waitElements); scan(p.awayElements); scan(p.holidayElements);
+  scan(p.waitElements); scan(p.awayElements); scan(p.holidayElements); scan(p.sleepElements);
   persist(); afterChange();
   return {ok:true};
 }
@@ -925,7 +928,8 @@ function applyZoom(){
    ============================================================ */
 
 /* guides are stored per screen: each special screen keeps its own (p.waitGuides /
-   p.awayGuides / p.holidayGuides), every designed screen keeps its own (screen.guides). */
+   p.awayGuides / p.holidayGuides / p.sleepGuides), every designed screen keeps its own
+   (screen.guides). */
 function profileGuides(){
   const p=profile(); if(!p) return [];
   const gk=SPECIAL_GUIDES[editScreen];
@@ -3398,6 +3402,8 @@ function collectGlyphs(){
         addText(f0, T('AFWEZIG','AWAY'));
       if(p0.holidayEnabled && !(p0.holidayElements&&p0.holidayElements.length))
         addText(f0, T('VAKANTIE','HOLIDAY'));
+      if(p0.sleepEnabled && !(p0.sleepElements&&p0.sleepElements.length))
+        addText(f0, T('SLAPEN','SLEEP'));
     } }
   return map;
 }
@@ -3441,11 +3447,12 @@ function outCfg(p){ return Object.assign(outputDefaults(), (p||profile()).output
    unused fonts in the export and to flag them in the Font Editor. */
 function usedFontIds(p){
   p=p||profile(); const used=new Set();
-  // the built-in "waiting for data" / Away / Holiday fallbacks print with the first font
+  // the built-in "waiting for data" / Away / Holiday / Sleep fallbacks print with the first font
   if(p.fonts[0]){
     const f0=p.fonts[0].id;
     if(p.waitEnabled!==false && !(p.waitElements&&p.waitElements.length)) used.add(f0);
     if(p.awayEnabled && !(p.awayElements&&p.awayElements.length)) used.add(f0);
+    if(p.sleepEnabled && !(p.sleepElements&&p.sleepElements.length)) used.add(f0);
     if(p.holidayEnabled && !(p.holidayElements&&p.holidayElements.length)) used.add(f0);
   }
   allElements(p).forEach(e=>{
@@ -3515,6 +3522,7 @@ function validateDesign(){
   if(p.waitEnabled!==false) scan(p.waitElements, T('Wachten','Waiting'), 'wait');
   if(p.awayEnabled)    scan(p.awayElements,    T('Afwezig','Away'),    'away');
   if(p.holidayEnabled) scan(p.holidayElements, T('Vakantie','Holiday'),'holiday');
+  if(p.sleepEnabled)   scan(p.sleepElements,   T('Slapen','Sleep'),    'sleep');
   return issues;
 }
 /* a readable type label for an element (used in validation messages) */
@@ -3679,19 +3687,22 @@ function genYAML(){
   const scrNames = (()=>{ const seen={}; return scrs.map(s=>{ let nm=(s.name||'').trim()||T('Scherm','Screen');
     if(seen[nm]!=null){ seen[nm]++; nm=nm+' '+seen[nm]; } else seen[nm]=1; return nm; }); })();
 
-  // Away / Holiday: STATIC override screens, appended as extra options on the SAME
-  // screen_select dropdown (no separate "Display Override" entity — picking Away/Holiday
+  // Away / Holiday / Sleep: STATIC override screens, appended as extra options on the SAME
+  // screen_select dropdown (no separate "Display Override" entity — picking one of them
   // from the one screen dropdown IS the override). While one is active the display
   // freezes — no periodic refresh, no rotation — and Static Display is forced on.
-  // Holiday is checked first in the lambda so it wins when both would apply. These
-  // screens are NOT in scrs / scrNames, so they never enter the rotation cycle.
+  // Priority when multiple would apply: Holiday > Away > Sleep (checked in that order in
+  // the lambda). These screens are NOT in scrs / scrNames, so they never enter the
+  // rotation cycle.
   const baseNames = multi ? scrNames : scrNames.slice(0,1);   // options that map to an actual designed screen
   const baseCount = baseNames.length;
-  const overrideNames = [p.awayEnabled && 'Away', p.holidayEnabled && 'Holiday'].filter(Boolean);
+  const overrideNames = [p.awayEnabled && 'Away', p.holidayEnabled && 'Holiday', p.sleepEnabled && 'Sleep'].filter(Boolean);
   const hasOverride = overrideNames.length > 0;
   const combinedOptions = baseNames.concat(overrideNames);
-  const awayIdx = overrideNames.includes('Away') ? baseCount + overrideNames.indexOf('Away') : -1;
-  const holidayIdx = overrideNames.includes('Holiday') ? baseCount + overrideNames.indexOf('Holiday') : -1;
+  const overrideIdx = name => overrideNames.includes(name) ? baseCount + overrideNames.indexOf(name) : -1;
+  const awayIdx = overrideIdx('Away');
+  const holidayIdx = overrideIdx('Holiday');
+  const sleepIdx = overrideIdx('Sleep');
 
   // device config: optional full boilerplate (one esphome: block with on_boot merged in)
   // or the standalone esphome: on_boot block (the "paste into your existing config" flow)
@@ -3945,7 +3956,7 @@ function genYAML(){
     }
     // Away / Holiday override buttons
     if(wantOverrideBtns){
-      out+=`# ${T('Override-knoppen (Afwezig / Vakantie)','Override buttons (Away / Holiday)')}\n`;
+      out+=`# ${T('Override-knoppen (Afwezig / Vakantie / Slapen)','Override buttons (Away / Holiday / Sleep)')}\n`;
       overrideNames.forEach(nm=>{
         out+=`  - platform: template\n    name: "${esc(nm)}"\n    on_press:\n      then:\n        - select.set:\n            id: screen_select\n            option: "${esc(nm)}"\n`;
       });
@@ -4049,8 +4060,8 @@ function genYAML(){
     if(arr && arr.length){ drawEls(arr, indent); return; }
     out+=`${indent}it.printf(${Math.round(d.w/2)}, ${Math.round(d.h/2)}, id(${p.fonts[0].id}), ${cppColor(inkId())}, TextAlign::CENTER, "${label}");\n`;
   };
-  // the "data received" body: an Away/Holiday option on screen_select (Holiday wins, then
-  // Away) takes over, otherwise the normal designed-screen logic.
+  // the "data received" body: an Away/Holiday/Sleep option on screen_select takes over
+  // (Holiday > Away > Sleep priority), otherwise the normal designed-screen logic.
   const drawMain=(indent)=>{
     if(!hasOverride){ drawScreens(indent); return; }
     out+=`${indent}int cs = id(screen_select).active_index().value_or(0);\n`;
@@ -4063,6 +4074,11 @@ function genYAML(){
     if(awayIdx>=0){
       out+=`${indent}${first?'if':'} else if'} (cs == ${awayIdx}) {\n`;
       drawStatic(p.awayElements, T('AFWEZIG','AWAY'), indent+'  ');
+      first=false;
+    }
+    if(sleepIdx>=0){
+      out+=`${indent}${first?'if':'} else if'} (cs == ${sleepIdx}) {\n`;
+      drawStatic(p.sleepElements, T('SLAPEN','SLEEP'), indent+'  ');
       first=false;
     }
     out+=`${indent}} else {\n`;
@@ -4101,11 +4117,13 @@ function genYAML(){
       waitEnabled: p.waitEnabled!==false,
       awayEnabled: !!p.awayEnabled,
       holidayEnabled: !!p.holidayEnabled,
+      sleepEnabled: !!p.sleepEnabled,
       negative: !!p.negative,
       screens: scrs.map(s=>({ id:s.id, name:s.name||'', elements:reId(s.elements) })),
       waitElements: reId(p.waitElements||[]),
       awayElements: reId(p.awayElements||[]),
-      holidayElements: reId(p.holidayElements||[])
+      holidayElements: reId(p.holidayElements||[]),
+      sleepElements: reId(p.sleepElements||[])
     }))));
     // wrapped over multiple "#~ " comment lines so it doesn't become one giant line in
     // ESPHome (which never wraps); the importer reassembles them. Legacy single-line still reads.
@@ -4912,7 +4930,8 @@ function openProfileSettings(){
      <div class="hint" style="margin:4px 0 0">${T('Genereert de “waiting for data”-tak (if initial_data_received == false). Het wachtscherm ontwerp je via de scherm-keuze boven het canvas.','Generates the “waiting for data” branch (if initial_data_received == false). Design the waiting screen via the screen selector above the canvas.')}</div>
      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="ps-away" ${p.awayEnabled?'checked':''}> ${T('Afwezig-scherm gebruiken','Use Away screen')}</label>
      <label class="toggle" style="margin-top:6px"><input type="checkbox" id="ps-holiday" ${p.holidayEnabled?'checked':''}> ${T('Vakantie-scherm gebruiken','Use Holiday screen')}</label>
-     <div class="hint" style="margin:4px 0 0">${T('Statische override-schermen die je in HA via <b>Display Override</b> inschakelt. Zolang een override actief is bevriest het scherm — geen verversing, geen rotatie — tot je terug op Normaal zet. Bij beide aan wint Vakantie. Ontwerp ze via de scherm-keuze boven het canvas (na het wachtscherm, vóór scherm 1).','Static override screens you switch on in HA via <b>Display Override</b>. While an override is active the screen freezes — no refresh, no rotation — until you set it back to Normal. If both are on, Holiday wins. Design them via the screen selector above the canvas (after the waiting screen, before screen 1).')}</div>
+     <label class="toggle" style="margin-top:6px"><input type="checkbox" id="ps-sleep" ${p.sleepEnabled?'checked':''}> ${T('Slaapscherm gebruiken','Use Sleep screen')}</label>
+     <div class="hint" style="margin:4px 0 0">${T('Statische override-schermen — extra opties op dezelfde <b>Screen</b>-dropdown in HA. Zolang er een actief is bevriest het scherm — geen verversing, geen rotatie — en gaat Statisch Display automatisch aan, tot je weer een gewoon scherm kiest. Bij meerdere aan: Vakantie > Afwezig > Slapen. Ontwerp ze via de scherm-keuze boven het canvas (na het wachtscherm, vóór scherm 1).','Static override screens — extra options on the same HA <b>Screen</b> dropdown. While one is active the screen freezes — no refresh, no rotation — and Static Display turns on automatically, until you pick a normal screen again. With multiple on: Holiday > Away > Sleep. Design them via the screen selector above the canvas (after the waiting screen, before screen 1).')}</div>
      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="ps-multi" ${multiScreenOn(p)?'checked':''}> ${T('Meerdere schermen gebruiken','Use multiple screens')}</label>
      <div class="hint" style="margin:4px 0 0">${T('Zet de scherm-knoppen (toevoegen/dupliceren/hernoemen/verwijderen) boven het canvas aan en genereert de HA-bediening om tussen schermen te wisselen. Uit = één scherm. Met meerdere schermen komt automatisch een <b>Scherm rotatie</b>-schakelaar in de YAML.','Enables the screen buttons (add/duplicate/rename/delete) above the canvas and generates the HA controls to switch screens. Off = a single screen. With multiple screens a <b>Screen Rotation</b> switch is added to the YAML automatically.')}</div>
      <div id="ps-screenctl-box" style="margin:8px 0 0"><label class="fld">${T('HA-bediening (scherm & override)','HA controls (screen & override)')}</label>
@@ -4973,7 +4992,7 @@ function openProfileSettings(){
       const _snap=()=>Object.assign({
         naam:p.name, model:d.model, rotatie:d.rotation, breedte:d.w, hoogte:d.h,
         achtergrond:d.bg, negatief:p.negative, wachtscherm:p.waitEnabled,
-        'afwezig-scherm':p.awayEnabled, 'vakantie-scherm':p.holidayEnabled,
+        'afwezig-scherm':p.awayEnabled, 'vakantie-scherm':p.holidayEnabled, 'slaap-scherm':p.sleepEnabled,
         'multi-scherm':p.multiScreen
       }, p.output||{});
       const _before=_snap();
@@ -4984,10 +5003,11 @@ function openProfileSettings(){
       p.waitEnabled=$('#ps-wait').checked;
       p.awayEnabled=$('#ps-away').checked;
       p.holidayEnabled=$('#ps-holiday').checked;
+      p.sleepEnabled=$('#ps-sleep').checked;
       p.multiScreen=$('#ps-multi').checked;
       // editing a special screen that just got disabled → fall back to the first screen
       if(specialKey(editScreen) &&
-         !((editScreen==='wait'&&p.waitEnabled)||(editScreen==='away'&&p.awayEnabled)||(editScreen==='holiday'&&p.holidayEnabled)))
+         !((editScreen==='wait'&&p.waitEnabled)||(editScreen==='away'&&p.awayEnabled)||(editScreen==='holiday'&&p.holidayEnabled)||(editScreen==='sleep'&&p.sleepEnabled)))
         editScreen=screensList()[0].id;
       renderScreenSelect();
       p.output=Object.assign(outCfg(p), {
@@ -5037,12 +5057,12 @@ function openProfileSettings(){
       const enable=()=>{ const b=$('#ps-save'); if(b) b.disabled=false; };
       mb.addEventListener('input', enable); mb.addEventListener('change', enable); } }
   // screen controls only apply with multiple screens → only show the dropdown when that's on
-  // the single HA-controls dropdown governs the screen picker AND the Away/Holiday
-  // override, so show it when any of multi-screen / Away / Holiday is on
-  { const m=$('#ps-multi'), aw=$('#ps-away'), ho=$('#ps-holiday');
+  // the single HA-controls dropdown governs the screen picker AND the Away/Holiday/Sleep
+  // options on it, so show it when any of multi-screen / Away / Holiday / Sleep is on
+  { const m=$('#ps-multi'), aw=$('#ps-away'), ho=$('#ps-holiday'), sl=$('#ps-sleep');
     const syncScreenCtl=()=>{ const box=$('#ps-screenctl-box');
-      if(box) box.style.display = ((m&&m.checked)||(aw&&aw.checked)||(ho&&ho.checked)) ? '' : 'none'; };
-    [m,aw,ho].forEach(el=>{ if(el) el.addEventListener('change', syncScreenCtl); });
+      if(box) box.style.display = ((m&&m.checked)||(aw&&aw.checked)||(ho&&ho.checked)||(sl&&sl.checked)) ? '' : 'none'; };
+    [m,aw,ho,sl].forEach(el=>{ if(el) el.addEventListener('change', syncScreenCtl); });
     syncScreenCtl(); }
   // refresh-logic greying (values always kept): master off → grey everything; boot priority /
   // delay / wait timeout follow the esphome on_boot block; interval follows the time block.
@@ -5419,6 +5439,7 @@ function doImport(textArg){
     if(typeof snap.waitEnabled==='boolean') p.waitEnabled=snap.waitEnabled;
     if(typeof snap.awayEnabled==='boolean') p.awayEnabled=snap.awayEnabled;
     if(typeof snap.holidayEnabled==='boolean') p.holidayEnabled=snap.holidayEnabled;
+    if(typeof snap.sleepEnabled==='boolean') p.sleepEnabled=snap.sleepEnabled;
     if(typeof snap.negative==='boolean') p.negative=snap.negative;
     if(Array.isArray(snap.screens) && snap.screens.length){
       p.screens=snap.screens.map((s,i)=>({
@@ -5434,6 +5455,7 @@ function doImport(textArg){
     if(Array.isArray(snap.waitElements)) p.waitElements=snap.waitElements;
     if(Array.isArray(snap.awayElements)) p.awayElements=snap.awayElements;
     if(Array.isArray(snap.holidayElements)) p.holidayElements=snap.holidayElements;
+    if(Array.isArray(snap.sleepElements)) p.sleepElements=snap.sleepElements;
   } else if(drawn.length){
     const s0=ensureScreens(p)[0]; s0.elements=(s0.elements||[]).concat(drawn);
   }

@@ -4,6 +4,14 @@ Only the highlights are kept here — minor version bumps are folded into the th
 belong to. The full, per-commit history lives in the
 [Git commit log](https://github.com/Cl3tus/HA-Eink-Studio-App/commits/main).
 
+## 3.12.0 — Sleep override screen
+
+A third static override screen alongside Away and Holiday: turn on **Use Sleep screen**
+in Profile settings. It's an extra option on the same `Screen` dropdown/buttons (still no
+separate entity), freezes the panel and forces Static Display the same way Away/Holiday
+do. Priority when more than one is active: **Holiday > Away > Sleep**. Empty screens fall
+back to a centred **"SLEEP"** label. The base64 recovery code round-trips it too.
+
 ## 3.11.4 — Profile name as a substitution
 
 Full boilerplate now defines `profile: "<name>"` under `substitutions:` and the
